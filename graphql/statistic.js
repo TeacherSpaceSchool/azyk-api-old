@@ -1683,7 +1683,7 @@ const resolvers = {
                                 if(!statistic[id].complet.includes(data[i1]._id.toString())) {
                                     statistic[id].complet.push(data[i1]._id.toString())
                                 }
-                                statistic[id].returned += data[i].returnedPrice
+                                statistic[id].returned += data[i1].returnedPrice
                                 statistic[id].profit += data[i1].allPrice - data[i1].returnedPrice
                                 if (data[i1].consignmentPrice && !data[i1].paymentConsignation) {
                                     statistic[id].consignmentPrice += data[i1].consignmentPrice

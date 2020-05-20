@@ -8,8 +8,8 @@ const EmploymentAzyk = require('../models/employmentAzyk');
 const DeliveryDateAzyk = require('../models/deliveryDateAzyk');
 const DistributerAzyk = require('../models/distributerAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
-const AgentRouteAzyk = require('../models/agentRouteAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
+const AgentRouteAzyk = require('../models/agentRouteAzyk');
 const ItemAzyk = require('../models/itemAzyk');
 const BasketAzyk = require('../models/basketAzyk');
 const UserAzyk = require('../models/userAzyk');
@@ -34,6 +34,7 @@ const type = `
     accessToClient: Boolean
     consignation: Boolean
     onlyDistrict: Boolean
+    onlyIntegrate: Boolean
     del: String
     priotiry: Int
   }
@@ -49,8 +50,8 @@ const query = `
 `;
 
 const mutation = `
-    addOrganization(miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, onlyDistrict: Boolean!): Data
-    setOrganization(miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, onlyDistrict: Boolean): Data
+    addOrganization(miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!): Data
+    setOrganization(miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean): Data
     restoreOrganization(_id: [ID]!): Data
     deleteOrganization(_id: [ID]!): Data
     onoffOrganization(_id: [ID]!): Data
@@ -97,9 +98,22 @@ const resolvers = {
                 .sort('-priotiry')
                 .sort(sort)
             for(let i=0; i<organizations.length; i++) {
-                if(organizations[i].onlyDistrict){
+                if(organizations[i].onlyIntegrate&&organizations[i].onlyDistrict){
+                    let district = await DistrictAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
+                    let integrate = await Integrate1CAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
+                    if(integrate&&district){
+                        organizationsRes.push(organizations[i])
+                    }
+                }
+                else if(organizations[i].onlyDistrict){
                     let district = await DistrictAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
                     if(district){
+                        organizationsRes.push(organizations[i])
+                    }
+                }
+                else if(organizations[i].onlyIntegrate){
+                    let integrate = await Integrate1CAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
+                    if(integrate){
                         organizationsRes.push(organizations[i])
                     }
                 }
@@ -182,7 +196,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrganization: async(parent, {miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict}, {user}) => {
+    addOrganization: async(parent, {miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -200,6 +214,7 @@ const resolversMutation = {
                 consignation: consignation,
                 priotiry: priotiry,
                 onlyDistrict: onlyDistrict,
+                onlyIntegrate: onlyIntegrate,
                 miniInfo: miniInfo
             });
             objectOrganization = await OrganizationAzyk.create(objectOrganization)
@@ -212,7 +227,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setOrganization: async(parent, {miniInfo, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict}, {user}) => {
+    setOrganization: async(parent, {miniInfo, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===_id.toString())) {
             let object = await OrganizationAzyk.findById(_id)
             if (image) {
@@ -227,6 +242,7 @@ const resolversMutation = {
             if(email) object.email = email
             if(address) object.address = address
             if(onlyDistrict!=undefined) object.onlyDistrict = onlyDistrict
+            if(onlyIntegrate!=undefined) object.onlyIntegrate = onlyIntegrate
             if(priotiry!=undefined) object.priotiry = priotiry
             if(consignation!=undefined) object.consignation = consignation
             if(accessToClient!=undefined) object.accessToClient = accessToClient

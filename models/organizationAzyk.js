@@ -33,6 +33,10 @@ const OrganizationAzykSchema = mongoose.Schema({
         type: Boolean,
         default: false
     },
+    onlyIntegrate: {
+        type: Boolean,
+        default: false
+    },
 }, {
     timestamps: true
 });

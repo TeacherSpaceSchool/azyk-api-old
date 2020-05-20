@@ -85,6 +85,7 @@ module.exports.setOutXMLReturnedShoroAzyk = async(returned) => {
 }
 
 module.exports.setOutXMLShoroAzyk = async(invoice) => {
+    let count
     let outXMLShoroAzyk = await OutXMLShoroAzyk
         .findOne({invoice: invoice._id})
     if(outXMLShoroAzyk){
@@ -93,15 +94,17 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
         for (let i = 0; i < invoice.orders.length; i++) {
             let guidItem = await Integrate1CAzyk
                 .findOne({item: invoice.orders[i].item._id})
-            if(guidItem)
+            if(guidItem) {
+                count = invoice.orders[i].count-invoice.orders[i].returned
                 outXMLShoroAzyk.data.push({
                     guid: guidItem.guid,
-                    package: Math.round(invoice.orders[i].count/(invoice.orders[i].item.packaging?invoice.orders[i].item.packaging:1)),
-                    qt:  invoice.orders[i].count,
-                    price: (invoice.orders[i].item.stock?invoice.orders[i].item.stock:invoice.orders[i].item.price),
-                    amount: Math.round(invoice.orders[i].count*(invoice.orders[i].item.stock?invoice.orders[i].item.stock:invoice.orders[i].item.price)),
+                    package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
+                    qt: count,
+                    price: (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price),
+                    amount: Math.round(count * (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price)),
                     priotiry: invoice.orders[i].item.priotiry
                 })
+            }
         }
         await outXMLShoroAzyk.save()
         await InvoiceAzyk.updateMany({_id: invoice._id}, {sync: 1})
@@ -139,15 +142,17 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
                     for (let i = 0; i < invoice.orders.length; i++) {
                         let guidItem = await Integrate1CAzyk
                             .findOne({item: invoice.orders[i].item._id})
-                        if (guidItem)
+                        if (guidItem) {
+                            count = invoice.orders[i].count-invoice.orders[i].returned
                             newOutXMLShoroAzyk.data.push({
                                 guid: guidItem.guid,
-                                package: Math.round(invoice.orders[i].count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
-                                qt: invoice.orders[i].count,
+                                package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
+                                qt: count,
                                 price: (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price),
-                                amount: Math.round(invoice.orders[i].count * (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price)),
+                                amount: Math.round(count * (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price)),
                                 priotiry: invoice.orders[i].item.priotiry
                             })
+                        }
                     }
                     await OutXMLShoroAzyk.create(newOutXMLShoroAzyk);
                     await InvoiceAzyk.updateMany({_id: invoice._id}, {sync: 1})

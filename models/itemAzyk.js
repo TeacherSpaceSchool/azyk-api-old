@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const ItemAzykSchema = mongoose.Schema({
+    unit: {
+        type: String,
+        default: ''
+    },
     guid: String,
     stock: Number,
     name: String,

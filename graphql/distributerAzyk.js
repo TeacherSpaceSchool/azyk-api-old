@@ -29,6 +29,7 @@ const resolvers = {
         if(user.role==='admin'){
             let distributers = await DistributerAzyk.find()
                 .populate('distributer')
+                .populate('sales')
                 .sort(sort)
             distributers = distributers.filter(distributer => (distributer.distributer && distributer.distributer.name.toLowerCase().includes(search.toLowerCase())))
             return distributers
