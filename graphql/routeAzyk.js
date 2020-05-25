@@ -203,10 +203,11 @@ const resolvers = {
             worksheet.getCell(`B${row}`).font = {bold: true};
             worksheet.getCell(`B${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
             worksheet.getCell(`B${row}`).value = 'Адрес:';
-            for(let i = 0; i<data.length;i++) {
+            for(let i = 0; i<orders.length;i++) {
                 row+=1;
-                worksheet.getCell(`A${row}`).value = data[i].address[2];
-                worksheet.getCell(`B${row}`).value = data[i].address[0];
+                let index = data.findIndex(element=>element._id.toString()===orders[i].toString())
+                worksheet.getCell(`A${row}`).value = data[index].address[2];
+                worksheet.getCell(`B${row}`).value = data[index].address[0];
 
             }
 
