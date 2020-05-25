@@ -46,6 +46,8 @@ module.exports.weekDay = [
     'СБ',
 ]
 
+module.exports.tomtom = 'waWMYtFJZce2G49GAz0nXJG5Grw3OpNm'
+
 const checkInt = (int) => {
     return isNaN(parseInt(int))?0:parseInt(int)
 }

@@ -1,14 +1,46 @@
 const mongoose = require('mongoose');
 
 const RouteAzykSchema = mongoose.Schema({
-    invoices: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'InvoiceAzyk'
+    deliverys: [{
+        legs:[[String]],
+        orders: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'InvoiceAzyk'
+        }],
+        tonnage: {
+            type: Number,
+            default: 0
+        },
+        lengthInMeters: {
+            type: Number,
+            default: 0
+        }
     }],
-    employment: {
+    provider: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'OrganizationAzyk'
+    },
+    selectProdusers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'OrganizationAzyk'
+    }],
+    selectDistricts: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'DistrictAzyk'
+    }],
+    selectEcspeditor: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'EmploymentAzyk'
     },
+    selectAuto: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'AutoAzyk'
+    },
+    selectedOrders: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'InvoiceAzyk'
+    }],
+    dateDelivery: Date,
     status: String,
     number: String,
     dateStart: Date,
@@ -16,11 +48,7 @@ const RouteAzykSchema = mongoose.Schema({
     allTonnage: {
         type: Number,
         default: 0
-    },
-    allSize: {
-        type: Number,
-        default: 0
-    },
+    }
 }, {
     timestamps: true
 });

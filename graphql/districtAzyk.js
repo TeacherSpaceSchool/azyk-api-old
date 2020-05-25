@@ -268,7 +268,6 @@ const resolversMutation = {
             if(agent)object.agent = agent
             if(ecspeditor)object.ecspeditor = ecspeditor
             if(manager)object.manager = manager
-            console.log(object.name)
             await object.save();
         }
         return {data: 'OK'}

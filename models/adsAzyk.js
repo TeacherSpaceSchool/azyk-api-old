@@ -17,7 +17,27 @@ const AdsAzykSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
-    title: String
+    title: String,
+    targetItem: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ItemAzyk'
+    },
+    targetCount: {
+        type: Number,
+        default: 0
+    },
+    targetPrice: {
+        type: Number,
+        default: 0
+    },
+    multiplier: {
+        type: Boolean,
+        default: false
+    },
+    targetType: {
+        type: String,
+        default: 'Цена'
+    },
 }, {
     timestamps: true
 });

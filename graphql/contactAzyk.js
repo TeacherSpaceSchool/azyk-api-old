@@ -10,6 +10,7 @@ const type = `
     phone: [String]
     info: String
     social: [String]
+    warehouse: String
   }
 `;
 
@@ -18,7 +19,7 @@ const query = `
 `;
 
 const mutation = `
-    setContact(name: String!, image: Upload, address: [String]!, email: [String]!, phone: [String]!, info: String!, social: [String]!): Data
+    setContact(warehouse: String!, name: String!, image: Upload, address: [String]!, email: [String]!, phone: [String]!, info: String!, social: [String]!): Data
 `;
 
 const resolvers = {
@@ -29,11 +30,12 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    setContact: async(parent, {name, image, address, email, phone, info, social}, {user}) => {
+    setContact: async(parent, {warehouse, name, image, address, email, phone, info, social}, {user}) => {
         if(user.role==='admin') {
             let object = await ContactAzyk.findOne()
             if(!object){
                 object = new ContactAzyk({
+                    warehouse: warehouse,
                     name: name,
                     info: info,
                     phone: phone,
@@ -57,6 +59,7 @@ const resolversMutation = {
                     filename = await saveImage(stream, filename)
                     object.image = urlMain + filename
                 }
+                object.warehouse = warehouse
                 object.name = name
                 object.info = info
                 object.phone = phone

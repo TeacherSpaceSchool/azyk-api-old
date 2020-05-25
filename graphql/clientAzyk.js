@@ -68,7 +68,7 @@ const resolvers = {
                                     {info: {'$regex': search, '$options': 'i'}},
                                     {device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                    {phone: {'$regex': search, '$options': 'i'}}
+                                    //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
                             }
                         },
@@ -105,7 +105,7 @@ const resolvers = {
                                     {info: {'$regex': search, '$options': 'i'}},
                                     {device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                    {phone: {'$regex': search, '$options': 'i'}}
+                                    //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
                             }
                         },
@@ -185,7 +185,7 @@ const resolvers = {
                                         {info: {'$regex': search, '$options': 'i'}},
                                         {device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                        {phone: {'$regex': search, '$options': 'i'}}
+                                        //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
                                 }
                             },
@@ -248,6 +248,11 @@ const resolvers = {
             let clients = await DistrictAzyk
                 .find({agent: user.employment})
                 .distinct('client')
+            if(user.onlyIntegrate){
+                clients = await Integrate1CAzyk
+                    .find({client: {$in: clients}})
+                    .distinct('client')
+            }
             clients = await ClientAzyk
                 .aggregate(
                     [
@@ -265,7 +270,7 @@ const resolvers = {
                                     {info: {'$regex': search, '$options': 'i'}},
                                     {device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                    {phone: {'$regex': search, '$options': 'i'}}
+                                    //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
                             }
                         },
@@ -342,7 +347,7 @@ const resolvers = {
                                     {info: {'$regex': search, '$options': 'i'}},
                                     {device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                    {phone: {'$regex': search, '$options': 'i'}}
+                                    //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
                             }
                         },
@@ -418,7 +423,7 @@ const resolvers = {
                                         {info: {'$regex': search, '$options': 'i'}},
                                         {device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                        {phone: {'$regex': search, '$options': 'i'}}
+                                        //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
                                 }
                             },
@@ -493,7 +498,7 @@ const resolvers = {
                                         {info: {'$regex': search, '$options': 'i'}},
                                         {device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                        {phone: {'$regex': search, '$options': 'i'}}
+                                        //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
                                 }
                             },
@@ -519,7 +524,7 @@ const resolvers = {
                                     {info: {'$regex': search, '$options': 'i'}},
                                     {device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                    {phone: {'$regex': search, '$options': 'i'}}
+                                    //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
                             }
                         },
@@ -574,7 +579,7 @@ const resolvers = {
                                     {info: {'$regex': search, '$options': 'i'}},
                                     {device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                    {phone: {'$regex': search, '$options': 'i'}}
+                                    //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
                             }
                         },
@@ -678,7 +683,7 @@ const resolvers = {
                                         {info: {'$regex': search, '$options': 'i'}},
                                         {device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                        {phone: {'$regex': search, '$options': 'i'}}
+                                        //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
                                 }
                             },
@@ -766,6 +771,11 @@ const resolvers = {
                 let clients = await DistrictAzyk
                     .find({agent: user.employment})
                     .distinct('client')
+                if(user.onlyIntegrate){
+                    clients = await Integrate1CAzyk
+                        .find({client: {$in: clients}})
+                        .distinct('client')
+                }
                 clients = await ClientAzyk
                     .aggregate(
                         [
@@ -783,7 +793,7 @@ const resolvers = {
                                         {info: {'$regex': search, '$options': 'i'}},
                                         {device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                        {phone: {'$regex': search, '$options': 'i'}}
+                                        //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
                                 }
                             },
@@ -889,7 +899,7 @@ const resolvers = {
                                     {info: {'$regex': search, '$options': 'i'}},
                                     {device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                    {phone: {'$regex': search, '$options': 'i'}}
+                                    //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
                             }
                         },
@@ -992,7 +1002,7 @@ const resolvers = {
                                         {info: {'$regex': search, '$options': 'i'}},
                                         {device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                        {phone: {'$regex': search, '$options': 'i'}}
+                                        //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
                                 }
                             },
@@ -1090,7 +1100,7 @@ const resolvers = {
                                         {info: {'$regex': search, '$options': 'i'}},
                                         {device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                                        {phone: {'$regex': search, '$options': 'i'}}
+                                        //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
                                 }
                             },

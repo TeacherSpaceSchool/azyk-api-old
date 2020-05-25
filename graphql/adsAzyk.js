@@ -1,5 +1,6 @@
 const AdsAzyk = require('../models/adsAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
+const InvoiceAzyk = require('../models/invoiceAzyk');
 const DistributerAzyk = require('../models/distributerAzyk');
 const { saveImage, deleteFile, urlMain } = require('../module/const');
 
@@ -14,10 +15,16 @@ const type = `
     item: Item
     count: Int
     organization: Organization
+    targetItem: Item
+    targetCount: Int
+    targetPrice: Int
+    multiplier: Boolean
+    targetType: String
   }
 `;
 
 const query = `
+    checkAdss(invoice: ID!): [ID]
     adss(search: String!, organization: ID!): [Ads]
     allAdss: [Ads]
     adssTrash(search: String!): [Ads]
@@ -26,25 +33,55 @@ const query = `
 `;
 
 const mutation = `
-    addAds(image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int): Data
-    setAds(_id: ID!, image: Upload, url: String, title: String, item: ID, count: Int): Data
+    addAds(image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItem: ID, targetCount: Int, targetPrice: Int, multiplier: Boolean, targetType: String): Data
+    setAds(_id: ID!, image: Upload, url: String, title: String, item: ID, count: Int, targetItem: ID, targetCount: Int, targetPrice: Int, multiplier: Boolean, targetType: String): Data
     restoreAds(_id: [ID]!): Data
     deleteAds(_id: [ID]!): Data
 `;
 
 const resolvers = {
+    checkAdss: async(parent, {invoice}) => {
+        invoice = await InvoiceAzyk.findOne({_id: invoice})
+            .select('returnedPrice organization allPrice')
+            .populate({
+                path: 'orders',
+                select: 'count returned item'
+            })
+            .lean()
+        let resAdss = []
+        let adss = await AdsAzyk.find({
+            del: {$ne: 'deleted'},
+            organization: invoice.organization
+        }).sort('-createdAt')
+        for(let i=0; i<adss.length; i++) {
+            if(adss[i].targetType==='Цена'&&adss[i].targetPrice&&adss[i].targetPrice>0){
+                if((invoice.allPrice-invoice.returnedPrice)>adss[i].targetPrice)
+                    resAdss.push(adss[i]._id)
+            }
+            else if(adss[i].targetType==='Товар'&&adss[i].targetItem&&adss[i].targetCount&&adss[i].targetCount>0){
+                let check = false
+                for(let i1=0; i1<invoice.orders.length; i1++) {
+                    if((invoice.orders[i1].item.toString()===adss[i].targetItem.toString()&&(invoice.orders[i1].count-invoice.orders[i1].returned)>adss[i].targetCount))
+                        check = true
+                }
+                if(check)
+                    resAdss.push(adss[i]._id)
+            }
+        }
+        return resAdss
+    },
     adssTrash: async(parent, {search}) => {
         return await AdsAzyk.find({
             del: 'deleted',
             title: {'$regex': search, '$options': 'i'}
-        }).populate('item').sort('-createdAt')
+        }).populate('item').populate('targetItem').sort('-createdAt')
     },
     adss: async(parent, {search, organization}) => {
         return await AdsAzyk.find({
             del: {$ne: 'deleted'},
             title: {'$regex': search, '$options': 'i'},
             organization: organization
-        }).populate('item').sort('-createdAt')
+        }).populate('item').populate('targetItem').sort('-createdAt')
     },
     allAdss: async() => {
         let adss = await AdsAzyk.find({
@@ -53,7 +90,6 @@ const resolvers = {
         adss = adss.sort( () => {
             return Math.random() - 0.5;
         });
-        console.log(adss)
         return adss
     },
     adsOrganizations: async(parent, ctx, {user}) => {
@@ -86,7 +122,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addAds: async(parent, {image, url, title, organization, item, count}, {user}) => {
+    addAds: async(parent, {image, url, title, organization, item, count, targetItem, targetCount, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -95,7 +131,12 @@ const resolversMutation = {
                 url: url,
                 title: title,
                 organization: organization,
-                item: item
+                item: item,
+                targetItem: targetItem,
+                targetCount: targetCount,
+                targetPrice: targetPrice,
+                multiplier: multiplier,
+                targetType: targetType
             });
             if(count)
                 _object.count = count
@@ -104,7 +145,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setAds: async(parent, {_id, image, url, title, item, count}, {user}) => {
+    setAds: async(parent, {_id, image, url, title, item, count, targetItem, targetCount, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let object = await AdsAzyk.findById(_id)
             object.item = item
@@ -117,6 +158,11 @@ const resolversMutation = {
             if(url) object.url = url
             if(title) object.title = title
             if(count) object.count = count
+            if(targetItem) object.targetItem = targetItem
+            if(targetCount) object.targetCount = targetCount
+            if(targetPrice) object.targetPrice = targetPrice
+            if(multiplier) object.multiplier = multiplier
+            if(targetType) object.targetType = targetType
             object.save();
         }
         return {data: 'OK'}

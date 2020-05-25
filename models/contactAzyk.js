@@ -7,6 +7,10 @@ const ContactAzykSchema = mongoose.Schema({
     email: [String],
     phone: [String],
     info: String,
+    warehouse:  {
+        type: String,
+        default: ''
+    },
     social: mongoose.Schema.Types.Mixed,
 }, {
     timestamps: true

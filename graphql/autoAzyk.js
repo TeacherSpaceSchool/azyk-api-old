@@ -1,7 +1,4 @@
 const AutoAzyk = require('../models/autoAzyk');
-const OrganizationAzyk = require('../models/organizationAzyk');
-const EmploymentAzyk = require('../models/employmentAzyk');
-const mongoose = require('mongoose')
 
 const type = `
   type Auto {
@@ -16,7 +13,7 @@ const type = `
 `;
 
 const query = `
-    autos(search: String!, sort: String!, filter: String!): [Auto]
+    autos(organization: ID!, search: String!, sort: String!): [Auto]
     auto(_id: ID!): Auto
     autoByEcspeditor(_id: ID!): Auto
     sortAuto: [Sort]
@@ -24,35 +21,47 @@ const query = `
 `;
 
 const mutation = `
-    addAuto(number: String!, tonnage: Float!, size: Float!, employment: ID, organization: ID): Data
-    setAuto(_id: ID!, number: String, tonnage: Float, size: Float, organization: ID, employment: ID): Data
+    addAuto(number: String!, tonnage: Float!, size: Float!, employment: ID, organization: ID): Auto
+    setAuto(_id: ID!, number: String, tonnage: Float, size: Float, employment: ID): Data
     deleteAuto(_id: [ID]!): Data
 `;
 
 const resolvers = {
-    autos: async(parent, {search, sort, filter}, {user}) => {
+    autos: async(parent, {organization, search, sort}, {user}) => {
         if(user.role==='admin'){
-            let autos =  await AutoAzyk.find(
-                mongoose.Types.ObjectId.isValid(filter)?{organization: filter}:{}
-            )
-                .populate('employment')
-                .populate('organization')
-                .sort(sort)
-            autos = autos.filter(
-                auto => (
-                    (auto.number.toLowerCase()).includes(search.toLowerCase()) ||
-                    (auto.size.toString().toLowerCase()).includes(search.toLowerCase()) ||
-                    (auto.tonnage.toString().toLowerCase()).includes(search.toLowerCase()) ||
-                    auto.organization&&(auto.organization.name.toLowerCase()).includes(search.toLowerCase()) ||
-                    auto.employment&&(auto.employment.name.toLowerCase()).includes(search.toLowerCase())
+            if(organization==='super'){
+                let autos = await AutoAzyk.find({organization: null})
+                    .populate('employment')
+                    .sort(sort)
+                autos = autos.filter(
+                    auto => (
+                        (auto.number.toLowerCase()).includes(search.toLowerCase()) ||
+                        (auto.size.toString().toLowerCase()).includes(search.toLowerCase()) ||
+                        (auto.tonnage.toString().toLowerCase()).includes(search.toLowerCase()) ||
+                        auto.employment && (auto.employment.name.toLowerCase()).includes(search.toLowerCase())
+                    )
                 )
-            )
-            return autos
+                return autos
+            }
+            else {
+                let autos = await AutoAzyk.find({organization: organization})
+                    .populate('employment')
+                    .populate('organization')
+                    .sort(sort)
+                autos = autos.filter(
+                    auto => (
+                        (auto.number.toLowerCase()).includes(search.toLowerCase()) ||
+                        (auto.size.toString().toLowerCase()).includes(search.toLowerCase()) ||
+                        (auto.tonnage.toString().toLowerCase()).includes(search.toLowerCase()) ||
+                        auto.organization && (auto.organization.name.toLowerCase()).includes(search.toLowerCase()) ||
+                        auto.employment && (auto.employment.name.toLowerCase()).includes(search.toLowerCase())
+                    )
+                )
+                return autos
+            }
         }
         else if(['суперорганизация', 'организация', 'менеджер'].includes(user.role)){
-            let autos =  await AutoAzyk.find(
-                mongoose.Types.ObjectId.isValid(filter)?{employment: filter, organization: user.organization}:{organization: user.organization}
-            )
+            let autos =  await AutoAzyk.find({organization: organization})
                 .populate('employment')
                 .populate('organization')
                 .sort(sort)
@@ -79,58 +88,14 @@ const resolvers = {
     sortAuto: async() => {
         return [
             {
-                name: 'Имя',
-                field: 'name'
+                name: 'Тоннаж',
+                field: 'tonnage'
             },
             {
-                name: 'Дата',
-                field: 'createdAt'
+                name: 'Кубатура',
+                field: 'size'
             },
         ]
-    },
-    filterAuto: async(parent, ctx, {user}) => {
-        if(['admin'].includes(user.role)){
-            let filter = [
-                {
-                    name: 'Все',
-                    value: ''
-                }
-            ]
-            let objects = await AutoAzyk.find().distinct('organization')
-            objects = await OrganizationAzyk.find({_id: {$in: objects}})
-            for(let i = 0; i<objects.length; i++){
-                filter = [
-                    ... filter,
-                    {
-                        name: objects[i].name,
-                        value: objects[i]._id
-                    }
-                ]
-            }
-            return filter
-        }
-        else if(user.organization){
-            let filter = [
-                {
-                    name: 'Все',
-                    value: ''
-                }
-            ]
-            let objects = await AutoAzyk.find({organization: user.organization}).distinct('employment')
-            objects = await EmploymentAzyk.find({_id: {$in: objects}})
-            for(let i = 0; i<objects.length; i++){
-                filter = [
-                    ... filter,
-                    {
-                        name: objects[i].name,
-                        value: objects[i]._id
-                    }
-                ]
-            }
-            return filter
-        }
-        else
-            return []
     },
 };
 
@@ -144,21 +109,20 @@ const resolversMutation = {
             });
             if(employment)_object.employment = employment
             if(user.role==='admin')
-                _object.organization = organization
+                _object.organization = organization==='super'?null:organization
             else
                 _object.organization = user.organization
-            await AutoAzyk.create(_object)
+            _object = await AutoAzyk.create(_object)
+            return _object
         }
-        return {data: 'OK'};
     },
-    setAuto: async(parent, {_id, number, tonnage, size, organization, employment}, {user}) => {
+    setAuto: async(parent, {_id, number, tonnage, size, employment}, {user}) => {
         if(['admin', 'суперорганизация', 'организация'].includes(user.role)) {
             let object = await AutoAzyk.findById(_id)
             if(number)object.number = number
             if(tonnage)object.tonnage = tonnage
             if(size)object.size = size
             if(employment)object.employment = employment
-            if(organization&&user.role==='admin')object.organization = organization
             object.save();
         }
         return {data: 'OK'}

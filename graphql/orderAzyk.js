@@ -9,6 +9,7 @@ const ClientAzyk = require('../models/clientAzyk');
 const AdsAzyk = require('../models/adsAzyk');
 const mongoose = require('mongoose');
 const ItemAzyk = require('../models/itemAzyk');
+const DeliveryDateAzyk = require('../models/deliveryDateAzyk');
 const { addBonusToClient } = require('../module/bonusClientAzyk');
 const randomstring = require('randomstring');
 const BonusClientAzyk = require('../models/bonusClientAzyk');
@@ -115,7 +116,7 @@ const query = `
     invoicesTrash(search: String!, skip: Int): [Invoice]
    invoicesTrashSimpleStatistic(search: String!): [String]
     orderHistorys(invoice: ID!): [HistoryOrder]
-    invoicesForRouting(organization: ID): [Invoice]
+    invoicesForRouting(produsers: [ID]!, clients: [ID]!, dateStart: Date!, dateEnd: Date, dateDelivery: Date!): [Invoice]
     invoice(_id: ID!): Invoice
     sortInvoice: [Sort]
     filterInvoice: [Filter]
@@ -1593,61 +1594,47 @@ const resolvers = {
             return !!objectInvoice
         }
     },
-    invoicesForRouting: async(parent, { organization }, {user}) => {
-        if(['менеджер', 'суперорганизация', 'организация'].includes(user.role)) {
-            let invoices =  await InvoiceAzyk.find({del: {$ne: 'deleted'}})
-                .populate({
-                    path: 'orders',
-                    match: {setRoute: false, status: {$nin: ['выполнен', 'отмена']}},
-                    populate : {
-                        path : 'item',
-                        match: { organization: user.organization },
-                        populate : [
-                            { path : 'organization'}
-                        ]
-                    }
-                })
-                .populate({
-                    path: 'client',
-                    populate : [
-                        { path : 'user'}
-                    ]
-                })
-                .populate({
-                    path: 'agent'
-                })
-                .sort('createdAt')
-            invoices = invoices.filter(
-                invoice => invoice.orders.length>0&&invoice.orders[0].item
-            )
-            return invoices
+    invoicesForRouting: async(parent, { produsers, clients, dateStart, dateEnd, dateDelivery }, {user}) => {
+        clients = clients.map(element=>element.toString())
+        dateStart = new Date(dateStart)
+        dateStart.setHours(3, 0, 0, 0)
+        if(dateEnd){
+            dateEnd = new Date(dateEnd)
+            dateEnd.setHours(3, 0, 0, 0)
         }
-        else if(['admin'].includes(user.role)) {
-            let invoices =  await InvoiceAzyk.find({del: {$ne: 'deleted'}})
-                .populate({
-                    path: 'orders',
-                    match: {setRoute: false, status: {$nin: ['выполнен', 'отмена']}},
-                    populate : {
-                        path : 'item',
-                        match: { organization: organization },
-                        populate : [
-                            { path : 'organization'}
-                        ]
-                    }
-                })
-                .populate({
-                    path: 'client',
-                    populate : [
-                        { path : 'user'}
-                    ]
-                })
-                .populate({
-                    path: 'agent'
-                })
+        else {
+            dateEnd = new Date(dateStart)
+            dateEnd.setDate(dateEnd.getDate() + 1)
+        }
+        dateDelivery = new Date(dateDelivery)
+        let dayWeek = dateDelivery.getDay()===0?6:(dateDelivery.getDay()-1)
+        for(let i=0; i<produsers.length; i++) {
+            let deliveryDates =  await DeliveryDateAzyk.find({client: {$in: clients}, organization: produsers[i]}).lean()
+            for(let i1=0; i1<deliveryDates.length; i1++){
+                if(!deliveryDates[i1].days[dayWeek]){
+                    clients.splice(clients.indexOf(deliveryDates[i1].client.toString()), 1)
+                }
+            }
+        }
+        if(['admin'].includes(user.role)) {
+            let invoices =  await InvoiceAzyk.find({
+                del: {$ne: 'deleted'},
+                taken: true,
+                distributed: {$ne: true},
+                organization: {$in: produsers},
+                client: {$in: clients},
+                $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]
+            })
+                .select('_id agent createdAt updatedAt allTonnage allSize client allPrice consignmentPrice returnedPrice address adss editor number confirmationForwarder confirmationClient cancelClient district track forwarder  sale provider organization cancelForwarder paymentConsignation taken sync dateDelivery usedBonus')
+                .populate({path: 'client', select: '_id name'})
+                .populate({path: 'agent', select: '_id name'})
+                .populate({path: 'forwarder', select: '_id name'})
+                .populate({path: 'provider', select: '_id name'})
+                .populate({path: 'sale', select: '_id name'})
+                .populate({path: 'adss', select: '_id title'})
+                .populate({path: 'organization', select: '_id name'})
                 .sort('createdAt')
-            invoices = invoices.filter(
-                invoice => invoice.orders.length>0&&invoice.orders[0].item
-            )
+                .lean()
             return invoices
         }
         else  return []

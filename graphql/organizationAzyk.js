@@ -30,6 +30,7 @@ const type = `
     reiting: Int
     status: String
     image: String
+    warehouse: String
     minimumOrder: Int
     accessToClient: Boolean
     consignation: Boolean
@@ -50,8 +51,8 @@ const query = `
 `;
 
 const mutation = `
-    addOrganization(miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!): Data
-    setOrganization(miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean): Data
+    addOrganization(warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!): Data
+    setOrganization(warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean): Data
     restoreOrganization(_id: [ID]!): Data
     deleteOrganization(_id: [ID]!): Data
     onoffOrganization(_id: [ID]!): Data
@@ -196,7 +197,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrganization: async(parent, {miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    addOrganization: async(parent, {warehouse, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -215,7 +216,8 @@ const resolversMutation = {
                 priotiry: priotiry,
                 onlyDistrict: onlyDistrict,
                 onlyIntegrate: onlyIntegrate,
-                miniInfo: miniInfo
+                miniInfo: miniInfo,
+                warehouse: warehouse
             });
             objectOrganization = await OrganizationAzyk.create(objectOrganization)
             let objectBonus = new BonusAzyk({
@@ -227,7 +229,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setOrganization: async(parent, {miniInfo, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    setOrganization: async(parent, {warehouse, miniInfo, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===_id.toString())) {
             let object = await OrganizationAzyk.findById(_id)
             if (image) {
@@ -241,6 +243,7 @@ const resolversMutation = {
             if(phone) object.phone = phone
             if(email) object.email = email
             if(address) object.address = address
+            if(warehouse) object.warehouse = warehouse
             if(onlyDistrict!=undefined) object.onlyDistrict = onlyDistrict
             if(onlyIntegrate!=undefined) object.onlyIntegrate = onlyIntegrate
             if(priotiry!=undefined) object.priotiry = priotiry
