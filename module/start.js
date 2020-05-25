@@ -76,7 +76,7 @@ let start = async () => {
     await startCategoryAzyk()
     await startResetUnloading()
     await startSubCategoryAzyk()
-    await reductionToRoute()
+    //await reductionToRoute()
     //await reductionToBonus()
     //await reductionToClient()
     //await reductionToUser()
