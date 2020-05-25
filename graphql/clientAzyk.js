@@ -66,7 +66,7 @@ const resolvers = {
                                     {email: {'$regex': search, '$options': 'i'}},
                                     {city: {'$regex': search, '$options': 'i'}},
                                     {info: {'$regex': search, '$options': 'i'}},
-                                    {device: {'$regex': search, '$options': 'i'}},
+                                    //{device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                     //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
@@ -103,7 +103,7 @@ const resolvers = {
                                     {email: {'$regex': search, '$options': 'i'}},
                                     {city: {'$regex': search, '$options': 'i'}},
                                     {info: {'$regex': search, '$options': 'i'}},
-                                    {device: {'$regex': search, '$options': 'i'}},
+                                    //{device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                     //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
@@ -183,7 +183,7 @@ const resolvers = {
                                         {email: {'$regex': search, '$options': 'i'}},
                                         {city: {'$regex': search, '$options': 'i'}},
                                         {info: {'$regex': search, '$options': 'i'}},
-                                        {device: {'$regex': search, '$options': 'i'}},
+                                        //{device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                         //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
@@ -268,7 +268,7 @@ const resolvers = {
                                     {email: {'$regex': search, '$options': 'i'}},
                                     {city: {'$regex': search, '$options': 'i'}},
                                     {info: {'$regex': search, '$options': 'i'}},
-                                    {device: {'$regex': search, '$options': 'i'}},
+                                    //{device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                     //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
@@ -345,7 +345,7 @@ const resolvers = {
                                     {email: {'$regex': search, '$options': 'i'}},
                                     {city: {'$regex': search, '$options': 'i'}},
                                     {info: {'$regex': search, '$options': 'i'}},
-                                    {device: {'$regex': search, '$options': 'i'}},
+                                    //{device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                     //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
@@ -421,7 +421,7 @@ const resolvers = {
                                         {email: {'$regex': search, '$options': 'i'}},
                                         {city: {'$regex': search, '$options': 'i'}},
                                         {info: {'$regex': search, '$options': 'i'}},
-                                        {device: {'$regex': search, '$options': 'i'}},
+                                        //{device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                         //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
@@ -496,7 +496,7 @@ const resolvers = {
                                         {email: {'$regex': search, '$options': 'i'}},
                                         {city: {'$regex': search, '$options': 'i'}},
                                         {info: {'$regex': search, '$options': 'i'}},
-                                        {device: {'$regex': search, '$options': 'i'}},
+                                        //{device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                         //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
@@ -522,7 +522,7 @@ const resolvers = {
                                     {email: {'$regex': search, '$options': 'i'}},
                                     {city: {'$regex': search, '$options': 'i'}},
                                     {info: {'$regex': search, '$options': 'i'}},
-                                    {device: {'$regex': search, '$options': 'i'}},
+                                    //{device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                     //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
@@ -577,7 +577,7 @@ const resolvers = {
                                     {email: {'$regex': search, '$options': 'i'}},
                                     {city: {'$regex': search, '$options': 'i'}},
                                     {info: {'$regex': search, '$options': 'i'}},
-                                    {device: {'$regex': search, '$options': 'i'}},
+                                    //{device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                     //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
@@ -681,7 +681,7 @@ const resolvers = {
                                         {email: {'$regex': search, '$options': 'i'}},
                                         {city: {'$regex': search, '$options': 'i'}},
                                         {info: {'$regex': search, '$options': 'i'}},
-                                        {device: {'$regex': search, '$options': 'i'}},
+                                        //{device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                         //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
@@ -791,7 +791,7 @@ const resolvers = {
                                         {email: {'$regex': search, '$options': 'i'}},
                                         {city: {'$regex': search, '$options': 'i'}},
                                         {info: {'$regex': search, '$options': 'i'}},
-                                        {device: {'$regex': search, '$options': 'i'}},
+                                        //{device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                         //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
@@ -897,7 +897,7 @@ const resolvers = {
                                     {email: {'$regex': search, '$options': 'i'}},
                                     {city: {'$regex': search, '$options': 'i'}},
                                     {info: {'$regex': search, '$options': 'i'}},
-                                    {device: {'$regex': search, '$options': 'i'}},
+                                    //{device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                     //{phone: {'$regex': search, '$options': 'i'}}
                                 ]
@@ -1000,7 +1000,7 @@ const resolvers = {
                                         {email: {'$regex': search, '$options': 'i'}},
                                         {city: {'$regex': search, '$options': 'i'}},
                                         {info: {'$regex': search, '$options': 'i'}},
-                                        {device: {'$regex': search, '$options': 'i'}},
+                                        //{device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                         //{phone: {'$regex': search, '$options': 'i'}}
                                     ]
@@ -1098,7 +1098,7 @@ const resolvers = {
                                         {email: {'$regex': search, '$options': 'i'}},
                                         {city: {'$regex': search, '$options': 'i'}},
                                         {info: {'$regex': search, '$options': 'i'}},
-                                        {device: {'$regex': search, '$options': 'i'}},
+                                        //{device: {'$regex': search, '$options': 'i'}},
                                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
                                         //{phone: {'$regex': search, '$options': 'i'}}
                                     ]

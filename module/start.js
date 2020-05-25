@@ -1,6 +1,7 @@
 const { startCategoryAzyk } = require('../module/categoryAzyk');
 const { startSubCategoryAzyk } = require('../module/subCategoryAzyk');
 const { reductionToBonus } = require('../module/bonusAzyk');
+const { reductionToRoute } = require('../module/routeAzyk');
 const { reductionToAgentRoute } = require('../module/agentRouteAzyk');
 const { reductionToClient } = require('../module/clientAzyk');
 const { reductionInvoices } = require('../module/invoiceAzyk');
@@ -75,6 +76,7 @@ let start = async () => {
     await startCategoryAzyk()
     await startResetUnloading()
     await startSubCategoryAzyk()
+    await reductionToRoute()
     //await reductionToBonus()
     //await reductionToClient()
     //await reductionToUser()
