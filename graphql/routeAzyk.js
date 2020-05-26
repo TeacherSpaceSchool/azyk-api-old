@@ -539,7 +539,7 @@ const resolversMutation = {
             else
                 provider = (await ContactAzyk.findOne()).warehouse.replace(', ', ',');
             if(provider&&provider.length>0){
-                let invoices = await InvoiceAzyk.find({_id: {$in: orders}}).select('address allTonnage _id').lean();
+                let invoices = await InvoiceAzyk.find({_id: {$in: orders}}).select('address allTonnage _id').sort('-allTonnage').lean();
                 let delivery = [];
                 let deliveryIndex = 0
                 let sortInvoices = [];
@@ -573,7 +573,7 @@ const resolversMutation = {
                     }
                     points+=`:${provider}`
                     res = await axios.get(`https://api.tomtom.com/routing/1/calculateRoute/${points}/json?computeBestOrder=true&routeType=shortest&sectionType=traffic&traffic=true&key=${tomtom}`)
-                    delivery[deliveryIndex].tonnage = tonnage
+                    delivery[deliveryIndex].tonnage = parseInt(tonnage)
                     delivery[deliveryIndex].lengthInMeters = res.data.routes[0].summary.lengthInMeters
                     for(let i=0; i<res.data.routes[0].legs.length; i++){
                         delivery[deliveryIndex].legs.push(res.data.routes[0].legs[i].points.map(element=>`${element.latitude}, ${element.longitude}`))
