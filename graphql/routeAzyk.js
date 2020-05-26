@@ -558,7 +558,7 @@ const resolversMutation = {
                     points+=`:${provider}`
                     res = await axios.get(`https://api.tomtom.com/routing/1/calculateRoute/${points}/json?computeBestOrder=true&routeType=shortest&sectionType=traffic&traffic=true&key=${tomtom}`)
                     for(let i=0; i<res.data.optimizedWaypoints.length; i++) {
-                        sortInvoices[res.data.optimizedWaypoints[i].optimizedIndex] = invoices[res.data.optimizedWaypoints[i].providedIndex]
+                        sortInvoices[res.data.optimizedWaypoints[i].providedIndex] = invoices[res.data.optimizedWaypoints[i].optimizedIndex]
                     }
                     for(let i=0; i<sortInvoices.length; i++) {
                         if(tonnage+sortInvoices[i].allTonnage<autoTonnage) {
