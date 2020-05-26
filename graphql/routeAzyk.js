@@ -539,7 +539,7 @@ const resolversMutation = {
             else
                 provider = (await ContactAzyk.findOne()).warehouse.replace(', ', ',');
             if(provider&&provider.length>0){
-                let invoices = await InvoiceAzyk.find({_id: {$in: orders}}).select('address allTonnage _id').sort('-allTonnage').lean();
+                let invoices = await InvoiceAzyk.find({_id: {$in: orders}}).lean();
                 let delivery = [];
                 let deliveryIndex = 0
                 let sortInvoices = [];

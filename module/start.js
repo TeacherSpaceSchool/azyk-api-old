@@ -72,10 +72,10 @@ let startReminderClient = async () => {
 
 let start = async () => {
     //await startClientRedis()
-    await reductionInvoices()
-    await startCategoryAzyk()
+    //await reductionInvoices()
+    //await startCategoryAzyk()
     await startResetUnloading()
-    await startSubCategoryAzyk()
+    //await startSubCategoryAzyk()
     //await reductionToRoute()
     //await reductionToBonus()
     //await reductionToClient()
