@@ -111,7 +111,7 @@ const verifydeuserGQL = async (req, res) => {
                     resolve(user)
 
                 }
-                else if(['суперагент', 'суперменеджер'].includes(user.role)) {
+                else if(['суперагент', 'суперменеджер', 'суперэкспедитор'].includes(user.role)) {
                     let employment = await EmploymentAzyk.findOne({user: user._id}).select('_id')
                     user.employment = employment._id
                     resolve(user)

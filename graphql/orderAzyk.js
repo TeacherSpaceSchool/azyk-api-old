@@ -1598,8 +1598,9 @@ const resolvers = {
         clients = clients.map(element=>element.toString())
         dateStart = new Date(dateStart)
         dateStart.setHours(3, 0, 0, 0)
-        if(dateEnd&&dateEnd!=='Invalid Date'){
+        if(dateEnd&&dateEnd.toString()!=='Invalid Date'){
             dateEnd = new Date(dateEnd)
+            dateEnd.setDate(dateEnd.getDate() + 1)
             dateEnd.setHours(3, 0, 0, 0)
         }
         else {

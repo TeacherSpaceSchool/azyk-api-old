@@ -48,7 +48,7 @@ const type = `
 `;
 
 const query = `
-    routes(organization: ID!, search: String!, sort: String!, filter: String!, date: String!, skip: Int): [Route]
+    routes(organization: ID, search: String!, sort: String!, filter: String!, date: String!, skip: Int): [Route]
     listDownload(orders: [ID]!): [[String]]
     listUnload(orders: [ID]!): [[String]]
     route(_id: ID!): Route
@@ -391,7 +391,7 @@ const resolvers = {
                 name: {'$regex': search, '$options': 'i'}
             }).distinct('_id').lean()
         }
-        if(user.role==='экспедитор'){
+        if(['экспедитор', 'суперэкспедитор'].includes(user.role)){
             return await RouteAzyk.find({
                 status: {'$regex': filter, '$options': 'i'},
                 ...date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]},
@@ -407,7 +407,7 @@ const resolvers = {
                 .lean()
         }
         else if(user.role==='admin') {
-            return await RouteAzyk.find({
+            let res = await RouteAzyk.find({
                 provider: organization==='super'?null:organization,
                 status: {'$regex': filter, '$options': 'i'},
                 ...date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]},
@@ -421,6 +421,7 @@ const resolvers = {
                 .skip(skip != undefined ? skip : 0)
                 .limit(skip != undefined ? 15 : 10000000000)
                 .lean()
+            return res
         }
         else if(['суперорганизация', 'организация', 'менеджер'].includes(user.role)) {
             return await RouteAzyk.find({
