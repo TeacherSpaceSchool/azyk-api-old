@@ -90,7 +90,12 @@ const resolvers = {
                     path : 'client'
                 })
                 .populate({
-                    path : 'adss'
+                    path : 'adss',
+                    populate: [
+                        {
+                            path: 'item'
+                        }
+                    ]
                 })
                 .lean()
             let worksheet;
@@ -118,6 +123,36 @@ const resolvers = {
                     allPrice += data[i].orders[i1].allPrice
                     allTonnage += data[i].orders[i1].allTonnage
                     allSize += data[i].orders[i1].allSize
+
+                    if(data[i].adss) {
+                        for (let i1 = 0; i1 < data[i].adss.length; i1++) {
+                            let count = data[i].adss[i1].count
+                            if (data[i].adss[i1].multiplier) {
+                                if (data[i].adss[i1].targetType === 'Цена' && data[i].adss[i1].targetPrice && data[i].adss[i1].targetPrice > 0) {
+                                    count *= parseInt(data[i].allPrice / data[i].adss[i1].targetPrice)
+                                }
+                                else if (data[i].adss[i1].targetType === 'Товар' && data[i].adss[i1].targetItem && data[i].adss[i1].targetCount && data[i].adss[i1].targetCount > 0) {
+                                    let index = data[i].orders.findIndex(element => element.item._id.toString() === data[i].adss[i1].targetItem.toString())
+                                    count *= parseInt(data[i].orders[index].count / data[i].adss[i1].targetCount)
+                                }
+                            }
+                            if(!items[data[i].adss[i1].item._id])
+                                items[data[i].adss[i1].item._id] = {
+                                    name: data[i].adss[i1].item.name,
+                                    count: 0,
+                                    allPrice: 0,
+                                    packaging: data[i].adss[i1].item.packaging,
+                                    allTonnage: 0,
+                                    allSize: 0
+                                }
+                            items[data[i].adss[i1].item._id].count += count
+                            items[data[i].adss[i1].item._id].allTonnage += data[i].adss[i1].item.weight*count
+                            items[data[i].adss[i1].item._id].allSize += data[i].adss[i1].item.size*count
+                            allCount += count
+                            allTonnage += data[i].adss[i1].item.weight*count
+                            allSize += data[i].adss[i1].item.size*count
+                        }
+                    }
                 }
             }
             worksheet = await workbook.addWorksheet('Лист загрузки');
@@ -298,21 +333,47 @@ const resolvers = {
                     worksheet.getCell(`C${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
                     worksheet.getCell(`C${row}`).value = `${data[i].orders[i1].count} шт`;
                     worksheet.getCell(`D${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                    worksheet.getCell(`D${row}`).value = `${Math.round(data[i].orders[[i1]].count/(data[i].orders[[i1]].packaging?data[i].orders[[i1]].packaging:1))} уп`;
+                    worksheet.getCell(`D${row}`).value = `${Math.round(data[i].orders[i1].count/(data[i].orders[i1].item.packaging?data[i].orders[i1].item.packaging:1))} уп`;
                     worksheet.getCell(`E${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                    worksheet.getCell(`E${row}`).value = `${data[i].orders[[i1]].allPrice} сом`;
-                    if(data[i].orders[[i1]].consignmentPrice>0) {
+                    worksheet.getCell(`E${row}`).value = `${data[i].orders[i1].allPrice} сом`;
+                    if(data[i].orders[i1].consignmentPrice>0) {
                         worksheet.getCell(`F${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                        worksheet.getCell(`F${row}`).value = `${data[i].orders[[i1]].consignmentPrice} сом`;
+                        worksheet.getCell(`F${row}`).value = `${data[i].orders[i1].consignmentPrice} сом`;
+                    }
+                }
+                if(data[i].adss) {
+                    for(let i1=0; i1<data[i].adss.length; i1++) {
+                        let count = data[i].adss[i1].count
+                        if(data[i].adss[i1].multiplier){
+                            if(data[i].adss[i1].targetType==='Цена'&&data[i].adss[i1].targetPrice&&data[i].adss[i1].targetPrice>0){
+                                count *= parseInt(data[i].allPrice/data[i].adss[i1].targetPrice)
+                            }
+                            else if(data[i].adss[i1].targetType==='Товар'&&data[i].adss[i1].targetItem&&data[i].adss[i1].targetCount&&data[i].adss[i1].targetCount>0){
+                                let index = data[i].orders.findIndex(element=>element.item._id.toString()===data[i].adss[i1].targetItem.toString())
+                                count *= parseInt(data[i].orders[index].count/data[i].adss[i1].targetCount)
+                            }
+                        }
+                        row+=1;
+                        worksheet.getCell(`A${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                        worksheet.getCell(`A${row}`).alignment = { wrapText: true };
+                        worksheet.getCell(`A${row}`).value = `Акционный ${data[i].adss[i1].item.name}`;
+                        worksheet.getCell(`B${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                        worksheet.getCell(`B${row}`).value = `${data[i].adss[i1].item.stock?data[i].adss[i1].item.stock:data[i].adss[i1].item.price} сом`;
+                        worksheet.getCell(`C${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                        worksheet.getCell(`C${row}`).value = `${count} шт`;
+                        worksheet.getCell(`D${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                        worksheet.getCell(`D${row}`).value = `${Math.round(count/(data[i].adss[i1].item.packaging?data[i].adss[i1].item.packaging:1))} уп`;
+                        worksheet.getCell(`E${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                        worksheet.getCell(`E${row}`).value = '0 сом';
                     }
                 }
 
                 row+=1;
-                worksheet.getCell(`C${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                worksheet.getCell(`C${row}`).font = {bold: true};
-                worksheet.getCell(`C${row}`).value = 'Сумма:';
                 worksheet.getCell(`D${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                worksheet.getCell(`D${row}`).value = `${data[i].allPrice} сом`;
+                worksheet.getCell(`D${row}`).font = {bold: true};
+                worksheet.getCell(`D${row}`).value = 'Сумма:';
+                worksheet.getCell(`E${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                worksheet.getCell(`E${row}`).value = `${data[i].allPrice} сом`;
                 row+=1;
                 worksheet.getCell(`A${row}`).font = {bold: true};
                 worksheet.getCell(`A${row}`).value = 'Отпустил:';

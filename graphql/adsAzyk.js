@@ -157,11 +157,11 @@ const resolversMutation = {
             }
             if(url) object.url = url
             if(title) object.title = title
-            if(count) object.count = count
+            if(count!=undefined) object.count = count
             if(targetItem) object.targetItem = targetItem
-            if(targetCount) object.targetCount = targetCount
-            if(targetPrice) object.targetPrice = targetPrice
-            if(multiplier) object.multiplier = multiplier
+            if(targetCount!=undefined) object.targetCount = targetCount
+            if(targetPrice!=undefined) object.targetPrice = targetPrice
+            if(multiplier!=undefined) object.multiplier = multiplier
             if(targetType) object.targetType = targetType
             object.save();
         }
