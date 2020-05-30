@@ -2351,7 +2351,7 @@ const resolversMutation = {
                     districtProvider = findDistrict
             }
             let objectInvoice;
-            if(unite||!inv)
+            if(unite&&!inv)
                 objectInvoice = await InvoiceAzyk.findOne({
                     organization: organization,
                     client: client,
