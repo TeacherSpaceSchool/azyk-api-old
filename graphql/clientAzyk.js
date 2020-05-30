@@ -27,6 +27,7 @@ const type = `
     reiting: Int
     user: Status
     device: String
+    category: String
     del: String
     organization: Organization
     notification: Boolean
@@ -44,8 +45,8 @@ const query = `
 `;
 
 const mutation = `
-    addClient(image: Upload, name: String!, email: String, city: String!, address: [[String]]!, phone: [String]!, info: String, password: String!, login: String!): Data
-    setClient(_id: ID!, device: String, image: Upload, name: String, city: String, phone: [String], login: String, email: String, address: [[String]], info: String, newPass: String): Data
+    addClient(category: String!, image: Upload, name: String!, email: String, city: String!, address: [[String]]!, phone: [String]!, info: String, password: String!, login: String!): Data
+    setClient(category: String, _id: ID!, device: String, image: Upload, name: String, city: String, phone: [String], login: String, email: String, address: [[String]], info: String, newPass: String): Data
     deleteClient(_id: [ID]!): Data
     restoreClient(_id: [ID]!): Data
     onoffClient(_id: [ID]!): Data
@@ -96,6 +97,7 @@ const resolvers = {
                             $match:{
                                 ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                 ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
+                                ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
                                 ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
                                 del: {$ne: 'deleted'},
                                 $or: [
@@ -173,6 +175,7 @@ const resolvers = {
                     [
                             {
                                 $match:{
+                                    ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
                                     ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                     ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                     ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
@@ -258,6 +261,7 @@ const resolvers = {
                     [
                         {
                             $match:{
+                                ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
                                 ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                 ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                 ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
@@ -335,6 +339,7 @@ const resolvers = {
                     [
                         {
                             $match:{
+                                ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
                                 ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                 ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                 ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
@@ -412,6 +417,7 @@ const resolvers = {
                         [
                             {
                                 $match:{
+                                    ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
                                     ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                     ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                     ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
@@ -563,11 +569,13 @@ const resolvers = {
         let _sort = {}
         _sort[sort[0]==='-'?sort.substring(1):sort]=sort[0]==='-'?-1:1
         if(user.role==='admin'){
+            console.log()
             let clients = await ClientAzyk
                 .aggregate(
                     [
                         {
                             $match:{
+                                ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
                                 ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                 ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                 ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
@@ -671,6 +679,7 @@ const resolvers = {
                         [
                             {
                                 $match:{
+                                    ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
                                     ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                     ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                     ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
@@ -781,6 +790,7 @@ const resolvers = {
                         [
                             {
                                 $match:{
+                                    ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
                                     ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                     ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                     ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
@@ -887,6 +897,7 @@ const resolvers = {
                     [
                         {
                             $match:{
+                                ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
                                 ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                 ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                 ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
@@ -991,6 +1002,7 @@ const resolvers = {
                         [
                             {
                                 $match:{
+                                    ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
                                     ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                     ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                     ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
@@ -1186,19 +1198,40 @@ const resolvers = {
                 {
                     name: 'Выключенные',
                     value: 'Выключенные'
+                },
+                {
+                    name: 'Horeca',
+                    value: 'Horeca'
+                },
+                {
+                    name: 'A',
+                    value: 'A'
+                },
+                {
+                    name: 'B',
+                    value: 'B'
+                },
+                {
+                    name: 'C',
+                    value: 'C'
+                },
+                {
+                    name: 'D',
+                    value: 'D'
                 }
             ]
     },
 };
 
 const resolversMutation = {
-    addClient: async(parent, {image, name, email, city, address, phone, info, login, password}, {user}) => {
+    addClient: async(parent, {image, name, email, city, address, phone, info, login, password, category}, {user}) => {
         if(['admin'].includes(user.role)) {
             let newUser = new UserAzyk({
                 login: login.trim(),
                 role: 'client',
                 status: 'active',
                 password: password,
+                category: category
             });
             newUser = await UserAzyk.create(newUser);
             let client = {status: 'active', user: newUser._id, sync: []}
@@ -1219,7 +1252,7 @@ const resolversMutation = {
         }
         return {data: 'OK'}
     },
-    setClient: async(parent, {_id, image, name, email, address, info, newPass, phone, login, city, device}, {user, res}) => {
+    setClient: async(parent, {_id, image, name, email, address, info, newPass, phone, login, city, device, category}, {user, res}) => {
         let object = await ClientAzyk.findOne({_id: _id})
         if(
             ['суперорганизация', 'организация', 'агент', 'admin', 'суперагент'].includes(user.role)||
@@ -1239,6 +1272,7 @@ const resolversMutation = {
             if(city) object.city = city
             if(phone) object.phone = phone
             if(device) object.device = device
+            if(category) object.category = category
             object.sync = []
 
             if(newPass||login){

@@ -33,6 +33,7 @@ const type = `
     warehouse: String
     minimumOrder: Int
     accessToClient: Boolean
+    unite: Boolean
     consignation: Boolean
     onlyDistrict: Boolean
     onlyIntegrate: Boolean
@@ -51,8 +52,8 @@ const query = `
 `;
 
 const mutation = `
-    addOrganization(warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!): Data
-    setOrganization(warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean): Data
+    addOrganization(warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, unite: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!): Data
+    setOrganization(warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, unite: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean): Data
     restoreOrganization(_id: [ID]!): Data
     deleteOrganization(_id: [ID]!): Data
     onoffOrganization(_id: [ID]!): Data
@@ -61,7 +62,7 @@ const mutation = `
 const resolvers = {
     brandOrganizations: async(parent, {search, sort, filter}, {user}) => {
         let brandOrganizations = await ItemAzyk.find({
-            status: 'active',
+            ...user.role==='admin'?{}:{status: 'active'},
             del: {$ne: 'deleted'}
         }).distinct('organization')
         if(['admin', 'суперагент'].includes(user.role)){
@@ -197,7 +198,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrganization: async(parent, {warehouse, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    addOrganization: async(parent, {warehouse, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -215,6 +216,7 @@ const resolversMutation = {
                 consignation: consignation,
                 priotiry: priotiry,
                 onlyDistrict: onlyDistrict,
+                unite: unite,
                 onlyIntegrate: onlyIntegrate,
                 miniInfo: miniInfo,
                 warehouse: warehouse
@@ -229,7 +231,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setOrganization: async(parent, {warehouse, miniInfo, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    setOrganization: async(parent, {warehouse, miniInfo, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===_id.toString())) {
             let object = await OrganizationAzyk.findById(_id)
             if (image) {
@@ -244,6 +246,7 @@ const resolversMutation = {
             if(email) object.email = email
             if(address) object.address = address
             if(warehouse) object.warehouse = warehouse
+            if(unite!=undefined) object.unite = unite
             if(onlyDistrict!=undefined) object.onlyDistrict = onlyDistrict
             if(onlyIntegrate!=undefined) object.onlyIntegrate = onlyIntegrate
             if(priotiry!=undefined) object.priotiry = priotiry

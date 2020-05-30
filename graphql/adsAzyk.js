@@ -15,11 +15,18 @@ const type = `
     item: Item
     count: Int
     organization: Organization
-    targetItem: Item
-    targetCount: Int
+    targetItems: [TargetItem]
     targetPrice: Int
     multiplier: Boolean
     targetType: String
+  }
+  type TargetItem {
+        _id: [ID]
+        count: Int
+  }
+  input TargetItemInput {
+        _id: [ID]
+        count: Int
   }
 `;
 
@@ -33,8 +40,8 @@ const query = `
 `;
 
 const mutation = `
-    addAds(image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItem: ID, targetCount: Int, targetPrice: Int, multiplier: Boolean, targetType: String): Data
-    setAds(_id: ID!, image: Upload, url: String, title: String, item: ID, count: Int, targetItem: ID, targetCount: Int, targetPrice: Int, multiplier: Boolean, targetType: String): Data
+    addAds(image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
+    setAds(_id: ID!, image: Upload, url: String, title: String, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
     restoreAds(_id: [ID]!): Data
     deleteAds(_id: [ID]!): Data
 `;
@@ -58,12 +65,24 @@ const resolvers = {
                 if((invoice.allPrice-invoice.returnedPrice)>adss[i].targetPrice)
                     resAdss.push(adss[i]._id)
             }
-            else if(adss[i].targetType==='Товар'&&adss[i].targetItem&&adss[i].targetCount&&adss[i].targetCount>0){
-                let check = false
+            else if(adss[i].targetType==='Товар'&&adss[i].targetItems&&adss[i].targetItems.length>0){
+                let check = true
+                let checkItemsCount = []
                 for(let i1=0; i1<invoice.orders.length; i1++) {
-                    if((invoice.orders[i1].item.toString()===adss[i].targetItem.toString()&&(invoice.orders[i1].count-invoice.orders[i1].returned)>adss[i].targetCount))
-                        check = true
+                    for(let i2=0; i2<adss[i].targetItems.length; i2++) {
+                        if((adss[i].targetItems[i2]._id.toString().includes(invoice.orders[i1].item.toString())&&(invoice.orders[i1].count-invoice.orders[i1].returned)>=adss[i].targetItems[i2].count)) {
+                            checkItemsCount[i2] = true
+                        }
+                    }
                 }
+                if(checkItemsCount.length) {
+                    for (let i1 = 0; i1 < checkItemsCount.length; i1++) {
+                        if (!checkItemsCount[i1])
+                            check = false
+                    }
+                }
+                else
+                    check = false
                 if(check)
                     resAdss.push(adss[i]._id)
             }
@@ -74,14 +93,14 @@ const resolvers = {
         return await AdsAzyk.find({
             del: 'deleted',
             title: {'$regex': search, '$options': 'i'}
-        }).populate('item').populate('targetItem').sort('-createdAt')
+        }).populate('item').sort('-createdAt')
     },
     adss: async(parent, {search, organization}) => {
         return await AdsAzyk.find({
             del: {$ne: 'deleted'},
             title: {'$regex': search, '$options': 'i'},
             organization: organization
-        }).populate('item').populate('targetItem').sort('-createdAt')
+        }).populate('item').sort('-createdAt')
     },
     allAdss: async() => {
         let adss = await AdsAzyk.find({
@@ -122,7 +141,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addAds: async(parent, {image, url, title, organization, item, count, targetItem, targetCount, targetPrice, multiplier, targetType}, {user}) => {
+    addAds: async(parent, {image, url, title, organization, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -132,8 +151,7 @@ const resolversMutation = {
                 title: title,
                 organization: organization,
                 item: item,
-                targetItem: targetItem,
-                targetCount: targetCount,
+                targetItems: targetItems,
                 targetPrice: targetPrice,
                 multiplier: multiplier,
                 targetType: targetType
@@ -145,7 +163,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setAds: async(parent, {_id, image, url, title, item, count, targetItem, targetCount, targetPrice, multiplier, targetType}, {user}) => {
+    setAds: async(parent, {_id, image, url, title, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let object = await AdsAzyk.findById(_id)
             object.item = item
@@ -158,8 +176,7 @@ const resolversMutation = {
             if(url) object.url = url
             if(title) object.title = title
             if(count!=undefined) object.count = count
-            if(targetItem) object.targetItem = targetItem
-            if(targetCount!=undefined) object.targetCount = targetCount
+            object.targetItems = targetItems
             if(targetPrice!=undefined) object.targetPrice = targetPrice
             if(multiplier!=undefined) object.multiplier = multiplier
             if(targetType) object.targetType = targetType

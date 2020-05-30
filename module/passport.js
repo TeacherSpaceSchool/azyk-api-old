@@ -106,6 +106,7 @@ const verifydeuserGQL = async (req, res) => {
                 else if('client'===user.role) {
                     let client = await ClientAzyk.findOne({user: user._id})
                     user.client = client._id
+                    user.category = client.category
                     client.lastActive = new Date()
                     client.save()
                     resolve(user)

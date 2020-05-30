@@ -25,6 +25,10 @@ const ClientAzykSchema = mongoose.Schema({
     },
     reiting: Number,
     image: String,
+    category: {
+        type: String,
+        default: 'B'
+    },
     city: String,
     device: String,
     user: {

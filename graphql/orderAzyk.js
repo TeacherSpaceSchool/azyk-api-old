@@ -124,7 +124,7 @@ const query = `
 `;
 
 const mutation = `
-    addOrders(info: String, usedBonus: Boolean, noSplit: Boolean, paymentMethod: String, address: [[String]], organization: ID!, client: ID!): Data
+    addOrders(info: String, usedBonus: Boolean, inv: Boolean, unite: Boolean, paymentMethod: String, address: [[String]], organization: ID!, client: ID!): Data
     setOrder(orders: [OrderInput], invoice: ID): Invoice
     setInvoice(adss: [ID], taken: Boolean, invoice: ID!, confirmationClient: Boolean, confirmationForwarder: Boolean, cancelClient: Boolean, cancelForwarder: Boolean, paymentConsignation: Boolean): Data
     setInvoicesLogic(track: Int, forwarder: ID, invoices: [ID]!): Data
@@ -165,6 +165,7 @@ const resolvers = {
                                 {address: {'$regex': search, '$options': 'i'}},
                                 {paymentMethod: {'$regex': search, '$options': 'i'}},
                                 {client: {$in: _clients}},
+                                {forwarder: {$in: _agents}},
                                 {agent: {$in: _agents}},
                                 {organization: {$in: _organizations}},
                                 {provider: {$in: _organizations}},
@@ -218,6 +219,7 @@ const resolvers = {
                                     {info: {'$regex': search, '$options': 'i'}},
                                     {address: {'$regex': search, '$options': 'i'}},
                                     {paymentMethod: {'$regex': search, '$options': 'i'}},
+                                    {forwarder: {$in: _agents}},
                                     {agent: {$in: _agents}},
                                     {organization: {$in: _organizations}},
                                     {provider: {$in: _organizations}},
@@ -245,6 +247,7 @@ const resolvers = {
                                     {address: {'$regex': search, '$options': 'i'}},
                                     {paymentMethod: {'$regex': search, '$options': 'i'}},
                                     {client: {$in: _clients}},
+                                    {forwarder: {$in: _agents}},
                                     {agent: {$in: _agents}},
                                     {organization: {$in: _organizations}},
                                     {provider: {$in: _organizations}},
@@ -425,6 +428,7 @@ const resolvers = {
                                             {address: {'$regex': search, '$options': 'i'}},
                                             {paymentMethod: {'$regex': search, '$options': 'i'}},
                                             {client: {$in: _clients}},
+                                            {forwarder: {$in: _agents}},
                                             {agent: {$in: _agents}},
                                             {organization: {$in: _organizations}},
                                             {provider: {$in: _organizations}},
@@ -514,7 +518,9 @@ const resolvers = {
                                         {address: {'$regex': search, '$options': 'i'}},
                                         {paymentMethod: {'$regex': search, '$options': 'i'}},
                                         {client: {$in: _clients}},
+                                        {forwarder: {$in: _agents}},
                                         {agent: {$in: _agents}},
+                                        {forwarder: {$in: _agents}},
                                         {organization: {$in: _organizations}},
                                         {provider: {$in: _organizations}},
                                         {sale: {$in: _organizations}},
@@ -657,7 +663,9 @@ const resolvers = {
                                         {info: {'$regex': search, '$options': 'i'}},
                                         {address: {'$regex': search, '$options': 'i'}},
                                         {paymentMethod: {'$regex': search, '$options': 'i'}},
+                                        {forwarder: {$in: _agents}},
                                         {agent: {$in: _agents}},
+                                        {forwarder: {$in: _agents}},
                                         {organization: {$in: _organizations}},
                                         {provider: {$in: _organizations}},
                                         {sale: {$in: _organizations}},
@@ -784,10 +792,10 @@ const resolvers = {
                 now.setHours(3, 0, 0, 0)
                 now.setDate(now.getDate() + 1)
                 let differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
-                if(differenceDates>3) {
+                if(differenceDates>5) {
                     dateStart = new Date()
                     dateEnd = new Date(dateStart)
-                    dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 3))
+                    dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 5))
                 }
             }
             else {
@@ -795,7 +803,7 @@ const resolvers = {
                 dateEnd.setHours(3, 0, 0, 0)
                 dateEnd.setDate(dateEnd.getDate() + 1)
                 dateStart = new Date(dateEnd)
-                dateStart = new Date(dateStart.setDate(dateStart.getDate() - 3))
+                dateStart = new Date(dateStart.setDate(dateStart.getDate() - 5))
             }
             let clients = await DistrictAzyk
                 .find({agent: user.employment})
@@ -822,6 +830,7 @@ const resolvers = {
                                         {address: {'$regex': search, '$options': 'i'}},
                                         {paymentMethod: {'$regex': search, '$options': 'i'}},
                                         {client: {$in: _clients}},
+                                        {forwarder: {$in: _agents}},
                                         {agent: {$in: _agents}},
                                         {organization: {$in: _organizations}},
                                         {sale: {$in: _organizations}},
@@ -949,10 +958,10 @@ const resolvers = {
                 now.setDate(now.getDate() + 1)
                 now.setHours(3, 0, 0, 0)
                 let differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
-                if(differenceDates>3) {
+                if(differenceDates>5) {
                     dateStart = new Date()
                     dateEnd = new Date(dateStart)
-                    dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 3))
+                    dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 5))
                 }
             }
             else {
@@ -960,7 +969,7 @@ const resolvers = {
                 dateEnd.setDate(dateEnd.getDate() + 1)
                 dateEnd.setHours(3, 0, 0, 0)
                 dateStart = new Date(dateEnd)
-                dateStart.setDate(dateStart.getDate() - 3)
+                dateStart.setDate(dateStart.getDate() - 5)
             }
             let clients = await DistrictAzyk
                 .find({agent: user.employment})
@@ -1151,7 +1160,9 @@ const resolvers = {
                                         {client: {$in: _clients}},
                                         {organization: {$in: _organizations}},
                                         {provider: {$in: _organizations}},
+                                        {forwarder: {$in: _agents}},
                                         {sale: {$in: _organizations}},
+                                        {agent: {$in: _agents}},
                                     ]
                                 }]:[])
                             ],
@@ -1295,8 +1306,10 @@ const resolvers = {
                                             {paymentMethod: {'$regex': search, '$options': 'i'}},
                                             {client: {$in: _clients}},
                                             {organization: {$in: _organizations}},
+                                            {forwarder: {$in: _agents}},
                                             {provider: {$in: _organizations}},
                                             {sale: {$in: _organizations}},
+                                            {agent: {$in: _agents}},
                                         ]
                                     }]:[])
                             ]
@@ -1447,6 +1460,7 @@ const resolvers = {
                                         {address: {'$regex': search, '$options': 'i'}},
                                         {paymentMethod: {'$regex': search, '$options': 'i'}},
                                         {client: {$in: _clients}},
+                                        {forwarder: {$in: _agents}},
                                         {agent: {$in: _agents}},
                                         {organization: {$in: _organizations}},
                                         {provider: {$in: _organizations}},
@@ -2279,7 +2293,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrders: async(parent, {info, paymentMethod, address, organization, usedBonus, client, noSplit}, {user}) => {
+    addOrders: async(parent, {info, paymentMethod, address, organization, usedBonus, client, inv, unite}, {user}) => {
         if(user.client)
             client = user.client
         let baskets = await BasketAzyk.find(
@@ -2337,7 +2351,7 @@ const resolversMutation = {
                     districtProvider = findDistrict
             }
             let objectInvoice;
-            if(!noSplit)
+            if(unite||!inv)
                 objectInvoice = await InvoiceAzyk.findOne({
                     organization: organization,
                     client: client,
@@ -2409,7 +2423,7 @@ const resolversMutation = {
                     sale: districtSales&&districtSales.organization.toString()!==organization.toString()?districtSales.organization:null,
                     provider: districtProvider?districtProvider.organization:null
                 });
-                if(noSplit)
+                if(inv)
                     objectInvoice.inv = 1
                 if(usedBonus>0) {
                     objectInvoice.allPrice -= usedBonus

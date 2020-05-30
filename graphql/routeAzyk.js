@@ -348,9 +348,20 @@ const resolvers = {
                             if(data[i].adss[i1].targetType==='Цена'&&data[i].adss[i1].targetPrice&&data[i].adss[i1].targetPrice>0){
                                 count *= parseInt(data[i].allPrice/data[i].adss[i1].targetPrice)
                             }
-                            else if(data[i].adss[i1].targetType==='Товар'&&data[i].adss[i1].targetItem&&data[i].adss[i1].targetCount&&data[i].adss[i1].targetCount>0){
-                                let index = data[i].orders.findIndex(element=>element.item._id.toString()===data[i].adss[i1].targetItem.toString())
-                                count *= parseInt(data[i].orders[index].count/data[i].adss[i1].targetCount)
+                            else if(data[i].adss[i1].targetType==='Товар'&&data[i].adss[i1].targetItems&&data[i].adss[i1].targetItems.length>0){
+                                let index = []
+                                for(let i2=0; i2<data[i].adss[i1].targetItems.length; i2++) {
+                                    index[i2] = []
+                                    for(let i3=0; i3<data[i].orders.length; i3++) {
+                                        if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())&&(data[i].orders[i3].count-data[i].orders[i3].returned)>=data[i].adss[i1].targetItems[i2].count) {
+                                            index[i2].push(parseInt((data[i].orders[i3].count-data[i].orders[i3].returned)/data[i].adss[i1].targetItems[i2].count))
+                                        }
+                                    }
+                                    if(index[i2].length)
+                                        index[i2] = Math.max(...index[i2])
+                                }
+                                if(index.length)
+                                    count *= Math.min(...index)
                             }
                         }
                         row+=1;
@@ -406,6 +417,14 @@ const resolvers = {
                         path: 'item',
                         select: 'name'
                     }
+                })
+                .populate({
+                    path : 'adss',
+                    populate: [
+                        {
+                            path: 'item'
+                        }
+                    ]
                 })
                 .lean()
             let list = {}

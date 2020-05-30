@@ -310,7 +310,7 @@ const resolvers = {
                 del: {$ne: 'deleted'},
             })
                 .populate({path: 'user', match: {
-                    ...(organization==='super'?{role: 'суперагент'}:{role: 'агент'}),
+                    ...(organization==='super'?{role: 'суперагент'}:{role: {$in: ['суперорганизация', 'организация', 'менеджер', 'агент', ]}}),
                     status: 'active'}})
             agents = agents.filter(agent => (agent.user))
             return agents
