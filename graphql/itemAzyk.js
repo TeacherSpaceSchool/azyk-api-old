@@ -252,7 +252,6 @@ const resolvers = {
     },
     brands: async(parent, {organization, search, sort}, {user}) => {
         if(mongoose.Types.ObjectId.isValid(organization)) {
-
             let items = await ItemAzyk.find({
                 ...user.role==='admin'?{}:{status: 'active'},
                 organization: organization,

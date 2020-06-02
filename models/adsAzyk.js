@@ -26,7 +26,11 @@ const AdsAzykSchema = mongoose.Schema({
         count: {
             type: Number,
             default: 0
-        }
+        },
+        sum: {
+            type: Boolean,
+            default: false
+        },
     }],
     targetPrice: {
         type: Number,

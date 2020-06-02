@@ -23,10 +23,12 @@ const type = `
   type TargetItem {
         _id: [ID]
         count: Int
+        sum: Boolean
   }
   input TargetItemInput {
         _id: [ID]
         count: Int
+        sum: Boolean
   }
 `;
 
@@ -68,10 +70,22 @@ const resolvers = {
             else if(adss[i].targetType==='Товар'&&adss[i].targetItems&&adss[i].targetItems.length>0){
                 let check = true
                 let checkItemsCount = []
-                for(let i1=0; i1<invoice.orders.length; i1++) {
-                    for(let i2=0; i2<adss[i].targetItems.length; i2++) {
-                        if((adss[i].targetItems[i2]._id.toString().includes(invoice.orders[i1].item.toString())&&(invoice.orders[i1].count-invoice.orders[i1].returned)>=adss[i].targetItems[i2].count)) {
-                            checkItemsCount[i2] = true
+                for(let i1=0; i1<adss[i].targetItems.length; i1++) {
+                    if(adss[i].targetItems[i1].sum){
+                        checkItemsCount[i1] = 0
+                        for(let i2=0; i2<invoice.orders.length; i2++) {
+                            if(adss[i].targetItems[i1]._id.toString().includes(invoice.orders[i2].item.toString())) {
+                                checkItemsCount[i1] += invoice.orders[i2].count-invoice.orders[i2].returned
+                            }
+                        }
+                        checkItemsCount[i1] = checkItemsCount[i1] >= adss[i].targetItems[i1].count;
+                    }
+                    else {
+                        checkItemsCount[i1] = false
+                        for(let i2=0; i2<invoice.orders.length; i2++) {
+                            if((adss[i].targetItems[i1]._id.toString().includes(invoice.orders[i2].item.toString())&&(invoice.orders[i2].count-invoice.orders[i2].returned)>=adss[i].targetItems[i1].count)) {
+                                checkItemsCount[i1] = true
+                            }
                         }
                     }
                 }
@@ -96,11 +110,12 @@ const resolvers = {
         }).populate('item').sort('-createdAt')
     },
     adss: async(parent, {search, organization}) => {
-        return await AdsAzyk.find({
+        let res = await AdsAzyk.find({
             del: {$ne: 'deleted'},
             title: {'$regex': search, '$options': 'i'},
             organization: organization
         }).populate('item').sort('-createdAt')
+        return res
     },
     allAdss: async() => {
         let adss = await AdsAzyk.find({
