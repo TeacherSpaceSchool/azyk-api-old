@@ -2421,7 +2421,7 @@ const resolvers = {
         }
     },
     activeItem: async(parent, { organization }, {user}) => {
-        if(user.role==='admin'){
+        if(['admin', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
             let data/* = await InvoiceAzyk.find(
                     {
                         del: {$ne: 'deleted'},
@@ -2445,7 +2445,7 @@ const resolvers = {
         }
     },
     activeOrganization: async(parent, ctx, {user}) => {
-        if(user.role==='admin'){
+        if(['admin', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
             let data/* = await InvoiceAzyk.find(
                 {
                     del: {$ne: 'deleted'},

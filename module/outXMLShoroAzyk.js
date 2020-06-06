@@ -276,7 +276,8 @@ module.exports.checkOutXMLClientShoroAzyk = async(guid, exc) => {
 module.exports.getOutXMLShoroAzyk = async() => {
     let result = builder.create('root').att('mode', 'sales');
     let date = new Date()
-    date.setDate(date.getDate() + 1)
+    if(date.getHours()>3)
+        date.setDate(date.getDate() + 1)
     date.setHours(3, 0, 0, 0)
     let outXMLShoros = await OutXMLShoroAzyk
         .find({date: {$lte: date}, $and: [{status: {$ne: 'check'}}, {status: {$ne: 'error'}}]})
