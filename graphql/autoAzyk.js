@@ -60,7 +60,7 @@ const resolvers = {
                 return autos
             }
         }
-        else if(['суперорганизация', 'организация', 'менеджер'].includes(user.role)){
+        else if(['суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
             let autos =  await AutoAzyk.find({organization: organization})
                 .populate('employment')
                 .populate('organization')

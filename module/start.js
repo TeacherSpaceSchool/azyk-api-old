@@ -3,6 +3,7 @@ const { startSubCategoryAzyk } = require('../module/subCategoryAzyk');
 const { reductionToBonus } = require('../module/bonusAzyk');
 const { reductionToRoute } = require('../module/routeAzyk');
 const { reductionToAgentRoute } = require('../module/agentRouteAzyk');
+const { reductionToOrganization } = require('../module/organizationAzyk');
 const { reductionToClient } = require('../module/clientAzyk');
 const { reductionToItem } = require('../module/itemAzyk');
 const { reductionInvoices } = require('../module/invoiceAzyk');
@@ -73,13 +74,14 @@ let startReminderClient = async () => {
 
 let start = async () => {
     //await startClientRedis()
-    //await reductionInvoices()
+    await reductionInvoices()
     //await startCategoryAzyk()
     await startResetUnloading()
     //await startSubCategoryAzyk()
     //await reductionToRoute()
     //await reductionToBonus()
     await reductionToClient()
+    reductionToOrganization()
     await reductionToItem()
     //await reductionToUser()
     //await startResetBonusesClient()

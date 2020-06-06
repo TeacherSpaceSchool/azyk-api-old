@@ -327,12 +327,13 @@ const resolvers = {
                 .distinct('client')
             if(organization!=='super')
                 organization = await OrganizationAzyk.findOne({_id: organization})
-            if(organization.accessToClient||organization==='super')
+            if(organization.accessToClient||organization==='super') {
                 clients = await ClientAzyk.find({
                     _id: {$nin: clients},
                     del: {$ne: 'deleted'}
                 })
                     .populate({path: 'user', match: {status: 'active'}})
+            }
             else {
                 let items = await ItemAzyk.find({organization: user.organization}).distinct('_id')
                 let clients1 = await OrderAzyk.find({item: {$in: items}}).distinct('client')

@@ -138,6 +138,20 @@ const resolvers = {
                 )
             return districts
         }
+        else if('агент'===user.role){
+            let districts =  await DistrictAzyk.find({
+                $or: [
+                    {agent: user.employment},
+                ]
+
+            })
+                .populate('agent')
+                .populate('ecspeditor')
+                .populate('organization')
+                .populate('manager')
+                .sort(sort)
+            return districts
+        }
     },
     clientsWithoutDistrict: async(parent, { organization }, {user}) => {
         if(['admin', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){

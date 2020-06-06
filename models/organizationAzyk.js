@@ -41,6 +41,10 @@ const OrganizationAzykSchema = mongoose.Schema({
         type: Boolean,
         default: true
     },
+    superagent: {
+        type: Boolean,
+        default: true
+    },
     onlyIntegrate: {
         type: Boolean,
         default: false

@@ -34,6 +34,7 @@ const type = `
     minimumOrder: Int
     accessToClient: Boolean
     unite: Boolean
+    superagent: Boolean
     consignation: Boolean
     onlyDistrict: Boolean
     onlyIntegrate: Boolean
@@ -52,8 +53,8 @@ const query = `
 `;
 
 const mutation = `
-    addOrganization(warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, unite: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!): Data
-    setOrganization(warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, unite: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean): Data
+    addOrganization(warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, unite: Boolean!, superagent: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!): Data
+    setOrganization(warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, unite: Boolean, superagent: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean): Data
     restoreOrganization(_id: [ID]!): Data
     deleteOrganization(_id: [ID]!): Data
     onoffOrganization(_id: [ID]!): Data
@@ -65,12 +66,23 @@ const resolvers = {
             ...user.role==='admin'?{}:{status: 'active'},
             del: {$ne: 'deleted'}
         }).distinct('organization')
-        if(['admin', 'суперагент'].includes(user.role)){
+        if('admin'===user.role){
             return await OrganizationAzyk.find({
                 _id: {$in: brandOrganizations},
                 name: {'$regex': search, '$options': 'i'},
                 status: filter.length===0?{'$regex': filter, '$options': 'i'}:filter,
                 del: {$ne: 'deleted'}
+            })
+                .sort('-priotiry')
+                .sort(sort)
+        }
+        else if('суперагент'===user.role){
+            return await OrganizationAzyk.find({
+                _id: {$in: brandOrganizations},
+                name: {'$regex': search, '$options': 'i'},
+                status: filter.length === 0 ? {'$regex': filter, '$options': 'i'} : filter,
+                del: {$ne: 'deleted'},
+                superagent: true
             })
                 .sort('-priotiry')
                 .sort(sort)
@@ -198,7 +210,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrganization: async(parent, {warehouse, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    addOrganization: async(parent, {warehouse, superagent, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -217,6 +229,7 @@ const resolversMutation = {
                 priotiry: priotiry,
                 onlyDistrict: onlyDistrict,
                 unite: unite,
+                superagent: superagent,
                 onlyIntegrate: onlyIntegrate,
                 miniInfo: miniInfo,
                 warehouse: warehouse
@@ -231,7 +244,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setOrganization: async(parent, {warehouse, miniInfo, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    setOrganization: async(parent, {warehouse, miniInfo, superagent, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===_id.toString())) {
             let object = await OrganizationAzyk.findById(_id)
             if (image) {
@@ -246,6 +259,7 @@ const resolversMutation = {
             if(email) object.email = email
             if(address) object.address = address
             if(warehouse) object.warehouse = warehouse
+            if(superagent!=undefined) object.superagent = superagent
             if(unite!=undefined) object.unite = unite
             if(onlyDistrict!=undefined) object.onlyDistrict = onlyDistrict
             if(onlyIntegrate!=undefined) object.onlyIntegrate = onlyIntegrate

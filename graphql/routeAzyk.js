@@ -1,7 +1,7 @@
 const OrderAzyk = require('../models/orderAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
 const ContactAzyk = require('../models/contactAzyk');
-const AutoAzyk = require('../models/autoAzyk');
+const DistrictAzyk = require('../models/districtAzyk');
 const InvoiceAzyk = require('../models/invoiceAzyk');
 const RouteAzyk = require('../models/routeAzyk');
 const mongoose = require('mongoose');
@@ -29,8 +29,6 @@ const type = `
     dateDelivery: Date
     status: String
     number: String
-    dateStart: Date
-    dateEnd: Date
     allTonnage: Int
   }
   type Delivery {
@@ -59,7 +57,7 @@ const query = `
 
 const mutation = `
     buildRoute(provider: ID!,autoTonnage: Int!, orders: [ID]!): [Delivery],
-    addRoute(deliverys: [DeliveryInput]!, provider: ID!, selectProdusers: [ID]!, selectDistricts: [ID]!, selectEcspeditor: ID!, selectAuto: ID!, selectedOrders: [ID]!, dateDelivery: Date!, dateStart: Date!, dateEnd: Date, allTonnage: Int!): Data,
+    addRoute(deliverys: [DeliveryInput]!, provider: ID!, selectProdusers: [ID]!, selectDistricts: [ID]!, selectEcspeditor: ID!, selectAuto: ID!, selectedOrders: [ID]!, dateDelivery: Date!, allTonnage: Int!): Data,
     deleteRoute(_id: ID!, selectedOrders: [ID]!): Data
 `;
 
@@ -139,7 +137,7 @@ const resolvers = {
                                             index[i2] = 0
                                             for(let i3=0; i3<data[i].orders.length; i3++) {
                                                 if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())) {
-                                                    index[i2] += data[i].orders[i3].count-data[i].orders[i3].returned
+                                                    index[i2] += data[i].orders[i3].count
                                                 }
                                             }
                                             index[i2] = parseInt(index[i2]/data[i].adss[i1].targetItems[i2].count)
@@ -147,8 +145,8 @@ const resolvers = {
                                         else {
                                             index[i2] = []
                                             for(let i3=0; i3<data[i].orders.length; i3++) {
-                                                if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())&&(data[i].orders[i3].count-data[i].orders[i3].returned)>=data[i].adss[i1].targetItems[i2].count) {
-                                                    index[i2].push(parseInt((data[i].orders[i3].count-data[i].orders[i3].returned)/data[i].adss[i1].targetItems[i2].count))
+                                                if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())&&(data[i].orders[i3].count)>=data[i].adss[i1].targetItems[i2].count) {
+                                                    index[i2].push(parseInt(data[i].orders[i3].count/data[i].adss[i1].targetItems[i2].count))
                                                 }
                                             }
                                             if(index[i2].length)
@@ -378,7 +376,7 @@ const resolvers = {
                                         index[i2] = 0
                                         for(let i3=0; i3<data[i].orders.length; i3++) {
                                             if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())) {
-                                                index[i2] += data[i].orders[i3].count-data[i].orders[i3].returned
+                                                index[i2] += data[i].orders[i3].count
                                             }
                                         }
                                         index[i2] = parseInt(index[i2]/data[i].adss[i1].targetItems[i2].count)
@@ -386,8 +384,8 @@ const resolvers = {
                                     else {
                                         index[i2] = []
                                         for(let i3=0; i3<data[i].orders.length; i3++) {
-                                            if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())&&(data[i].orders[i3].count-data[i].orders[i3].returned)>=data[i].adss[i1].targetItems[i2].count) {
-                                                index[i2].push(parseInt((data[i].orders[i3].count-data[i].orders[i3].returned)/data[i].adss[i1].targetItems[i2].count))
+                                            if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())&&(data[i].orders[i3].count)>=data[i].adss[i1].targetItems[i2].count) {
+                                                index[i2].push(parseInt((data[i].orders[i3].count)/data[i].adss[i1].targetItems[i2].count))
                                             }
                                         }
                                         if(index[i2].length)
@@ -443,13 +441,13 @@ const resolvers = {
     listDownload: async(parent, {orders}, {user}) => {
         if(user.role==='admin'){
             orders = await InvoiceAzyk.find({_id: {$in: orders}})
-                .select('orders')
+                .select('orders allPrice adss')
                 .populate({
                     path: 'orders',
-                    select: 'item count',
+                    select: 'item count returned',
                     populate: {
                         path: 'item',
-                        select: 'name'
+                        select: 'name _id'
                     }
                 })
                 .populate({
@@ -462,11 +460,53 @@ const resolvers = {
                 })
                 .lean()
             let list = {}
-            for(let i=0; i<orders.length; i++){
-                for(let i1=0; i1<orders[i].orders.length; i1++) {
+            for(let i = 0; i<orders.length;i++){
+                for(let i1 = 0; i1<orders[i].orders.length;i1++) {
                     if(!list[orders[i].orders[i1].item._id])
                         list[orders[i].orders[i1].item._id] = [orders[i].orders[i1].item.name, 0]
                     list[orders[i].orders[i1].item._id][1] += orders[i].orders[i1].count
+                }
+                if(orders[i].adss) {
+                    for (let i1 = 0; i1 < orders[i].adss.length; i1++) {
+                        if(orders[i].adss[i1].item){
+                            let count = orders[i].adss[i1].count
+                            if (orders[i].adss[i1].multiplier) {
+
+                                if (orders[i].adss[i1].targetType === 'Цена' && orders[i].adss[i1].targetPrice && orders[i].adss[i1].targetPrice > 0) {
+                                    count *= parseInt(orders[i].allPrice / orders[i].adss[i1].targetPrice)
+                                }
+                                else if (orders[i].adss[i1].targetType === 'Товар' && orders[i].adss[i1].targetItem && orders[i].adss[i1].targetItems.length>0) {
+                                    let index = []
+                                    for(let i2=0; i2<orders[i].adss[i1].targetItems.length; i2++) {
+                                        if(orders[i].adss[i1].targetItems[i2].sum){
+                                            index[i2] = 0
+                                            for(let i3=0; i3<orders[i].orders.length; i3++) {
+                                                if(orders[i].adss[i1].targetItems[i2]._id.toString().includes(orders[i].orders[i3].item._id.toString())) {
+                                                    index[i2] += orders[i].orders[i3].count
+                                                }
+                                            }
+                                            index[i2] = parseInt(index[i2]/orders[i].adss[i1].targetItems[i2].count)
+                                        }
+                                        else {
+                                            index[i2] = []
+                                            for(let i3=0; i3<orders[i].orders.length; i3++) {
+                                                if(orders[i].adss[i1].targetItems[i2]._id.toString().includes(orders[i].orders[i3].item._id.toString())&&(orders[i].orders[i3].count)>=orders[i].adss[i1].targetItems[i2].count) {
+                                                    index[i2].push(parseInt(orders[i].orders[i3].count/orders[i].adss[i1].targetItems[i2].count))
+                                                }
+                                            }
+                                            if(index[i2].length)
+                                                index[i2] = Math.max(...index[i2])
+                                        }
+                                    }
+                                    if(index.length)
+                                        count *= Math.min(...index)
+                                }
+                            }
+                            if(!list[orders[i].adss[i1].item._id])
+                                list[orders[i].orders[i1].item._id] = [orders[i].orders[i1].item.name, 0]
+                            list[orders[i].adss[i1].item._id][1] += count
+                        }
+                    }
                 }
             }
             return Object.values(list)
@@ -505,6 +545,8 @@ const resolvers = {
                 name: {'$regex': search, '$options': 'i'}
             }).distinct('_id').lean()
         }
+        if(user.organization)
+            organization=user.organization
         if(['экспедитор', 'суперэкспедитор'].includes(user.role)){
             return await RouteAzyk.find({
                 status: {'$regex': filter, '$options': 'i'},
@@ -553,6 +595,26 @@ const resolvers = {
                 .limit(skip != undefined ? 15 : 10000000000)
                 .lean()
         }
+        else if('агент'===user.role) {
+            let district = await DistrictAzyk.findOne({
+                agent: user.employment
+            }).select('_id').lean()
+            return await RouteAzyk.find({
+                provider: organization,
+                selectDistricts: district._id,
+                status: {'$regex': filter, '$options': 'i'},
+                ...date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]},
+                ...(search.length > 0 ? {selectEcspeditor: {$in: _employments}} : {}),
+            })
+                .populate({
+                    path: 'selectEcspeditor',
+                    select: 'name'
+                })
+                .sort(sort)
+                .skip(skip != undefined ? skip : 0)
+                .limit(skip != undefined ? 15 : 10000000000)
+                .lean()
+        }
     },
     route: async(parent, {_id}, {user}) => {
         if(mongoose.Types.ObjectId.isValid(_id)) {
@@ -588,9 +650,9 @@ const resolvers = {
         })
             if (route &&
                 (
-                    user.role === 'admin' ||
+                    ['admin', 'суперэкспедитор'].includes(user.role) ||
                     (user.role === 'экспедитор' && route.selectEcspeditor._id.toString() === user.employment.toString()) ||
-                    (['суперорганизация', 'организация', 'менеджер'].includes(user.role) && route.provider._id.toString() === user.organization.toString())
+                    (['суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role) && route.provider._id.toString() === user.organization.toString())
                 )
             ) {
                 for(let i=0; i<route.deliverys.length; i++) {
@@ -647,7 +709,7 @@ const resolvers = {
 
 const resolversMutation = {
     buildRoute: async(parent, {provider, autoTonnage, orders}, {user}) => {
-        if(['admin'].includes(user.role)){
+        if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             if(provider!=='super')
                 provider = (await OrganizationAzyk.findOne({_id: provider})).warehouse.replace(', ', ',');
             else
@@ -700,8 +762,8 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    addRoute: async(parent, {deliverys, provider, selectProdusers, selectDistricts, selectEcspeditor, selectAuto, selectedOrders, dateDelivery, dateStart, dateEnd, allTonnage}, {user}) => {
-        if(['admin'].includes(user.role)){
+    addRoute: async(parent, {deliverys, provider, selectProdusers, selectDistricts, selectEcspeditor, selectAuto, selectedOrders, dateDelivery, allTonnage}, {user}) => {
+        if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             let number = await randomstring.generate({length: 12, charset: 'numeric'});
             while (await RouteAzyk.findOne({number: number}))
                 number = await randomstring.generate({length: 12, charset: 'numeric'});
@@ -716,8 +778,6 @@ const resolversMutation = {
                 dateDelivery: dateDelivery,
                 status: 'Cоздан',
                 number: number,
-                dateStart: dateStart,
-                dateEnd: dateEnd,
                 allTonnage: allTonnage
             });
             await RouteAzyk.create(_object);
@@ -726,7 +786,7 @@ const resolversMutation = {
         return {data: 'OK'};
     },
     deleteRoute: async(parent, { _id, selectedOrders }, {user}) => {
-        if(user.role==='admin'){
+        if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             await RouteAzyk.deleteMany({_id: _id})
             await InvoiceAzyk.updateMany({_id: {$in: selectedOrders}}, {distributed: false})
         }

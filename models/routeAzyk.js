@@ -43,8 +43,6 @@ const RouteAzykSchema = mongoose.Schema({
     dateDelivery: Date,
     status: String,
     number: String,
-    dateStart: Date,
-    dateEnd: Date,
     allTonnage: {
         type: Number,
         default: 0

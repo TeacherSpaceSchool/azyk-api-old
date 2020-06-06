@@ -1817,9 +1817,13 @@ const resolvers = {
             }
             let statistic = {}, data = []
             let agents = []
-            if(online||company==='super'){
+            let superOrganizations = []
+            if(company==='super'||online){
                 agents = await UserAzyk.find({$or: [{role: 'агент'}, {role: 'менеджер'}, {role: 'организация'}, {role: 'суперорганизация'}]}).distinct('_id').lean()
                 agents = await EmploymentAzyk.find({user: {$in: agents}}).distinct('_id').lean()
+            }
+            if(company==='super'){
+                superOrganizations = await OrganizationAzyk.find({superagent: true}).distinct('_id').lean()
             }
             if(!company) {
                 data = await InvoiceAzyk.find(
@@ -1885,7 +1889,7 @@ const resolvers = {
                             del: {$ne: 'deleted'},
                             taken: true,
                             client: {$in: districts[i].client},
-                            ...(company!=='super'?{organization: company}:{}),
+                            ...(company!=='super'?{organization: company}:{...online?{organization: {$in: superOrganizations}}:{}}),
                             agent: {$nin: agents},
                         }
                     )
@@ -1920,7 +1924,7 @@ const resolvers = {
                         ...{del: {$ne: 'deleted'}},
                         taken: true,
                         client: {$nin: withDistricts},
-                        ...(company!=='super'?{organization: company}:{}),
+                        ...(company!=='super'?{organization: company}:{...online?{organization: {$in: superOrganizations}}:{}}),
                         agent: {$nin: agents},
                     }
                 )
@@ -2655,7 +2659,7 @@ const resolvers = {
                     row += 1;
                     worksheet.addRow([
                         data[i].orders[i1].item.name,
-                        `${data[i].orders[i1].count} шт`,
+                        `${data[i].orders[i1].count} ${data[i].orders[i1].item.unit&&data[i].orders[i1].item.unit.length>0?data[i].orders[i1].item.unit:'шт'}`,
                         `${Math.round(data[i].orders[i1].count/(data[i].orders[i1].packaging?data[i].orders[i1].packaging:1))} уп`,
                         `${data[i].orders[i1].allPrice} сом`,
                         data[i].orders[i1].consignmentPrice>0?`${data[i].orders[i1].consignmentPrice} сом`:''

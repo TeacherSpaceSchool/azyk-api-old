@@ -1,19 +1,10 @@
 const OrganizationAzyk = require('../models/organizationAzyk');
-module.exports.startSubCategoryAzyk = async()=>{
-    let subCategoryyUndefined = await SubCategoryAzyk.findOne({name: 'Не задано'});
-    if(!subCategoryyUndefined) {
-        let categoryUndefined = await CategoryAzyk.findOne({name: 'Не задано'});
-        let _object = new SubCategoryAzyk({
-            category: categoryUndefined._id,
-            name: 'Не задано',
-            status: 'active'
-        });
-        subCategoryyUndefined = await SubCategoryAzyk.create(_object)
+
+module.exports.reductionToOrganization= async()=>{
+    let organizations = await OrganizationAzyk.find({superagent: null})
+    console.log(`reductionToOrganization: ${organizations.length}`)
+    for(let i = 0; i<organizations.length;i++){
+        organizations[i].superagent = true
+        await organizations[i].save();
     }
-    subCategoryUndefinedId = subCategoryyUndefined._id
-}
-
-
-module.exports.getSubCategoryUndefinedId = () => {
-    return subCategoryUndefinedId
 }

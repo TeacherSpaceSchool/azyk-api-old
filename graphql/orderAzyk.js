@@ -116,15 +116,15 @@ const query = `
     invoicesTrash(search: String!, skip: Int): [Invoice]
    invoicesTrashSimpleStatistic(search: String!): [String]
     orderHistorys(invoice: ID!): [HistoryOrder]
-    invoicesForRouting(produsers: [ID]!, clients: [ID]!, dateStart: Date!, dateEnd: Date, dateDelivery: Date!): [Invoice]
+    invoicesForRouting(produsers: [ID]!, clients: [ID]!, dateStart: Date, dateEnd: Date, dateDelivery: Date): [Invoice]
     invoice(_id: ID!): Invoice
     sortInvoice: [Sort]
     filterInvoice: [Filter]
-    isOrderToday(organization: ID!): Boolean
+    isOrderToday(organization: ID!, clients: ID!, dateDelivery: Date!): Boolean
 `;
 
 const mutation = `
-    addOrders(info: String, usedBonus: Boolean, inv: Boolean, unite: Boolean, paymentMethod: String, address: [[String]], organization: ID!, client: ID!): Data
+    addOrders(dateDelivery: Date!, info: String, usedBonus: Boolean, inv: Boolean, unite: Boolean, paymentMethod: String, address: [[String]], organization: ID!, client: ID!): Data
     setOrder(orders: [OrderInput], invoice: ID): Invoice
     setInvoice(adss: [ID], taken: Boolean, invoice: ID!, confirmationClient: Boolean, confirmationForwarder: Boolean, cancelClient: Boolean, cancelForwarder: Boolean, paymentConsignation: Boolean): Data
     setInvoicesLogic(track: Int, forwarder: ID, invoices: [ID]!): Data
@@ -411,8 +411,14 @@ const resolvers = {
                     .find({agent: user.employment})
                     .distinct('client')
                     .lean()
+                let organizations = await OrganizationAzyk.find({
+                    superagent: true
+                })
+                    .distinct('_id')
+                    .lean()
                 invoices =  await InvoiceAzyk.find(
                     {
+                        organization: {$in: organizations},
                         del: {$ne: 'deleted'},
                         taken: true,
                         ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
@@ -809,6 +815,11 @@ const resolvers = {
                 .find({agent: user.employment})
                 .distinct('client')
                 .lean()
+            let organizations = await OrganizationAzyk.find({
+                superagent: true
+            })
+                .distinct('_id')
+                .lean()
             let invoices =  await InvoiceAzyk.aggregate(
                 [
                     {
@@ -819,6 +830,7 @@ const resolvers = {
                     },
                     {
                         $match: {
+                            organization: {$in: organizations},
                             $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
                             ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
                             ...(filter === 'обработка' ? {taken: false, cancelClient: null, cancelForwarder: null} : {}),
@@ -1609,36 +1621,31 @@ const resolvers = {
         }
     },
     invoicesForRouting: async(parent, { produsers, clients, dateStart, dateEnd, dateDelivery }, {user}) => {
-        clients = clients.map(element=>element.toString())
-        dateStart = new Date(dateStart)
-        dateStart.setHours(3, 0, 0, 0)
-        if(dateEnd&&dateEnd.toString()!=='Invalid Date'){
-            dateEnd = new Date(dateEnd)
-            dateEnd.setDate(dateEnd.getDate() + 1)
-            dateEnd.setHours(3, 0, 0, 0)
-        }
-        else {
-            dateEnd = new Date(dateStart)
-            dateEnd.setDate(dateEnd.getDate() + 1)
-        }
-        dateDelivery = new Date(dateDelivery)
-        let dayWeek = dateDelivery.getDay()===0?6:(dateDelivery.getDay()-1)
-        for(let i=0; i<produsers.length; i++) {
-            let deliveryDates =  await DeliveryDateAzyk.find({client: {$in: clients}, organization: produsers[i]}).lean()
-            for(let i1=0; i1<deliveryDates.length; i1++){
-                if(!deliveryDates[i1].days[dayWeek]){
-                    clients.splice(clients.indexOf(deliveryDates[i1].client.toString()), 1)
+        if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)) {
+            if(dateDelivery) {
+                dateDelivery = new Date(dateDelivery)
+                dateDelivery.setHours(3, 0, 0, 0)
+            }
+            else {
+                dateStart = new Date(dateStart)
+                dateStart.setHours(3, 0, 0, 0)
+                if(dateEnd&&dateEnd.toString()!=='Invalid Date'){
+                    dateEnd = new Date(dateEnd)
+                    dateEnd.setDate(dateEnd.getDate() + 1)
+                    dateEnd.setHours(3, 0, 0, 0)
+                }
+                else {
+                    dateEnd = new Date(dateStart)
+                    dateEnd.setDate(dateEnd.getDate() + 1)
                 }
             }
-        }
-        if(['admin'].includes(user.role)) {
             let invoices =  await InvoiceAzyk.find({
                 del: {$ne: 'deleted'},
                 taken: true,
                 distributed: {$ne: true},
                 organization: {$in: produsers},
                 client: {$in: clients},
-                $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]
+                ...dateDelivery?{dateDelivery: dateDelivery}:{$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}
             })
                 .select('_id agent createdAt updatedAt allTonnage allSize client allPrice consignmentPrice returnedPrice address adss editor number confirmationForwarder confirmationClient cancelClient district track forwarder  sale provider organization cancelForwarder paymentConsignation taken sync dateDelivery usedBonus')
                 .populate({path: 'client', select: '_id name'})
@@ -1688,19 +1695,23 @@ const resolvers = {
                     path: 'adss',
                 })
                 .lean()
-            if(['суперагент', 'admin'].includes(user.role))
+            if(['суперагент', 'admin', 'суперэкспедитор'].includes(user.role))
                 return invoice
             else if(user.client&&user.client.toString()===invoice.client._id.toString())
                 return invoice
-            else if(user.organization&&['агент', 'менеджер', 'суперорганизация', 'организация'].includes(user.role)&&((invoice.provider&&user.organization.toString()===invoice.provider._id.toString())||(invoice.sale&&user.organization.toString()===invoice.sale._id.toString())||user.organization.toString()===invoice.organization._id.toString()))
+            else if(user.organization&&['агент', 'менеджер', 'суперорганизация', 'организация', 'экспедитор'].includes(user.role)&&((invoice.provider&&user.organization.toString()===invoice.provider._id.toString())||(invoice.sale&&user.organization.toString()===invoice.sale._id.toString())||user.organization.toString()===invoice.organization._id.toString()))
                 return invoice
         } else return null
     },
     sortInvoice: async() => {
         let sort = [
             {
-                name: 'Дата',
+                name: 'Дата заказа',
                 field: 'createdAt'
+            },
+            {
+                name: 'Дата доставки',
+                field: 'dateDelivery'
             },
             {
                 name: 'Статус',
@@ -1712,11 +1723,11 @@ const resolvers = {
             },
             {
                 name: 'Кубатура',
-                field: 'allTonnage'
+                field: 'allSize'
             },
             {
                 name: 'Тоннаж',
-                field: 'allSize'
+                field: 'allTonnage'
             },
             {
                 name: 'Консигнации',
@@ -2293,7 +2304,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrders: async(parent, {info, paymentMethod, address, organization, usedBonus, client, inv, unite}, {user}) => {
+    addOrders: async(parent, {dateDelivery, info, paymentMethod, address, organization, usedBonus, client, inv, unite}, {user}) => {
         if(user.client)
             client = user.client
         let baskets = await BasketAzyk.find(
@@ -2355,6 +2366,7 @@ const resolversMutation = {
                 objectInvoice = await InvoiceAzyk.findOne({
                     organization: organization,
                     client: client,
+                    dateDelivery: dateDelivery,
                     $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
                     del: {$ne: 'deleted'},
                     cancelClient: null,
@@ -2418,6 +2430,7 @@ const resolversMutation = {
                     organization: organization,
                     adss: [],
                     track: 1,
+                    dateDelivery: dateDelivery,
                     forwarder: districtProvider?districtProvider.ecspeditor:null,
                     district:  districtSales?districtSales.name:null,
                     sale: districtSales&&districtSales.organization.toString()!==organization.toString()?districtSales.organization:null,
@@ -2811,7 +2824,6 @@ const resolversMutation = {
                 await OrderAzyk.updateMany({_id: {$in: object.orders}}, {status: 'обработка', returned: 0})
                 object.confirmationForwarder = false
                 object.confirmationClient = false
-                object.dateDelivery = null
                 object.returnedPrice = 0
                 object.sync = object.sync!==0?1:0
             }
@@ -2820,20 +2832,17 @@ const resolversMutation = {
             object.confirmationClient = confirmationClient
             if(!confirmationClient) {
                 await OrderAzyk.updateMany({_id: {$in: object.orders}}, {status: 'принят'})
-                object.dateDelivery = null
             }
         }
         if(object.taken&&confirmationForwarder!=undefined&&(admin||employment)){
             object.confirmationForwarder = confirmationForwarder
             if(!confirmationForwarder) {
                 await OrderAzyk.updateMany({_id: {$in: object.orders}}, {status: 'принят'})
-                object.dateDelivery = null
             }
         }
         if(object.taken&&object.confirmationForwarder&&object.confirmationClient){
             await addBonusToClient(object.client, order.item.organization, object.allPrice)
             await OrderAzyk.updateMany({_id: {$in: object.orders}}, {status: 'выполнен'})
-            object.dateDelivery = new Date()
         }
 
         if(object.taken&&(object.confirmationForwarder||object.confirmationClient)){
@@ -2874,7 +2883,6 @@ const resolversMutation = {
                 if (differenceMinutes < 10||user.role==='admin') {
                     object.cancelClient = undefined
                     await OrderAzyk.updateMany({_id: {$in: object.orders}}, {status: 'обработка'})
-                    object.dateDelivery = undefined
                     object.taken = undefined
                     object.confirmationClient = undefined
                     object.confirmationForwarder = undefined
@@ -2906,7 +2914,6 @@ const resolversMutation = {
                     object.cancelForwarder = undefined
                     object.cancelClient = undefined
                     await OrderAzyk.updateMany({_id: {$in: object.orders}}, {status: 'обработка'})
-                    object.dateDelivery = undefined
                     object.taken = undefined
                     object.confirmationClient = undefined
                     object.confirmationForwarder = undefined
@@ -2937,7 +2944,6 @@ const resolversMutation = {
                     await addBonusToClient(invoices[i].client, invoices[i].orders[0].item.organization, invoices[i].allPrice)
                     invoices[i].orders = invoices[i].orders.map(element=>element._id)
                     await OrderAzyk.updateMany({_id: {$in: invoices[i].orders}}, {status: 'выполнен'})
-                    await InvoiceAzyk.update({_id: invoices[i]._id}, {dateDelivery: new Date()});
                 }
             }
             else if(['менеджер', 'суперорганизация', 'организация'].includes(user.role)){
@@ -2947,7 +2953,6 @@ const resolversMutation = {
                         await addBonusToClient(invoices[i].client, invoices[i].orders[0].item.organization, invoices[i].allPrice)
                         invoices[i].orders = invoices[i].orders.map(element=>element._id)
                         await OrderAzyk.updateMany({_id: {$in: invoices[i].orders}}, {status: 'выполнен'})
-                        await InvoiceAzyk.update({_id: invoices[i]._id}, {dateDelivery: new Date()});
                     }
                 }
             }
@@ -2957,7 +2962,6 @@ const resolversMutation = {
                 invoices[i].confirmationClient = true
                 invoices[i].orders = invoices[i].orders.map(element=>element._id)
                 await OrderAzyk.updateMany({_id: {$in: invoices[i].orders}}, {status: 'выполнен'})
-                await InvoiceAzyk.update({_id: invoices[i]._id}, {dateDelivery: new Date()});
             }
             invoices[i].save();
         }

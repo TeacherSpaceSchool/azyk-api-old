@@ -8,11 +8,9 @@ const Integrate1CAzyk = require('../models/integrate1CAzyk');
 const InvoiceAzyk = require('../models/invoiceAzyk');
 const ReturnedAzyk = require('../models/returnedAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
-const EmploymentAzyk = require('../models/employmentAzyk');
 const OutXMLAdsShoroAzyk = require('../models/outXMLAdsShoroAzyk');
 const { pdDDMMYYYY, checkInt } = require('../module/const');
 const uuidv1 = require('uuid/v1.js');
-const xml = require('xml');
 const builder = require('xmlbuilder');
 const randomstring = require('randomstring');
 
@@ -116,49 +114,53 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
         if(guidClient){
             let district = await DistrictAzyk
                 .findOne({client: invoice.client._id, organization: invoice.organization._id})
+            let guidAgent = ''
+            let guidEcspeditor = ''
             if(district) {
-                let guidAgent = await Integrate1CAzyk
+                guidAgent = await Integrate1CAzyk
                     .findOne({agent: district.agent})
-                let guidEcspeditor = await Integrate1CAzyk
+                if(guidAgent)
+                    guidAgent = guidAgent.guid
+                else
+                    guidAgent = ''
+                guidEcspeditor = await Integrate1CAzyk
                     .findOne({ecspeditor: district.ecspeditor})
-                if (guidAgent && guidEcspeditor) {
-                    let date = new Date(invoice.createdAt)
-                    if(date.getHours()>3)
-                        date.setDate(date.getDate() + 1)
-                    if(date.getDay()===0)
-                        date.setDate(date.getDate() + 1)
-                    let newOutXMLShoroAzyk = new OutXMLShoroAzyk({
-                        data: [],
-                        guid: await uuidv1(),
-                        date: date,
-                        number: invoice.number,
-                        client: guidClient.guid,
-                        agent: guidAgent.guid,
-                        forwarder: guidEcspeditor.guid,
-                        invoice: invoice._id,
-                        status: 'create',
-                        inv: invoice.inv,
-                    });
-                    for (let i = 0; i < invoice.orders.length; i++) {
-                        let guidItem = await Integrate1CAzyk
-                            .findOne({item: invoice.orders[i].item._id})
-                        if (guidItem) {
-                            count = invoice.orders[i].count-invoice.orders[i].returned
-                            newOutXMLShoroAzyk.data.push({
-                                guid: guidItem.guid,
-                                package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
-                                qt: count,
-                                price: (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price),
-                                amount: Math.round(count * (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price)),
-                                priotiry: invoice.orders[i].item.priotiry
-                            })
-                        }
-                    }
-                    await OutXMLShoroAzyk.create(newOutXMLShoroAzyk);
-                    await InvoiceAzyk.updateMany({_id: invoice._id}, {sync: 1})
-                    return 1
+                if(guidEcspeditor)
+                    guidEcspeditor = guidEcspeditor.guid
+                else
+                    guidEcspeditor = ''
+            }
+            let date = new Date(invoice.dateDelivery)
+            let newOutXMLShoroAzyk = new OutXMLShoroAzyk({
+                data: [],
+                guid: await uuidv1(),
+                date: date,
+                number: invoice.number,
+                client: guidClient.guid,
+                agent: guidAgent,
+                forwarder: guidEcspeditor,
+                invoice: invoice._id,
+                status: 'create',
+                inv: invoice.inv,
+            });
+            for (let i = 0; i < invoice.orders.length; i++) {
+                let guidItem = await Integrate1CAzyk
+                    .findOne({item: invoice.orders[i].item._id})
+                if (guidItem) {
+                    count = invoice.orders[i].count-invoice.orders[i].returned
+                    newOutXMLShoroAzyk.data.push({
+                        guid: guidItem.guid,
+                        package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
+                        qt: count,
+                        price: (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price),
+                        amount: Math.round(count * (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price)),
+                        priotiry: invoice.orders[i].item.priotiry
+                    })
                 }
             }
+            await OutXMLShoroAzyk.create(newOutXMLShoroAzyk);
+            await InvoiceAzyk.updateMany({_id: invoice._id}, {sync: 1})
+            return 1
         }
     }
     return 0
@@ -273,8 +275,11 @@ module.exports.checkOutXMLClientShoroAzyk = async(guid, exc) => {
 
 module.exports.getOutXMLShoroAzyk = async() => {
     let result = builder.create('root').att('mode', 'sales');
+    let date = new Date()
+    date.setDate(date.getDate() + 1)
+    date.setHours(3, 0, 0, 0)
     let outXMLShoros = await OutXMLShoroAzyk
-        .find({$and: [{status: {$ne: 'check'}}, {status: {$ne: 'error'}}]})
+        .find({date: {$lte: date}, $and: [{status: {$ne: 'check'}}, {status: {$ne: 'error'}}]})
         .populate({path: 'invoice'})
         .sort('date')
         //.limit(20)
@@ -464,14 +469,7 @@ module.exports.getOutXMLReturnedShoroAzyk = async() => {
 
 module.exports.reductionOutAdsXMLShoroAzyk = async() => {
     let dateXml = new Date()
-    if(dateXml.getDay()===0)
-        dateXml.setDate(dateXml.getDate() + 1)
-    let dateStart = new Date()
-    dateStart.setDate(dateStart.getDate() - 1)
-    dateStart.setHours(3, 0, 0, 0)
-    let dateEnd = new Date()
-    dateEnd.setHours(3, 0, 0, 0)
-    //dateEnd.setDate(dateEnd.getDate() + 1)
+    dateXml.setHours(3, 0, 0, 0)
     let guidItems = {}
     let organization = await OrganizationAzyk
         .findOne({name: 'ЗАО «ШОРО»'})
@@ -488,7 +486,7 @@ module.exports.reductionOutAdsXMLShoroAzyk = async() => {
             if (guidAgent && guidEcspeditor) {
                 let orders = await InvoiceAzyk.find(
                     {
-                        $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
+                        dateDelivery: dateXml,
                         del: {$ne: 'deleted'},
                         taken: true,
                         organization: organization._id,
