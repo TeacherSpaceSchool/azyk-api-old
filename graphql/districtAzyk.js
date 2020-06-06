@@ -154,7 +154,7 @@ const resolvers = {
         }
     },
     clientsWithoutDistrict: async(parent, { organization }, {user}) => {
-        if(['admin', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
+        if(['admin', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
             if(user.organization)
                 organization = user.organization
             let clients = await DistrictAzyk
@@ -261,7 +261,7 @@ const resolversMutation = {
     },
     setDistrict: async(parent, {_id, client, ecspeditor, name, agent, manager}, {user}) => {
         let object = await DistrictAzyk.findById(_id)
-        if(object&&['admin', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
+        if(object&&['admin', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
             if(name)object.name = name
             if(client){
                 let objectAgentRouteAzyk = await AgentRouteAzyk.findOne({district: object._id})
