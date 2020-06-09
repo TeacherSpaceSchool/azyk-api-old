@@ -3,19 +3,26 @@ let router = express.Router();
 const {putOutXMLClientShoroAzyk ,getOutXMLClientShoroAzyk, checkOutXMLClientShoroAzyk, getOutXMLShoroAzyk, checkOutXMLShoroAzyk, getOutXMLReturnedShoroAzyk, checkOutXMLReturnedShoroAzyk} = require('../module/outXMLShoroAzyk');
 let logger = require('logger').createLogger('integrate1Cshoro.log');
 const ModelsErrorAzyk = require('../models/errorAzyk');
+const ReceivedDataAzyk = require('../models/receivedDataAzyk');
+const OrganizationAzyk = require('../models/organizationAzyk');
 
 router.post('/shoro/put/client', async (req, res, next) => {
     let startDate = new Date()
+    let organization = await OrganizationAzyk
+        .findOne({name: 'ЗАО «ШОРО»'})
     res.set('Content+Type', 'application/xml');
     try{
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            await putOutXMLClientShoroAzyk({
+            let _object = new ReceivedDataAzyk({
+                organization: organization._id,
+                name: req.body.elements[0].elements[i].attributes.name,
                 guid: req.body.elements[0].elements[i].attributes.guid,
-                client: req.body.elements[0].elements[i].attributes.name,
                 addres: req.body.elements[0].elements[i].attributes.address,
                 agent: req.body.elements[0].elements[i].attributes.agent,
-                phone: req.body.elements[0].elements[i].attributes.tel
-            })
+                phone: req.body.elements[0].elements[i].attributes.tel,
+                type: 'клиент'
+            });
+            await ReceivedDataAzyk.create(_object)
         }
         await res.status(200);
         await res.end('success')
@@ -25,7 +32,7 @@ router.post('/shoro/put/client', async (req, res, next) => {
             err: err.message,
             path: err.path
         });
-        ModelsErrorAzyk.create(_object)
+        await ModelsErrorAzyk.create(_object)
         console.error(err)
         res.status(501);
         res.end('error')

@@ -29,6 +29,7 @@ const NotificationStatisticAzyk = require('./notificationStatisticAzyk');
 const StatisticAzyk = require('./statistic');
 const SubscriberAzyk = require('./subscriberAzyk');
 const AgentRouteAzyk = require('./agentRouteAzyk');
+const ReceiveDataAzyk = require('./receiveDataAzyk');
 const DistrictAzyk = require('./districtAzyk');
 const Integrate1CAzyk = require('./integrate1CAzyk');
 const ErrorAzyk = require('./errorAzyk');
@@ -62,6 +63,7 @@ const typeDefs = gql`
     ${DistributerAzyk.type}
     ${Integrate1CAzyk.type}
     ${AdsAzyk.type}
+    ${ReceiveDataAzyk.type}
     ${IntegrateOutShoroAzyk.type}
     ${SubscriberAzyk.type}
     ${NotificationStatisticAzyk.type}
@@ -94,6 +96,7 @@ const typeDefs = gql`
         ${AgentRouteAzyk.mutation}
         ${DistributerAzyk.mutation}
         ${AdsAzyk.mutation}
+        ${ReceiveDataAzyk.mutation}
         ${IntegrateOutShoroAzyk.mutation}
         ${SubscriberAzyk.mutation}
         ${NotificationStatisticAzyk.mutation}
@@ -133,6 +136,7 @@ const typeDefs = gql`
         ${OrganizationAzyk.query}
         ${AgentHistoryGeoAzyk.query}
         ${AdsAzyk.query}
+        ${ReceiveDataAzyk.query}
         ${IntegrateOutShoroAzyk.query}
         ${SubscriberAzyk.query}
         ${NotificationStatisticAzyk.query}
@@ -191,6 +195,7 @@ const resolvers = {
         ...BlogAzyk.resolvers,
         ...OutXMLAdsAzyk.resolvers,
         ...AdsAzyk.resolvers,
+        ...ReceiveDataAzyk.resolvers,
         ...IntegrateOutShoroAzyk.resolvers,
         ...SubscriberAzyk.resolvers,
         ...NotificationStatisticAzyk.resolvers,
@@ -227,6 +232,7 @@ const resolvers = {
         ...BlogAzyk.resolversMutation,
         ...OutXMLAdsAzyk.resolversMutation,
         ...AdsAzyk.resolversMutation,
+        ...ReceiveDataAzyk.resolversMutation,
         ...IntegrateOutShoroAzyk.resolversMutation,
         ...SubscriberAzyk.resolversMutation,
         ...NotificationStatisticAzyk.resolversMutation,

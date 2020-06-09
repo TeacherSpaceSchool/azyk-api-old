@@ -1,6 +1,6 @@
 const CategoryAzyk = require('../models/categoryAzyk');
 let categoryUndefinedId = '';
-module.exports.startCategoryAzyk = async()=>{
+module.exports.reductionCategoryAzyk = async()=>{
     let categoryUndefined = await CategoryAzyk.findOne({name: 'Не задано'});
     if(!categoryUndefined) {
         let _object = new CategoryAzyk({

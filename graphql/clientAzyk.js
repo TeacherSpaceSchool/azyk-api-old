@@ -569,7 +569,6 @@ const resolvers = {
         let _sort = {}
         _sort[sort[0]==='-'?sort.substring(1):sort]=sort[0]==='-'?-1:1
         if(user.role==='admin'){
-            console.log()
             let clients = await ClientAzyk
                 .aggregate(
                     [

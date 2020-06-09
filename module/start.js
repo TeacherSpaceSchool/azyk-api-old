@@ -1,5 +1,5 @@
-const { startCategoryAzyk } = require('../module/categoryAzyk');
-const { startSubCategoryAzyk } = require('../module/subCategoryAzyk');
+const { reductionCategoryAzyk } = require('../module/categoryAzyk');
+const { reductionSubCategoryAzyk } = require('../module/subCategoryAzyk');
 const { reductionToBonus } = require('../module/bonusAzyk');
 const { reductionToRoute } = require('../module/routeAzyk');
 const { reductionToAgentRoute } = require('../module/agentRouteAzyk');
@@ -73,22 +73,22 @@ let startReminderClient = async () => {
 }
 
 let start = async () => {
+    await createAdmin();
     //await startClientRedis()
-    await reductionInvoices()
-    //await startCategoryAzyk()
     await startResetUnloading()
-    //await startSubCategoryAzyk()
+    await startReminderClient();
+    //await startResetBonusesClient()
+    await startOutXMLShoroAzyk();
+    await reductionInvoices()
+    //await reductionCategoryAzyk()
+    //await reductionSubCategoryAzyk()
     //await reductionToRoute()
     //await reductionToBonus()
     await reductionToClient()
-    reductionToOrganization()
+    await reductionToOrganization()
     await reductionToItem()
     //await reductionToUser()
-    //await startResetBonusesClient()
-    await startReminderClient();
     //await reductionToAgentRoute();
-    await createAdmin();
-    await startOutXMLShoroAzyk();
     //await reductionOutAdsXMLShoroAzyk()
 }
 
