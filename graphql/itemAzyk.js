@@ -50,7 +50,7 @@ const query = `
 
 const mutation = `
     addItem( categorys: [String]!, unit: String, priotiry: Int, apiece: Boolean, packaging: Int!, stock: Int!, weight: Float!, size: Float!, name: String!, deliveryDays: [String], info: String!, image: Upload, price: Float!, subCategory: ID!, organization: ID!, hit: Boolean!, latest: Boolean!): Data
-    setItem(_id: ID!, unit: String, categorys: [String]!, priotiry: Int, apiece: Boolean, packaging: Int, stock: Int, weight: Float, size: Float, name: String, info: String, deliveryDays: [String], image: Upload, price: Float, subCategory: ID, organization: ID, hit: Boolean, latest: Boolean): Data
+    setItem(_id: ID!, unit: String, categorys: [String], priotiry: Int, apiece: Boolean, packaging: Int, stock: Int, weight: Float, size: Float, name: String, info: String, deliveryDays: [String], image: Upload, price: Float, subCategory: ID, organization: ID, hit: Boolean, latest: Boolean): Data
     deleteItem(_id: [ID]!): Data
     restoreItem(_id: [ID]!): Data
     onoffItem(_id: [ID]!): Data

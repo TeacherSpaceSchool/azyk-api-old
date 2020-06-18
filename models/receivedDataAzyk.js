@@ -11,6 +11,7 @@ const ReceivedDataAzykSchema = mongoose.Schema({
     agent: String,
     phone: String,
     type: String,
+    status: String,
 }, {
     timestamps: true
 });

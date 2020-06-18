@@ -1,4 +1,8 @@
 const ReceivedDataAzyk = require('../models/receivedDataAzyk');
+const Integrate1CAzyk = require('../models/integrate1CAzyk');
+const ClientAzyk = require('../models/clientAzyk');
+const UserAzyk = require('../models/userAzyk');
+const randomstring = require('randomstring');
 
 const type = `
   type ReceivedData {
@@ -11,6 +15,7 @@ const type = `
     agent: String
     phone: String
     type: String
+    status: String
   }
 `;
 
@@ -21,6 +26,7 @@ const query = `
 const mutation = `
     clearAllReceivedDatas: Data
     deleteReceivedData(_ids: [ID]!): Data
+    addReceivedDataClient(_id: ID!): Data
 `;
 
 const resolvers = {
@@ -46,6 +52,44 @@ const resolversMutation = {
     deleteReceivedData: async(parent, { _ids }, {user}) => {
         if('admin'===user.role){
             await ReceivedDataAzyk.deleteMany({_id: {$in: _ids}})
+        }
+        return {data: 'OK'}
+    },
+    addReceivedDataClient: async(parent, { _id }, {user}) => {
+        if('admin'===user.role){
+            let receivedData = await ReceivedDataAzyk.find({_id: _id})
+            let integrate1CAzyk = await Integrate1CAzyk.findOne({
+                organization: receivedData.organization,
+                guid: receivedData.guid
+            })
+            if(!integrate1CAzyk){
+                let _client = new UserAzyk({
+                    login: randomstring.generate(20),
+                    role: 'client',
+                    status: 'deactive',
+                    password: '12345678',
+                });
+                _client = await UserAzyk.create(_client);
+                _client = new ClientAzyk({
+                    name: 'Новый',
+                    phone: receivedData.phone,
+                    city: 'Бишкек',
+                    address: [[receivedData.addres?receivedData.addres:'', '', receivedData.name?receivedData.name:'']],
+                    user: _client._id,
+                    notification: false
+                });
+                _client = await ClientAzyk.create(_client);
+                let _object = new Integrate1CAzyk({
+                    item: null,
+                    client: _client._id,
+                    agent: null,
+                    ecspeditor: null,
+                    organization: receivedData.organization,
+                    guid: receivedData.guid,
+                });
+                await Integrate1CAzyk.create(_object)
+            }
+
         }
         return {data: 'OK'}
     }

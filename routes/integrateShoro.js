@@ -1,10 +1,11 @@
 let express = require('express');
 let router = express.Router();
-const {putOutXMLClientShoroAzyk ,getOutXMLClientShoroAzyk, checkOutXMLClientShoroAzyk, getOutXMLShoroAzyk, checkOutXMLShoroAzyk, getOutXMLReturnedShoroAzyk, checkOutXMLReturnedShoroAzyk} = require('../module/outXMLShoroAzyk');
+const {getOutXMLClientShoroAzyk, checkOutXMLClientShoroAzyk, getOutXMLShoroAzyk, checkOutXMLShoroAzyk, getOutXMLReturnedShoroAzyk, checkOutXMLReturnedShoroAzyk} = require('../module/outXMLShoroAzyk');
 let logger = require('logger').createLogger('integrate1Cshoro.log');
 const ModelsErrorAzyk = require('../models/errorAzyk');
 const ReceivedDataAzyk = require('../models/receivedDataAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
+const Integrate1CAzyk = require('../models/integrate1CAzyk');
 
 router.post('/shoro/put/client', async (req, res, next) => {
     let startDate = new Date()
@@ -13,7 +14,12 @@ router.post('/shoro/put/client', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
+            let integrate1CAzyk = await Integrate1CAzyk.findOne({
+                organization: organization._id,
+                guid: req.body.elements[0].elements[i].attributes.guid
+            })
             let _object = new ReceivedDataAzyk({
+                status: integrate1CAzyk?'Изменить':'Добавить',
                 organization: organization._id,
                 name: req.body.elements[0].elements[i].attributes.name,
                 guid: req.body.elements[0].elements[i].attributes.guid,

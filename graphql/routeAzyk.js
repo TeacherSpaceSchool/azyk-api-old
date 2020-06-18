@@ -56,14 +56,14 @@ const query = `
 `;
 
 const mutation = `
-    buildRoute(provider: ID!,autoTonnage: Int!, orders: [ID]!): [Delivery],
+    buildRoute(provider: ID!,autoTonnage: Int!, length: Int, orders: [ID]!): [Delivery],
     addRoute(deliverys: [DeliveryInput]!, provider: ID!, selectProdusers: [ID]!, selectDistricts: [ID]!, selectEcspeditor: ID!, selectAuto: ID!, selectedOrders: [ID]!, dateDelivery: Date!, allTonnage: Int!): Data,
     deleteRoute(_id: ID!, selectedOrders: [ID]!): Data
 `;
 
 const resolvers = {
     unloadingInvoicesFromRouting: async(parent, { orders, organization }, {user}) => {
-        if(['admin', 'суперорганизация'].includes(user.role)){
+        if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             if(organization!=='super') {
                 organization = await OrganizationAzyk.findOne({_id: organization})
             }
@@ -439,7 +439,7 @@ const resolvers = {
         }
     },
     listDownload: async(parent, {orders}, {user}) => {
-        if(user.role==='admin'){
+        if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             orders = await InvoiceAzyk.find({_id: {$in: orders}})
                 .select('orders allPrice adss')
                 .populate({
@@ -503,7 +503,7 @@ const resolvers = {
                                 }
                             }
                             if(!list[orders[i].adss[i1].item._id])
-                                list[orders[i].orders[i1].item._id] = [orders[i].orders[i1].item.name, 0]
+                                list[orders[i].adss[i1].item._id] = [orders[i].adss[i1].item.name, 0]
                             list[orders[i].adss[i1].item._id][1] += count
                         }
                     }
@@ -513,7 +513,7 @@ const resolvers = {
         }
     },
     listUnload: async(parent, {orders}, {user}) => {
-        if(user.role==='admin'){
+        if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             orders = await InvoiceAzyk.find({_id: {$in: orders}})
                 .select('orders')
                 .populate({
@@ -708,7 +708,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    buildRoute: async(parent, {provider, autoTonnage, orders}, {user}) => {
+    buildRoute: async(parent, {provider, autoTonnage, orders, length}, {user}) => {
         if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             if(provider!=='super')
                 provider = (await OrganizationAzyk.findOne({_id: provider})).warehouse.replace(', ', ',');
@@ -716,14 +716,14 @@ const resolversMutation = {
                 provider = (await ContactAzyk.findOne()).warehouse.replace(', ', ',');
             if(provider&&provider.length>0){
                 let invoices = await InvoiceAzyk.find({_id: {$in: orders}}).lean();
+                length = !length||invoices.length<=length?0:invoices.length-length;
                 let delivery = [];
                 let deliveryIndex = 0
                 let sortInvoices = [];
                 let points = provider
                 let tonnage = 0
                 let res
-
-                while(invoices.length>0){
+                while(invoices.length>length){
                     delivery[deliveryIndex] = {orders: [], legs: []}
                     sortInvoices = [];
                     points = provider
@@ -737,7 +737,7 @@ const resolversMutation = {
                         sortInvoices[res.data.optimizedWaypoints[i].providedIndex] = invoices[res.data.optimizedWaypoints[i].optimizedIndex]
                     }
                     for(let i=0; i<sortInvoices.length; i++) {
-                        if(tonnage+sortInvoices[i].allTonnage<autoTonnage) {
+                        if(tonnage+sortInvoices[i].allTonnage<autoTonnage/*&&invoices.length>length*/) {
                             tonnage += sortInvoices[i].allTonnage
                             delivery[deliveryIndex].orders.push(sortInvoices[i])
                             invoices.splice(invoices.findIndex(element=>sortInvoices[i]._id===element._id), 1)
@@ -786,7 +786,7 @@ const resolversMutation = {
         return {data: 'OK'};
     },
     deleteRoute: async(parent, { _id, selectedOrders }, {user}) => {
-        if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
+        if(!['экспедитор', 'суперэкспедитор'].includes(user.role)){
             await RouteAzyk.deleteMany({_id: _id})
             await InvoiceAzyk.updateMany({_id: {$in: selectedOrders}}, {distributed: false})
         }

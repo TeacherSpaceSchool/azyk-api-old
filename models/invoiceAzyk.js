@@ -102,6 +102,21 @@ const InvoiceAzykSchema = mongoose.Schema({
 });
 
 
+InvoiceAzykSchema.index({createdAt: 1})
+InvoiceAzykSchema.index({adss: 1})
+InvoiceAzykSchema.index({client: 1})
+InvoiceAzykSchema.index({number: 1})
+InvoiceAzykSchema.index({info: 1})
+InvoiceAzykSchema.index({address: 1})
+InvoiceAzykSchema.index({paymentMethod: 1})
+InvoiceAzykSchema.index({dateDelivery: 1})
+InvoiceAzykSchema.index({del: 1})
+InvoiceAzykSchema.index({agent: 1})
+InvoiceAzykSchema.index({organization: 1})
+InvoiceAzykSchema.index({distributer: 1})
+InvoiceAzykSchema.index({provider: 1})
+InvoiceAzykSchema.index({sale: 1});
+
 const InvoiceAzyk = mongoose.model('InvoiceAzyk', InvoiceAzykSchema);
 
 module.exports = InvoiceAzyk;

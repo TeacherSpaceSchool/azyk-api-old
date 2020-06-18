@@ -2670,16 +2670,11 @@ const resolvers = {
         if(['admin', 'суперорганизация'].includes(user.role)){
             organization = user.organization?user.organization:organization
             let workbook = new ExcelJS.Workbook();
-            let dateEnd
-            if(dateStart){
-                dateStart = new Date(dateStart)
-                dateStart.setHours(3, 0, 0, 0)
-                dateEnd = new Date(dateStart)
-                dateEnd.setDate(dateEnd.getDate() + 1)
-            }
+            dateStart = new Date(dateStart)
+            dateStart.setHours(3, 0, 0, 0)
             let data = await InvoiceAzyk.find(
                 {
-                    $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}],
+                    dateDelivery: dateStart,
                     del: {$ne: 'deleted'},
                     taken: true,
                     organization: organization
@@ -3128,13 +3123,8 @@ const resolvers = {
         if(['admin', 'суперорганизация', 'организация'].includes(user.role)){
             organization = user.organization?user.organization:organization
             let workbook = new ExcelJS.Workbook();
-            let dateEnd
-            if(dateStart){
-                dateStart = new Date(dateStart)
-                dateStart.setHours(3, 0, 0, 0)
-                dateEnd = new Date(dateStart)
-                dateEnd.setDate(dateEnd.getDate() + 1)
-            }
+            dateStart = new Date(dateStart)
+            dateStart.setHours(3, 0, 0, 0)
             if(user.organization)
                 organization = user.organization
             let districts = await DistrictAzyk.find({
@@ -3143,7 +3133,7 @@ const resolvers = {
             for(let x=0;x<districts.length;x++) {
                 let data = await InvoiceAzyk.find(
                     {
-                        $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}],
+                        dateDelivery: dateStart,
                         del: {$ne: 'deleted'},
                         taken: true,
                         organization: organization,

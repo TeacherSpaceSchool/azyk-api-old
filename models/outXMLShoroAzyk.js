@@ -9,6 +9,7 @@ const outXMLShoroSchema = mongoose.Schema({
     forwarder: String,
     exc: String,
     client: String,
+    payment: Number,
     inv: Number,
     track: {
         type: Number,

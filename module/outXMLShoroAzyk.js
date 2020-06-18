@@ -12,7 +12,7 @@ const OutXMLAdsShoroAzyk = require('../models/outXMLAdsShoroAzyk');
 const { pdDDMMYYYY, checkInt } = require('../module/const');
 const uuidv1 = require('uuid/v1.js');
 const builder = require('xmlbuilder');
-const randomstring = require('randomstring');
+const paymentMethod = {'Наличные': 0, 'Перечисление': 1, 'Консигнация': 5}
 
 module.exports.setOutXMLReturnedShoroAzyk = async(returned) => {
     let outXMLReturnedShoroAzyk = await OutXMLReturnedShoroAzyk
@@ -132,6 +132,7 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
             }
             let date = new Date(invoice.dateDelivery)
             let newOutXMLShoroAzyk = new OutXMLShoroAzyk({
+                payment: paymentMethod[invoice.paymentMethod],
                 data: [],
                 guid: await uuidv1(),
                 date: date,
@@ -293,6 +294,8 @@ module.exports.getOutXMLShoroAzyk = async() => {
             item.att('promo', '1')
         if(outXMLShoros[i].inv===1)
             item.att('inv', '1')
+        if(outXMLShoros[i].payment!==undefined)
+            item.att('payment', outXMLShoros[i].payment)
         item.att('guid', outXMLShoros[i].guid)
         item.att('client', outXMLShoros[i].client)
         item.att('agent', outXMLShoros[i].agent)
@@ -385,51 +388,6 @@ module.exports.getOutXMLClientShoroAzyk = async() => {
     }
     result = result.end({ pretty: true})
     return result
-}
-
-module.exports.putOutXMLClientShoroAzyk = async({guid, client, addres, agent, phone}) => {
-    let organization = await OrganizationAzyk
-        .findOne({name: 'ЗАО «ШОРО»'})
-    let integrate1CAzyk = await Integrate1CAzyk.findOne({
-        organization: organization._id,
-        guid: guid
-    })
-    if(integrate1CAzyk){
-        let _client = await ClientAzyk.findOne({
-            _id: integrate1CAzyk.client
-        })
-        _client.name = `Изменение ${_client.name}`
-        _client.info = `агент шоро ${agent} магазин ${client} адресс ${addres} телефон ${phone}`
-    }
-    else {
-        let _client = new UserAzyk({
-            login: randomstring.generate(20),
-            role: 'client',
-            status: 'deactive',
-            password: '12345678',
-        });
-        _client = await UserAzyk.create(_client);
-        _client = new ClientAzyk({
-            name: 'Новый',
-            phone: [phone?phone:''],
-            city: 'Бишкек',
-            address: [[addres?addres:'', '', client?client:'']],
-            user: _client._id,
-            notification: false,
-            info: `агент шоро ${agent}`
-        });
-        _client = await ClientAzyk.create(_client);
-        let _object = new Integrate1CAzyk({
-            item: null,
-            client: _client._id,
-            agent: null,
-            ecspeditor: null,
-            organization: organization,
-            guid: guid,
-        });
-        await Integrate1CAzyk.create(_object)
-
-    }
 }
 
 module.exports.getOutXMLReturnedShoroAzyk = async() => {

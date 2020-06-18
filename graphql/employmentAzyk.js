@@ -351,7 +351,7 @@ const resolversMutation = {
     deleteEmployment: async(parent, { _id }, {user}) => {
         let objects = await EmploymentAzyk.find({_id: {$in: _id}})
         for(let i=0; i<objects.length; i++){
-            if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===objects[i].organization.toString())){
+            if(user.role==='admin'){
                 await EmploymentAzyk.update({_id: objects[i]._id}, {del: 'deleted'})
                 await UserAzyk.update({_id: objects[i].user}, {status: 'deactive'})
                 await Integrate1CAzyk.deleteOne({
