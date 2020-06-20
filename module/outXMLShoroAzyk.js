@@ -95,7 +95,7 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
                 .findOne({item: invoice.orders[i].item._id})
             if(guidItem) {
                 count = invoice.orders[i].count-invoice.orders[i].returned
-                price = invoice.orders[i].allPrice/invoice.orders[i].count
+                price = Math.round(invoice.orders[i].allPrice/invoice.orders[i].count)
                 outXMLShoroAzyk.data.push({
                     guid: guidItem.guid,
                     package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
@@ -151,7 +151,7 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
                     .findOne({item: invoice.orders[i].item._id})
                 if (guidItem) {
                     count = invoice.orders[i].count-invoice.orders[i].returned
-                    price = invoice.orders[i].allPrice/invoice.orders[i].count
+                    price = Math.round(invoice.orders[i].allPrice/invoice.orders[i].count)
                     newOutXMLShoroAzyk.data.push({
                         guid: guidItem.guid,
                         package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
