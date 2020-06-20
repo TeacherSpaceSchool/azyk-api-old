@@ -84,6 +84,7 @@ module.exports.setOutXMLReturnedShoroAzyk = async(returned) => {
 
 module.exports.setOutXMLShoroAzyk = async(invoice) => {
     let count
+    let price
     let outXMLShoroAzyk = await OutXMLShoroAzyk
         .findOne({invoice: invoice._id})
     if(outXMLShoroAzyk){
@@ -94,12 +95,13 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
                 .findOne({item: invoice.orders[i].item._id})
             if(guidItem) {
                 count = invoice.orders[i].count-invoice.orders[i].returned
+                price = invoice.orders[i].allPrice/invoice.orders[i].count
                 outXMLShoroAzyk.data.push({
                     guid: guidItem.guid,
                     package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
                     qt: count,
-                    price: (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price),
-                    amount: Math.round(count * (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price)),
+                    price: price,
+                    amount: Math.round(count * price),
                     priotiry: invoice.orders[i].item.priotiry
                 })
             }
@@ -149,12 +151,13 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
                     .findOne({item: invoice.orders[i].item._id})
                 if (guidItem) {
                     count = invoice.orders[i].count-invoice.orders[i].returned
+                    price = invoice.orders[i].allPrice/invoice.orders[i].count
                     newOutXMLShoroAzyk.data.push({
                         guid: guidItem.guid,
                         package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
                         qt: count,
-                        price: (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price),
-                        amount: Math.round(count * (invoice.orders[i].item.stock ? invoice.orders[i].item.stock : invoice.orders[i].item.price)),
+                        price: price,
+                        amount: Math.round(count * price),
                         priotiry: invoice.orders[i].item.priotiry
                     })
                 }

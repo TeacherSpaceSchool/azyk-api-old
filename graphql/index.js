@@ -3,6 +3,7 @@ const { RedisPubSub } = require('graphql-redis-subscriptions');
 const pubsub = new RedisPubSub();
 module.exports.pubsub = pubsub;
 const AdsAzyk = require('./adsAzyk');
+const DiscountClientAzyk = require('./discountClientAzyk');
 const IntegrateOutShoroAzyk = require('./integrateOutShoroAzyk');
 const DistributerAzyk = require('./distributerAzyk');
 const BlogAzyk = require('./blogAzyk');
@@ -63,6 +64,7 @@ const typeDefs = gql`
     ${DistributerAzyk.type}
     ${Integrate1CAzyk.type}
     ${AdsAzyk.type}
+    ${DiscountClientAzyk.type}
     ${ReceiveDataAzyk.type}
     ${IntegrateOutShoroAzyk.type}
     ${SubscriberAzyk.type}
@@ -96,6 +98,7 @@ const typeDefs = gql`
         ${AgentRouteAzyk.mutation}
         ${DistributerAzyk.mutation}
         ${AdsAzyk.mutation}
+        ${DiscountClientAzyk.mutation}
         ${ReceiveDataAzyk.mutation}
         ${IntegrateOutShoroAzyk.mutation}
         ${SubscriberAzyk.mutation}
@@ -136,6 +139,7 @@ const typeDefs = gql`
         ${OrganizationAzyk.query}
         ${AgentHistoryGeoAzyk.query}
         ${AdsAzyk.query}
+        ${DiscountClientAzyk.query}
         ${ReceiveDataAzyk.query}
         ${IntegrateOutShoroAzyk.query}
         ${SubscriberAzyk.query}
@@ -195,6 +199,7 @@ const resolvers = {
         ...BlogAzyk.resolvers,
         ...OutXMLAdsAzyk.resolvers,
         ...AdsAzyk.resolvers,
+        ...DiscountClientAzyk.resolvers,
         ...ReceiveDataAzyk.resolvers,
         ...IntegrateOutShoroAzyk.resolvers,
         ...SubscriberAzyk.resolvers,
@@ -232,6 +237,7 @@ const resolvers = {
         ...BlogAzyk.resolversMutation,
         ...OutXMLAdsAzyk.resolversMutation,
         ...AdsAzyk.resolversMutation,
+        ...DiscountClientAzyk.resolversMutation,
         ...ReceiveDataAzyk.resolversMutation,
         ...IntegrateOutShoroAzyk.resolversMutation,
         ...SubscriberAzyk.resolversMutation,

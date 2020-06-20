@@ -1,5 +1,5 @@
 const BlogAzyk = require('../models/blogAzyk');
-const { saveImage, deleteFile, urlMain, skip } = require('../module/const');
+const { saveImage, deleteFile, urlMain } = require('../module/const');
 
 const type = `
   type Blog {

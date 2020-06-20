@@ -58,14 +58,19 @@ const resolvers = {
             })
             .lean()
         let resAdss = []
+        let priceAds
         let adss = await AdsAzyk.find({
             del: {$ne: 'deleted'},
             organization: invoice.organization
         }).sort('-createdAt')
         for(let i=0; i<adss.length; i++) {
             if(adss[i].targetType==='Цена'&&adss[i].targetPrice&&adss[i].targetPrice>0){
-                if((invoice.allPrice-invoice.returnedPrice)>adss[i].targetPrice)
+                if((invoice.allPrice-invoice.returnedPrice)>adss[i].targetPrice) {
+                    if(priceAds)
+                        resAdss.splice(resAdss.indexOf(priceAds), 1)
+                    priceAds = adss[i]._id
                     resAdss.push(adss[i]._id)
+                }
             }
             else if(adss[i].targetType==='Товар'&&adss[i].targetItems&&adss[i].targetItems.length>0){
                 let check = true

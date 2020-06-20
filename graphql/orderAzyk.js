@@ -9,7 +9,7 @@ const ClientAzyk = require('../models/clientAzyk');
 const AdsAzyk = require('../models/adsAzyk');
 const mongoose = require('mongoose');
 const ItemAzyk = require('../models/itemAzyk');
-const DeliveryDateAzyk = require('../models/deliveryDateAzyk');
+const DiscountClient = require('../models/discountClientAzyk');
 const { addBonusToClient } = require('../module/bonusClientAzyk');
 const randomstring = require('randomstring');
 const BonusClientAzyk = require('../models/bonusClientAzyk');
@@ -36,9 +36,10 @@ const type = `
     consignment: Int
     returned: Int
     consignmentPrice: Int
-  }
+ }
   type Invoice {
     _id: ID
+     discount: Int
     createdAt: Date
     updatedAt: Date
     orders: [Order]
@@ -2328,8 +2329,7 @@ const resolversMutation = {
             let superDistrict = await DistrictAzyk.findOne({
                 organization: null,
                 client: client
-            })
-                .lean()
+            }).lean()
             let distributers = await DistributerAzyk.find({
                 $or: [
                     {sales: organization},
@@ -2343,7 +2343,7 @@ const resolversMutation = {
                     let findDistrict = await DistrictAzyk.findOne({
                         organization: distributers[i].distributer,
                         client: client
-                    })
+                    }).lean()
                     if(findDistrict&&distributers[i].sales.toString().includes(organization))
                         districtSales = findDistrict
                     if(findDistrict&&distributers[i].provider.toString().includes(organization))
@@ -2374,6 +2374,8 @@ const resolversMutation = {
                 })
                     .populate('client')
                     .sort('-createdAt')
+            let discount = await DiscountClient.findOne({client: client, organization: organization}).lean()
+            discount = discount?discount.discount:0
             if(!objectInvoice){
                 if(usedBonus){
                     let bonus = await BonusAzyk.findOne({organization: organization}).lean();
@@ -2386,6 +2388,7 @@ const resolversMutation = {
                     usedBonus=0
                 let orders = [];
                 for(let ii=0; ii<baskets.length;ii++){
+                    let allPrice = Math.round(baskets[ii].count*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
                     let objectOrder = new OrderAzyk({
                         item: baskets[ii].item._id,
                         client: client,
@@ -2394,7 +2397,7 @@ const resolversMutation = {
                         consignmentPrice: Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)),
                         allTonnage: Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0)),
                         allSize: Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0)),
-                        allPrice: Math.round(baskets[ii].count*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)),
+                        allPrice: Math.round(allPrice-allPrice/100*discount),
                         status: 'обработка',
                         agent: user.employment,
                     });
@@ -2416,6 +2419,7 @@ const resolversMutation = {
                     orders[iii] = orders[iii]._id
                 }
                 objectInvoice = new InvoiceAzyk({
+                    discount: discount,
                     orders: orders,
                     client: client,
                     allPrice: Math.round(allPrice),
@@ -2450,13 +2454,14 @@ const resolversMutation = {
                         item: baskets[ii].item._id,
                         _id: {$in: objectInvoice.orders},
                     })
+                    let allPrice = Math.round(baskets[ii].count*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
                     if(objectOrder){
                         objectOrder.count+=baskets[ii].count
                         objectOrder.consignment+=baskets[ii].consignment
                         objectOrder.consignmentPrice+=Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
                         objectOrder.allTonnage+=Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0))
                         objectOrder.allSize+=Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0))
-                        objectOrder.allPrice+=Math.round(baskets[ii].count*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
+                        objectOrder.allPrice+=Math.round(allPrice-allPrice/100*objectInvoice.discount)
                         await objectOrder.save()
                     }
                     else {
@@ -2468,7 +2473,7 @@ const resolversMutation = {
                             consignmentPrice: Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)),
                             allTonnage: Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0)),
                             allSize: Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0)),
-                            allPrice: Math.round(baskets[ii].count*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)),
+                            allPrice: Math.round(allPrice-allPrice/100*objectInvoice.discount),
                             status: 'обработка',
                             agent: user.employment,
                         });
@@ -2682,7 +2687,7 @@ const resolversMutation = {
                     {_id: orders[i]._id},
                     {
                         count: orders[i].count,
-                        allPrice: Math.round(orders[i].allPrice),
+                        allPrice: orders[i].allPrice,
                         consignmentPrice: Math.round(orders[i].consignmentPrice),
                         returned: orders[i].returned,
                         consignment: orders[i].consignment,
@@ -2695,7 +2700,6 @@ const resolversMutation = {
                 allSize += orders[i].allSize
                 consignmentPrice += orders[i].consignmentPrice
             }
-
             if(object.usedBonus&&object.usedBonus>0)
                 object.allPrice = Math.round(allPrice - object.usedBonus)
             else
