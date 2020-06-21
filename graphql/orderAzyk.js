@@ -1624,8 +1624,10 @@ const resolvers = {
     invoicesForRouting: async(parent, { produsers, clients, dateStart, dateEnd, dateDelivery }, {user}) => {
         if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)) {
             if(dateDelivery) {
-                dateDelivery = new Date(dateDelivery)
-                dateDelivery.setHours(3, 0, 0, 0)
+                dateStart = new Date(dateDelivery)
+                dateStart.setHours(3, 0, 0, 0)
+                dateEnd = new Date(dateStart)
+                dateEnd.setDate(dateEnd.getDate() + 1)
             }
             else {
                 dateStart = new Date(dateStart)
@@ -1646,7 +1648,7 @@ const resolvers = {
                 distributed: {$ne: true},
                 organization: {$in: produsers},
                 client: {$in: clients},
-                ...dateDelivery?{dateDelivery: dateDelivery}:{$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}
+                ...dateDelivery?{$and: [{dateDelivery: {$gte: dateStart}}, {dateDelivery: {$lt: dateEnd}}]}:{$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}
             })
                 .select('_id agent createdAt updatedAt allTonnage allSize client allPrice consignmentPrice returnedPrice address adss editor number confirmationForwarder confirmationClient cancelClient district track forwarder  sale provider organization cancelForwarder paymentConsignation taken sync dateDelivery usedBonus')
                 .populate({path: 'client', select: '_id name'})
@@ -2388,7 +2390,7 @@ const resolversMutation = {
                     usedBonus=0
                 let orders = [];
                 for(let ii=0; ii<baskets.length;ii++){
-                    let allPrice = Math.round(baskets[ii].count*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
+                    let price = Math.round((baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)-(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)/100*discount)
                     let objectOrder = new OrderAzyk({
                         item: baskets[ii].item._id,
                         client: client,
@@ -2397,7 +2399,7 @@ const resolversMutation = {
                         consignmentPrice: Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)),
                         allTonnage: Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0)),
                         allSize: Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0)),
-                        allPrice: Math.round(allPrice-allPrice/100*discount),
+                        allPrice: Math.round(price*baskets[ii].count),
                         status: 'обработка',
                         agent: user.employment,
                     });
@@ -2450,21 +2452,23 @@ const resolversMutation = {
             }
             else {
                 for(let ii=0; ii<baskets.length;ii++){
+                    let price
                     let objectOrder = await OrderAzyk.findOne({
                         item: baskets[ii].item._id,
                         _id: {$in: objectInvoice.orders},
                     })
-                    let allPrice = Math.round(baskets[ii].count*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
                     if(objectOrder){
+                        price = Math.round(objectOrder.allPrice/objectOrder.count)
                         objectOrder.count+=baskets[ii].count
                         objectOrder.consignment+=baskets[ii].consignment
                         objectOrder.consignmentPrice+=Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
                         objectOrder.allTonnage+=Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0))
                         objectOrder.allSize+=Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0))
-                        objectOrder.allPrice+=Math.round(allPrice-allPrice/100*objectInvoice.discount)
+                        objectOrder.allPrice+=Math.round(price*baskets[ii].count)
                         await objectOrder.save()
                     }
                     else {
+                        price = Math.round((baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)-(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)/100*discount)
                         objectOrder = new OrderAzyk({
                             item: baskets[ii].item._id,
                             client: client,
@@ -2473,14 +2477,14 @@ const resolversMutation = {
                             consignmentPrice: Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)),
                             allTonnage: Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0)),
                             allSize: Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0)),
-                            allPrice: Math.round(allPrice-allPrice/100*objectInvoice.discount),
+                            allPrice: Math.round(price*baskets[ii].count),
                             status: 'обработка',
                             agent: user.employment,
                         });
                         objectOrder = await OrderAzyk.create(objectOrder);
                         objectInvoice.orders.push(objectOrder);
                     }
-                    objectInvoice.allPrice+=Math.round(baskets[ii].count*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
+                    objectInvoice.allPrice+=price*baskets[ii].count
                     objectInvoice.allTonnage+=Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0))
                     objectInvoice.allSize+=Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0))
                     objectInvoice.consignmentPrice+=Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))

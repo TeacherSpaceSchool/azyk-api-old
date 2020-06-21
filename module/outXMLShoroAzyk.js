@@ -101,7 +101,7 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
                     package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
                     qt: count,
                     price: price,
-                    amount: Math.round(count * price),
+                    amount: count * price,
                     priotiry: invoice.orders[i].item.priotiry
                 })
             }
@@ -157,7 +157,7 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
                         package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
                         qt: count,
                         price: price,
-                        amount: Math.round(count * price),
+                        amount: count * price,
                         priotiry: invoice.orders[i].item.priotiry
                     })
                 }

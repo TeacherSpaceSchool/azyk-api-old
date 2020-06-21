@@ -45,6 +45,40 @@ router.post('/shoro/put/client', async (req, res, next) => {
     }
 });
 
+router.post('/shoro/put/employment', async (req, res, next) => {
+    let organization = await OrganizationAzyk
+        .findOne({name: 'ЗАО «ШОРО»'})
+    res.set('Content+Type', 'application/xml');
+    try{
+        for(let i=0;i<req.body.elements[0].elements.length;i++) {
+            let integrate1CAzyk = await Integrate1CAzyk.findOne({
+                organization: organization._id,
+                guid: req.body.elements[0].elements[i].attributes.guid
+            })
+            let _object = new ReceivedDataAzyk({
+                status: integrate1CAzyk?'Изменить':'Добавить',
+                organization: organization._id,
+                name: req.body.elements[0].elements[i].attributes.name,
+                guid: req.body.elements[0].elements[i].attributes.guid,
+                position: req.body.elements[0].elements[i].attributes.position,
+                type: 'сотрудник'
+            });
+            await ReceivedDataAzyk.create(_object)
+        }
+        await res.status(200);
+        await res.end('success')
+    } catch (err) {
+        let _object = new ModelsErrorAzyk({
+            err: err.message,
+            path: err.path
+        });
+        await ModelsErrorAzyk.create(_object)
+        console.error(err)
+        res.status(501);
+        res.end('error')
+    }
+});
+
 router.get('/shoro/out/client', async (req, res, next) => {
     let startDate = new Date()
     res.set('Content+Type', 'application/xml');

@@ -16,11 +16,13 @@ const type = `
     phone: String
     type: String
     status: String
+    position: String
   }
 `;
 
 const query = `
-    receivedDatas(search: String!): [ReceivedData]
+    receivedDatas(search: String!, filter: String!): [ReceivedData]
+    filterReceivedData: [Filter]
 `;
 
 const mutation = `
@@ -30,16 +32,38 @@ const mutation = `
 `;
 
 const resolvers = {
-    receivedDatas: async(parent, {search}, {user}) => {
+    receivedDatas: async(parent, {search, filter}, {user}) => {
         if('admin'===user.role){
-            return await ReceivedDataAzyk.find(search.length?{
-                $or: [
-                    {name: {'$regex': search, '$options': 'i'}},
-                    {addres: {'$regex': search, '$options': 'i'}}
-                ]
-            }:{}).populate('organization').sort('-createdAt')
+            return await ReceivedDataAzyk.find({
+                type: {'$regex': filter, '$options': 'i'},
+                ...search.length ? {
+                    $or: [
+                        {name: {'$regex': search, '$options': 'i'}},
+                        {addres: {'$regex': search, '$options': 'i'}}
+                    ]
+                } : {},
+            }).populate('organization').sort('-createdAt')
         }
-    }
+    },
+    filterReceivedData: async(parent, ctx, {user}) => {
+        let filter = [
+            {
+                name: 'Все',
+                value: ''
+            },
+            {
+                name: 'Сотрудники',
+                value: 'сотрудник'
+            },
+            {
+                name: 'Клиенты',
+                value: 'клиент'
+            }
+        ]
+        if(user.role)
+            filter.push()
+        return filter
+    },
 };
 
 const resolversMutation = {

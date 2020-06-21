@@ -10,6 +10,7 @@ const type = `
     image: String
     url: String
     title: String
+    id: String
     createdAt: Date
     del: String
     item: Item
@@ -42,8 +43,8 @@ const query = `
 `;
 
 const mutation = `
-    addAds(image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
-    setAds(_id: ID!, image: Upload, url: String, title: String, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
+    addAds(id: String, image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
+    setAds(id: String, _id: ID!, image: Upload, url: String, title: String, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
     restoreAds(_id: [ID]!): Data
     deleteAds(_id: [ID]!): Data
 `;
@@ -58,7 +59,7 @@ const resolvers = {
             })
             .lean()
         let resAdss = []
-        let priceAds
+        let idAds = {}
         let adss = await AdsAzyk.find({
             del: {$ne: 'deleted'},
             organization: invoice.organization
@@ -66,10 +67,18 @@ const resolvers = {
         for(let i=0; i<adss.length; i++) {
             if(adss[i].targetType==='Цена'&&adss[i].targetPrice&&adss[i].targetPrice>0){
                 if((invoice.allPrice-invoice.returnedPrice)>adss[i].targetPrice) {
-                    if(priceAds)
-                        resAdss.splice(resAdss.indexOf(priceAds), 1)
-                    priceAds = adss[i]._id
-                    resAdss.push(adss[i]._id)
+                    if(adss[i].id&&adss[i].id.length>0){
+                        let added = !idAds[adss[i].id]||idAds[adss[i].id].target<adss[i].targetPrice
+                        if(added){
+                            if(idAds[adss[i].id]&&idAds[adss[i].id].target<adss[i].targetPrice){
+                                resAdss.splice(idAds[adss[i].id].index, 1)
+                            }
+                            idAds[adss[i].id] = {index: resAdss.length, target: adss[i].targetPrice}
+                            resAdss.push(adss[i]._id)
+                        }
+                    }
+                    else
+                        resAdss.push(adss[i]._id)
                 }
             }
             else if(adss[i].targetType==='Товар'&&adss[i].targetItems&&adss[i].targetItems.length>0){
@@ -161,7 +170,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addAds: async(parent, {image, url, title, organization, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
+    addAds: async(parent, {id, image, url, title, organization, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -174,6 +183,7 @@ const resolversMutation = {
                 targetItems: targetItems,
                 targetPrice: targetPrice,
                 multiplier: multiplier,
+                id: id,
                 targetType: targetType
             });
             if(count)
@@ -183,7 +193,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setAds: async(parent, {_id, image, url, title, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
+    setAds: async(parent, {id, _id, image, url, title, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let object = await AdsAzyk.findById(_id)
             object.item = item
@@ -193,6 +203,7 @@ const resolversMutation = {
                 filename = await saveImage(stream, filename)
                 object.image = urlMain + filename
             }
+            if(id) object.id = id
             if(url) object.url = url
             if(title) object.title = title
             if(count!=undefined) object.count = count
