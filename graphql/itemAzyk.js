@@ -429,7 +429,7 @@ const resolversMutation = {
             if(packaging)object.packaging = packaging
             if(apiece!=undefined) object.apiece = apiece
             if(priotiry!=undefined) object.priotiry = priotiry
-            object.categorys = categorys
+            if(categorys!=undefined) object.categorys = categorys
             if(user.role==='admin'){
                 object.organization = organization === undefined ? object.organization : organization;
             }

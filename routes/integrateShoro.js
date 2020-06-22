@@ -50,6 +50,11 @@ router.post('/shoro/put/employment', async (req, res, next) => {
         .findOne({name: 'ЗАО «ШОРО»'})
     res.set('Content+Type', 'application/xml');
     try{
+        let position = ''
+        if(req.body.elements[0].attributes.mode==='agent')
+            position = 'агент'
+        else if(req.body.elements[0].attributes.mode==='forwarder')
+            position = 'экспедитор'
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
             let integrate1CAzyk = await Integrate1CAzyk.findOne({
                 organization: organization._id,
@@ -60,7 +65,7 @@ router.post('/shoro/put/employment', async (req, res, next) => {
                 organization: organization._id,
                 name: req.body.elements[0].elements[i].attributes.name,
                 guid: req.body.elements[0].elements[i].attributes.guid,
-                position: req.body.elements[0].elements[i].attributes.position,
+                position: position,
                 type: 'сотрудник'
             });
             await ReceivedDataAzyk.create(_object)
