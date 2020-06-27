@@ -2096,22 +2096,20 @@ const resolvers = {
         }
     },
     statisticGeoOrder: async(parent, { organization, dateStart }, {user}) => {
-        if(['admin'].includes(user.role)){
+        if(['admin', 'суперорганизация'].includes(user.role)){
             dateStart= new Date(dateStart)
             dateStart.setHours(3, 0, 0, 0)
             let dateEnd = new Date(dateStart)
             dateEnd.setDate(dateEnd.getDate() + 1)
             let data = await InvoiceAzyk.find(
                 {
-                    $and: [
-                        dateStart ? {createdAt: {$gte: dateStart}} : {},
-                        dateEnd ? {createdAt: {$lt: dateEnd}} : {}
-                    ],
+                    $and: [{dateDelivery: {$gte: dateStart}}, {dateDelivery: {$lt: dateEnd}}],
                     taken: true,
                     del: {$ne: 'deleted'},
                     organization: organization
                 }
             ).select('address').lean()
+            console.log(data)
             data = data.map(element=>element.address)
             return data
         }
@@ -2672,9 +2670,11 @@ const resolvers = {
             let workbook = new ExcelJS.Workbook();
             dateStart = new Date(dateStart)
             dateStart.setHours(3, 0, 0, 0)
+            let dateEnd = new Date(dateStart)
+            dateEnd.setDate(dateEnd.getDate() + 1)
             let data = await InvoiceAzyk.find(
                 {
-                    dateDelivery: dateStart,
+                    $and: [{dateDelivery: {$gte: dateStart}}, {dateDelivery: {$lt: dateEnd}}],
                     del: {$ne: 'deleted'},
                     taken: true,
                     organization: organization

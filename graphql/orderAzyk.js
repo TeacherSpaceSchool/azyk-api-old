@@ -1647,7 +1647,7 @@ const resolvers = {
                 taken: true,
                 distributed: {$ne: true},
                 organization: {$in: produsers},
-                client: {$in: clients},
+                    ...clients.length>0?{client: {$in: clients}}:{},
                 ...dateDelivery?{$and: [{dateDelivery: {$gte: dateStart}}, {dateDelivery: {$lt: dateEnd}}]}:{$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}
             })
                 .select('_id agent createdAt updatedAt allTonnage allSize client allPrice consignmentPrice returnedPrice address adss editor number confirmationForwarder confirmationClient cancelClient district track forwarder  sale provider organization cancelForwarder paymentConsignation taken sync dateDelivery usedBonus')
