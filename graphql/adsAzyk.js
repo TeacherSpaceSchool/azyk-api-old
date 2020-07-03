@@ -66,7 +66,7 @@ const resolvers = {
         }).sort('-createdAt')
         for(let i=0; i<adss.length; i++) {
             if(adss[i].targetType==='Цена'&&adss[i].targetPrice&&adss[i].targetPrice>0){
-                if((invoice.allPrice-invoice.returnedPrice)>adss[i].targetPrice) {
+                if((invoice.allPrice-invoice.returnedPrice)>=adss[i].targetPrice) {
                     if(adss[i].id&&adss[i].id.length>0){
                         let added = !idAds[adss[i].id]||idAds[adss[i].id].target<adss[i].targetPrice
                         if(added){

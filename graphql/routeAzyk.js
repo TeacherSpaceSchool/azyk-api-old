@@ -771,7 +771,7 @@ const resolversMutation = {
                 deliverys: deliverys,
                 provider: provider!=='super'?provider:null,
                 selectProdusers: selectProdusers,
-                selectDistricts: selectDistricts,
+                selectDistricts: selectDistricts.filter(selectDistrict=>selectDistrict!=='super'),
                 selectEcspeditor: selectEcspeditor,
                 selectAuto: selectAuto,
                 selectedOrders: selectedOrders,
