@@ -5,7 +5,7 @@ const ClientAzyk = require('../models/clientAzyk');
 const ItemAzyk = require('../models/itemAzyk');
 const OrderAzyk = require('../models/orderAzyk');
 const AgentRouteAzyk = require('../models/agentRouteAzyk');
-const OutXMLAdsShoroAzyk = require('../models/outXMLAdsShoroAzyk');
+const OutXMLAdsShoroAzyk = require('../models/integrate/outXMLAdsShoroAzyk');
 
 const type = `
   type District {

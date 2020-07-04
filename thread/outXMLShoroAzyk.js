@@ -1,6 +1,6 @@
 const { isMainThread } = require('worker_threads');
 const connectDB = require('../models/index');
-const { reductionOutAdsXMLShoroAzyk } = require('../module/outXMLShoroAzyk');
+const { reductionOutAdsXMLShoroAzyk } = require('../module/integrate/outXMLShoroAzyk');
 const cron = require('node-cron');
 const ModelsErrorAzyk = require('../models/errorAzyk');
 connectDB.connect()

@@ -9,7 +9,7 @@ const { reductionToItem } = require('../module/itemAzyk');
 const { reductionInvoices } = require('../module/invoiceAzyk');
 const { startClientRedis } = require('../module/redis');
 const { reductionToUser, createAdmin } = require('../module/user');
-const { reductionOutAdsXMLShoroAzyk } = require('../module/outXMLShoroAzyk');
+const { reductionOutAdsXMLShoroAzyk } = require('./integrate/outXMLShoroAzyk');
 const { Worker, isMainThread } = require('worker_threads');
 
 let startResetBonusesClient = async () => {
@@ -79,14 +79,14 @@ let start = async () => {
     await startReminderClient();
     //await startResetBonusesClient()
     await startOutXMLShoroAzyk();
-    await reductionInvoices()
+    //await reductionInvoices()
     //await reductionCategoryAzyk()
     //await reductionSubCategoryAzyk()
     //await reductionToRoute()
     //await reductionToBonus()
-    await reductionToClient()
-    await reductionToOrganization()
-    await reductionToItem()
+    //await reductionToClient()
+    //await reductionToOrganization()
+    //await reductionToItem()
     //await reductionToUser()
     //await reductionToAgentRoute();
     //await reductionOutAdsXMLShoroAzyk()

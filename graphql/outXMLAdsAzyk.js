@@ -1,4 +1,4 @@
-const OutXMLAdsShoroAzyk = require('../models/outXMLAdsShoroAzyk');
+const OutXMLAdsShoroAzyk = require('../models/integrate/outXMLAdsShoroAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
 
