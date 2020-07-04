@@ -1000,7 +1000,8 @@ const resolvers = {
                             consignmentPrice: 0,
                             client: `${data[i].client.name}${data[i].client.address&&data[i].client.address[0]?` (${data[i].client.address[0][2]?`${data[i].client.address[0][2]}, `:''}${data[i].client.address[0][0]})`:''}`
                         }
-                    statistic[data[i].client._id].complet.push(data[i]._id)
+                    if(data[i].allPrice!==data[i].returnedPrice)
+                        statistic[data[i].client._id].complet.push(data[i]._id)
                     statistic[data[i].client._id].profit += data[i].allPrice - data[i].returnedPrice
                     statistic[data[i].client._id].returned += data[i].returnedPrice
                     if (data[i].consignmentPrice && !data[i].paymentConsignation) {
@@ -1108,7 +1109,7 @@ const resolvers = {
                             complet: [],
                             ads: data[i].adss[i1].title
                         }
-                        if(!statistic[data[i].adss[i1]._id].complet.includes(data[i]._id.toString()))
+                        if(data[i].allPrice!==data[i].returnedPrice&&!statistic[data[i].adss[i1]._id].complet.includes(data[i]._id.toString()))
                             statistic[data[i].adss[i1]._id].complet.push(data[i]._id.toString())
                         statistic[data[i].adss[i1]._id].profit += data[i].allPrice - data[i].returnedPrice
                         statistic[data[i].adss[i1]._id].returned += data[i].returnedPrice
@@ -1364,7 +1365,7 @@ const resolvers = {
                                 consignmentPrice: 0,
                                 organization: `${data[i].organization.name} ${type}`
                             }
-                            if(!statistic[id].complet.includes(data[i]._id.toString())) {
+                            if(data[i].allPrice!==data[i].returnedPrice&&!statistic[id].complet.includes(data[i]._id.toString())) {
                                 statistic[id].complet.push(data[i]._id.toString())
                             }
                             statistic[id].profit += data[i].allPrice - data[i].returnedPrice
@@ -1411,7 +1412,7 @@ const resolvers = {
                                     consignmentPrice: 0,
                                     organization: districts[i].name
                                 }
-                                if(!statistic[id].complet.includes(data[i1]._id.toString())) {
+                                if(data[i1].allPrice!==data[i1].returnedPrice&&!statistic[id].complet.includes(data[i1]._id.toString())) {
                                     statistic[id].complet.push(data[i1]._id.toString())
                                 }
                                 statistic[id].returned += data[i1].returnedPrice
@@ -1468,7 +1469,7 @@ const resolvers = {
                                 consignmentPrice: 0,
                                 organization: name
                             }
-                            if(!statistic[id].complet.includes(data[i1]._id.toString())) {
+                            if(data[i1].allPrice!==data[i1].returnedPrice&&!statistic[id].complet.includes(data[i1]._id.toString())) {
                                 statistic[id].complet.push(data[i1]._id.toString())
                             }
                             statistic[id].returned += data[i1].returnedPrice
@@ -1581,11 +1582,11 @@ const resolvers = {
                         returnedPrice: 0,
                         organization: data[i].organization.name
                     }
-                    if(!statistic[data[i].organization._id].complet.includes(data[i]._id.toString())) {
-                        statistic[data[i].organization._id].complet.push(data[i]._id.toString())
-                    }
                     statistic[data[i].organization._id].profit += data[i].allPrice - data[i].returnedPrice
                     statistic[data[i].organization._id].returnedPrice += data[i].returnedPrice
+                    if(data[i].allPrice!==data[i].returnedPrice&&!statistic[data[i].organization._id].complet.includes(data[i]._id.toString())) {
+                        statistic[data[i].organization._id].complet.push(data[i]._id.toString())
+                    }
                     if (data[i].consignmentPrice && !data[i].paymentConsignation) {
                         statistic[data[i].organization._id].consignmentPrice += data[i].consignmentPrice
                     }
@@ -1624,7 +1625,7 @@ const resolvers = {
                         .select('_id returnedPrice allPrice paymentConsignation consignmentPrice')
                         .lean()
                     for(let i1=0; i1<data.length; i1++) {
-                        if(!statistic[districts[i]._id].complet.includes(data[i1]._id.toString())) {
+                        if(data[i1].allPrice!==data[i1].returnedPrice&&!statistic[districts[i]._id].complet.includes(data[i1]._id.toString())) {
                             statistic[districts[i]._id].complet.push(data[i1]._id.toString())
                         }
                         statistic[districts[i]._id].profit += data[i1].allPrice - data[i1].returnedPrice
@@ -1658,7 +1659,7 @@ const resolvers = {
                 )
                     .lean()
                 for(let i1=0; i1<data.length; i1++) {
-                    if(!statistic['without'].complet.includes(data[i1]._id.toString()))
+                    if(data[i1].allPrice!==data[i1].returnedPrice&&!statistic['without'].complet.includes(data[i1]._id.toString()))
                         statistic['without'].complet.push(data[i1]._id.toString())
                     statistic['without'].returnedPrice += data[i1].returnedPrice
                     statistic['without'].profit += data[i1].allPrice - data[i1].returnedPrice
@@ -1751,7 +1752,8 @@ const resolvers = {
             }
 
             let districts = await DistrictAzyk.find({
-                    organization: null
+                organization: null,
+                name: {$ne: 'super'}
             })
                 .select('_id name client')
                 .lean()
@@ -1790,7 +1792,7 @@ const resolvers = {
                     organization: data[i].district.name
                 }
 
-                if (!statistic[data[i].district._id].complet.includes(data[i]._id.toString())) {
+                if (data[i].allPrice!==data[i].returnedPrice&&!statistic[data[i].district._id].complet.includes(data[i]._id.toString())) {
                     statistic[data[i].district._id].complet.push(data[i]._id.toString())
                 }
                 statistic[data[i].district._id].profit += data[i].allPrice - data[i].returnedPrice
@@ -2065,7 +2067,7 @@ const resolvers = {
                         consignmentPrice: 0,
                         organization: `${data[i].organization.name} ${type}`
                     }
-                    if(!statistic[id].complet.includes(data[i]._id.toString())) {
+                    if(data[i].allPrice!==data[i].returnedPrice&&!statistic[id].complet.includes(data[i]._id.toString())) {
                         statistic[id].complet.push(data[i]._id.toString())
                     }
                     statistic[id].profit += data[i].allPrice - data[i].returnedPrice
@@ -2122,7 +2124,7 @@ const resolvers = {
                     )
                         .lean()
                     for(let i1=0; i1<data.length; i1++) {
-                        if(!statistic[agents[i]._id].complet.includes(data[i1]._id.toString())) {
+                        if(data[i1].allPrice!==data[i1].returnedPrice&&!statistic[agents[i]._id].complet.includes(data[i1]._id.toString())) {
                             statistic[agents[i]._id].complet.push(data[i1]._id.toString())
                         }
                         statistic[agents[i]._id].profit += data[i1].allPrice - data[i1].returnedPrice
@@ -2156,7 +2158,7 @@ const resolvers = {
                     .select('returnedPrice allPrice _id consignmentPrice paymentConsignation')
                     .lean()
                 for(let i1=0; i1<data.length; i1++) {
-                    if(!statistic['without'].complet.includes(data[i1]._id.toString())) {
+                    if(data[i1].allPrice!==data[i1].returnedPrice&&!statistic['without'].complet.includes(data[i1]._id.toString())) {
                         statistic['without'].complet.push(data[i1]._id.toString())
                     }
                     statistic['without'].profit += data[i1].allPrice - data[i1].returnedPrice
@@ -2294,7 +2296,7 @@ const resolvers = {
                         consignmentPrice: 0,
                         organization: name
                     }
-                    if(!statistic[id].complet.includes(data[i]._id.toString())) {
+                    if(data[i].allPrice!==data[i].returnedPrice&&!statistic[id].complet.includes(data[i]._id.toString())) {
                         statistic[id].complet.push(data[i]._id.toString())
                     }
                     statistic[id].profit += data[i].allPrice - data[i].returnedPrice
@@ -2316,7 +2318,7 @@ const resolvers = {
                         consignmentPrice: 0,
                         organization: name
                     }
-                    if(!statistic[id].complet.includes(data[i]._id.toString())) {
+                    if(data[i].allPrice!==data[i].returnedPrice&&!statistic[id].complet.includes(data[i]._id.toString())) {
                         statistic[id].complet.push(data[i]._id.toString())
                     }
                     statistic[id].profit += data[i].allPrice - data[i].returnedPrice
