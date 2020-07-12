@@ -11,10 +11,10 @@ const mongoose = require('mongoose');
 const ItemAzyk = require('../models/itemAzyk');
 const DiscountClient = require('../models/discountClientAzyk');
 const { addBonusToClient } = require('../module/bonusClientAzyk');
+const { setSingleOutXMLAzyk, cancelSingleOutXMLAzyk, setSingleOutXMLAzykLogic } = require('../module/singleOutXMLAzyk');
 const randomstring = require('randomstring');
 const BonusClientAzyk = require('../models/bonusClientAzyk');
 const EmploymentAzyk = require('../models/employmentAzyk');
-const { setOutXMLShoroAzyk, cancelOutXMLShoroAzyk, setOutXMLShoroAzykLogic } = require('../module/integrate/outXMLShoroAzyk');
 const BonusAzyk = require('../models/bonusAzyk');
 const { pubsub } = require('./index');
 const { withFilter } = require('graphql-subscriptions');
@@ -2609,7 +2609,8 @@ const resolversMutation = {
         return {data: 'OK'};
     },
     setInvoicesLogic: async(parent, {track, forwarder, invoices}, {user}) => {
-        await setOutXMLShoroAzykLogic(invoices, forwarder, track)
+        await setSingleOutXMLAzykLogic(invoices, forwarder, track)
+
         let resInvoices = await InvoiceAzyk.find({_id: {$in: invoices}})
             .populate({
                 path: 'orders',
@@ -2759,12 +2760,13 @@ const resolversMutation = {
             editor: editor,
         });
         await HistoryOrderAzyk.create(objectHistoryOrder);
-        if(resInvoice.organization.name==='ЗАО «ШОРО»'){
+
+        if(resInvoice.organization.pass&&resInvoice.organization.pass.length){
             if(resInvoice.orders[0].status==='принят') {
-                resInvoice.sync = await setOutXMLShoroAzyk(resInvoice)
+                resInvoice.sync = await setSingleOutXMLAzyk(resInvoice)
             }
             else if(resInvoice.orders[0].status==='отмена') {
-                resInvoice.sync = await cancelOutXMLShoroAzyk(resInvoice)
+                resInvoice.sync = await cancelSingleOutXMLAzyk(resInvoice)
             }
         }
 

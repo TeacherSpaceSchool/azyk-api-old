@@ -1,37 +1,36 @@
-const OutXMLShoroAzyk = require('../../models/integrate/outXMLShoroAzyk');
-const OutXMLReturnedShoroAzyk = require('../../models/integrate/outXMLReturnedShoroAzyk');
-const OutXMLClientShoroAzyk = require('../../models/integrate/outXMLClientShoroAzyk');
-const ClientAzyk = require('../../models/clientAzyk');
-const OrganizationAzyk = require('../../models/organizationAzyk');
-const UserAzyk = require('../../models/userAzyk');
-const Integrate1CAzyk = require('../../models/integrate1CAzyk');
-const InvoiceAzyk = require('../../models/invoiceAzyk');
-const ReturnedAzyk = require('../../models/returnedAzyk');
-const DistrictAzyk = require('../../models/districtAzyk');
-const OutXMLAdsShoroAzyk = require('../../models/integrate/outXMLAdsShoroAzyk');
-const { pdDDMMYYYY, checkInt } = require('../const');
+const SingleOutXMLAzyk = require('../models/singleOutXMLAzyk');
+const SingleOutXMLReturnedAzyk = require('../models/singleOutXMLReturnedAzyk');
+const SingleOutXMLAdsAzyk = require('../models/singleOutXMLAdsAzyk');
+const ClientAzyk = require('../models/clientAzyk');
+const OrganizationAzyk = require('../models/organizationAzyk');
+const UserAzyk = require('../models/userAzyk');
+const Integrate1CAzyk = require('../models/integrate1CAzyk');
+const InvoiceAzyk = require('../models/invoiceAzyk');
+const ReturnedAzyk = require('../models/returnedAzyk');
+const DistrictAzyk = require('../models/districtAzyk');
+const { pdDDMMYYYY, checkInt } = require('./const');
 const uuidv1 = require('uuid/v1.js');
 const builder = require('xmlbuilder');
 const paymentMethod = {'Наличные': 0, 'Перечисление': 1, 'Консигнация': 5}
 
-module.exports.setOutXMLReturnedShoroAzyk = async(returned) => {
-    let outXMLReturnedShoroAzyk = await OutXMLReturnedShoroAzyk
+module.exports.setSingleOutXMLReturnedAzyk = async(returned) => {
+    let outXMLReturnedAzyk = await SingleOutXMLReturnedAzyk
         .findOne({returned: returned._id})
-    if(outXMLReturnedShoroAzyk){
-        outXMLReturnedShoroAzyk.status = 'update'
-        outXMLReturnedShoroAzyk.data = []
+    if(outXMLReturnedAzyk){
+        outXMLReturnedAzyk.status = 'update'
+        outXMLReturnedAzyk.data = []
         for (let i = 0; i < returned.items.length; i++) {
             let guidItem = await Integrate1CAzyk
                 .findOne({item: returned.items[i]._id})
             if(guidItem)
-                outXMLReturnedShoroAzyk.data.push({
+                outXMLReturnedAzyk.data.push({
                     guid: guidItem.guid,
                     qt:  returned.items[i].count,
                     price: returned.items[i].price,
                     amount: returned.items[i].allPrice
                 })
         }
-        await outXMLReturnedShoroAzyk.save()
+        await outXMLReturnedAzyk.save()
         await ReturnedAzyk.updateMany({_id: returned._id}, {sync: 1})
     }
     else {
@@ -51,7 +50,7 @@ module.exports.setOutXMLReturnedShoroAzyk = async(returned) => {
                         date.setDate(date.getDate() + 1)
                     if(date.getDay()===0)
                         date.setDate(date.getDate() + 1)
-                    let newOutXMLReturnedShoroAzyk = new OutXMLReturnedShoroAzyk({
+                    let newOutXMLReturnedAzyk = new SingleOutXMLReturnedAzyk({
                         data: [],
                         guid: await uuidv1(),
                         date: date,
@@ -60,13 +59,15 @@ module.exports.setOutXMLReturnedShoroAzyk = async(returned) => {
                         agent: guidAgent.guid,
                         forwarder: guidEcspeditor.guid,
                         returned: returned._id,
-                        status: 'create'
+                        status: 'create',
+                        organization: returned.organization._id,
+                        pass: returned.organization.pass,
                     });
                     for (let i = 0; i < returned.items.length; i++) {
                         let guidItem = await Integrate1CAzyk
                             .findOne({item: returned.items[i]._id})
                         if (guidItem)
-                            newOutXMLReturnedShoroAzyk.data.push({
+                            newOutXMLReturnedAzyk.data.push({
                                 guid: guidItem.guid,
                                 qt: returned.items[i].count,
                                 price: returned.items[i].price,
@@ -74,7 +75,7 @@ module.exports.setOutXMLReturnedShoroAzyk = async(returned) => {
                                 priotiry: returned.items[i].priotiry
                             })
                     }
-                    await OutXMLReturnedShoroAzyk.create(newOutXMLReturnedShoroAzyk);
+                    await SingleOutXMLReturnedAzyk.create(newOutXMLReturnedAzyk);
                     await ReturnedAzyk.updateMany({_id: returned._id}, {sync: 1})
                 }
             }
@@ -82,21 +83,21 @@ module.exports.setOutXMLReturnedShoroAzyk = async(returned) => {
     }
 }
 
-module.exports.setOutXMLShoroAzyk = async(invoice) => {
+module.exports.setSingleOutXMLAzyk = async(invoice) => {
     let count
     let price
-    let outXMLShoroAzyk = await OutXMLShoroAzyk
+    let outXMLAzyk = await SingleOutXMLAzyk
         .findOne({invoice: invoice._id})
-    if(outXMLShoroAzyk){
-        outXMLShoroAzyk.status = 'update'
-        outXMLShoroAzyk.data = []
+    if(outXMLAzyk){
+        outXMLAzyk.status = 'update'
+        outXMLAzyk.data = []
         for (let i = 0; i < invoice.orders.length; i++) {
             let guidItem = await Integrate1CAzyk
                 .findOne({item: invoice.orders[i].item._id})
             if(guidItem) {
                 count = invoice.orders[i].count-invoice.orders[i].returned
                 price = Math.round(invoice.orders[i].allPrice/invoice.orders[i].count)
-                outXMLShoroAzyk.data.push({
+                outXMLAzyk.data.push({
                     guid: guidItem.guid,
                     package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
                     qt: count,
@@ -106,7 +107,7 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
                 })
             }
         }
-        await outXMLShoroAzyk.save()
+        await outXMLAzyk.save()
         await InvoiceAzyk.updateMany({_id: invoice._id}, {sync: 1})
         return 1
     }
@@ -116,68 +117,64 @@ module.exports.setOutXMLShoroAzyk = async(invoice) => {
         if(guidClient){
             let district = await DistrictAzyk
                 .findOne({client: invoice.client._id, organization: invoice.organization._id})
-            let guidAgent = ''
-            let guidEcspeditor = ''
             if(district) {
-                guidAgent = await Integrate1CAzyk
+                let guidAgent = await Integrate1CAzyk
                     .findOne({agent: district.agent})
-                if(guidAgent)
-                    guidAgent = guidAgent.guid
-                else
-                    guidAgent = ''
-                guidEcspeditor = await Integrate1CAzyk
+                let guidEcspeditor = await Integrate1CAzyk
                     .findOne({ecspeditor: district.ecspeditor})
-                if(guidEcspeditor)
+                if(guidAgent&&guidEcspeditor){
+                    guidAgent = guidAgent.guid
                     guidEcspeditor = guidEcspeditor.guid
-                else
-                    guidEcspeditor = ''
-            }
-            let date = new Date(invoice.dateDelivery)
-            let newOutXMLShoroAzyk = new OutXMLShoroAzyk({
-                payment: paymentMethod[invoice.paymentMethod],
-                data: [],
-                guid: await uuidv1(),
-                date: date,
-                number: invoice.number,
-                client: guidClient.guid,
-                agent: guidAgent,
-                forwarder: guidEcspeditor,
-                invoice: invoice._id,
-                status: 'create',
-                inv: invoice.inv,
-            });
-            for (let i = 0; i < invoice.orders.length; i++) {
-                let guidItem = await Integrate1CAzyk
-                    .findOne({item: invoice.orders[i].item._id})
-                if (guidItem) {
-                    count = invoice.orders[i].count-invoice.orders[i].returned
-                    price = Math.round(invoice.orders[i].allPrice/invoice.orders[i].count)
-                    newOutXMLShoroAzyk.data.push({
-                        guid: guidItem.guid,
-                        package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
-                        qt: count,
-                        price: price,
-                        amount: count * price,
-                        priotiry: invoice.orders[i].item.priotiry
-                    })
+                    let date = new Date(invoice.dateDelivery)
+                    let newOutXMLAzyk = new SingleOutXMLAzyk({
+                        payment: paymentMethod[invoice.paymentMethod],
+                        data: [],
+                        guid: await uuidv1(),
+                        date: date,
+                        number: invoice.number,
+                        client: guidClient.guid,
+                        agent: guidAgent,
+                        forwarder: guidEcspeditor,
+                        invoice: invoice._id,
+                        status: 'create',
+                        inv: invoice.inv,
+                        organization: invoice.organization._id,
+                        pass: invoice.organization.pass,
+                    });
+                    for (let i = 0; i < invoice.orders.length; i++) {
+                        let guidItem = await Integrate1CAzyk
+                            .findOne({item: invoice.orders[i].item._id})
+                        if (guidItem) {
+                            count = invoice.orders[i].count-invoice.orders[i].returned
+                            price = Math.round(invoice.orders[i].allPrice/invoice.orders[i].count)
+                            newOutXMLAzyk.data.push({
+                                guid: guidItem.guid,
+                                package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
+                                qt: count,
+                                price: price,
+                                amount: count * price,
+                                priotiry: invoice.orders[i].item.priotiry
+                            })
+                        }
+                    }
+                    await SingleOutXMLAzyk.create(newOutXMLAzyk);
+                    await InvoiceAzyk.updateMany({_id: invoice._id}, {sync: 1})
+                    return 1
                 }
             }
-            await OutXMLShoroAzyk.create(newOutXMLShoroAzyk);
-            await InvoiceAzyk.updateMany({_id: invoice._id}, {sync: 1})
-            return 1
         }
     }
     return 0
 }
 
-module.exports.setOutXMLShoroAzykLogic = async(invoices, forwarder, track) => {
+module.exports.setSingleOutXMLAzykLogic = async(invoices, forwarder, track) => {
     if(track!=undefined||forwarder) {
         let guidEcspeditor
         if(forwarder){
             guidEcspeditor = await Integrate1CAzyk
                 .findOne({ecspeditor: forwarder})
         }
-        await OutXMLShoroAzyk.updateMany(
+        await SingleOutXMLAzyk.updateMany(
             {invoice: {$in: invoices}},
             {
                 status: 'update',
@@ -192,14 +189,14 @@ module.exports.setOutXMLShoroAzykLogic = async(invoices, forwarder, track) => {
     }
 }
 
-module.exports.setOutXMLReturnedShoroAzykLogic = async(returneds, forwarder, track) => {
+module.exports.setSingleOutXMLReturnedAzykLogic = async(returneds, forwarder, track) => {
     if(track!=undefined||forwarder) {
         let guidEcspeditor
         if(forwarder){
             guidEcspeditor = await Integrate1CAzyk
                 .findOne({ecspeditor: forwarder})
         }
-        await OutXMLReturnedShoroAzyk.updateMany(
+        await SingleOutXMLReturnedAzyk.updateMany(
             {returned: {$in: returneds}},
             {
                 status: 'update',
@@ -214,130 +211,127 @@ module.exports.setOutXMLReturnedShoroAzykLogic = async(returneds, forwarder, tra
     }
 }
 
-module.exports.cancelOutXMLReturnedShoroAzyk = async(returned) => {
-    let outXMLReturnedShoroAzyk = await OutXMLReturnedShoroAzyk
+module.exports.cancelSingleOutXMLReturnedAzyk = async(returned) => {
+    let outXMLReturnedAzyk = await SingleOutXMLReturnedAzyk
         .findOne({returned: returned._id})
-    if(outXMLReturnedShoroAzyk){
-        outXMLReturnedShoroAzyk.status = 'del'
-        await outXMLReturnedShoroAzyk.save()
+    if(outXMLReturnedAzyk){
+        outXMLReturnedAzyk.status = 'del'
+        await outXMLReturnedAzyk.save()
     }
 }
 
-module.exports.cancelOutXMLShoroAzyk = async(invoice) => {
-    let outXMLShoroAzyk = await OutXMLShoroAzyk
+module.exports.cancelSingleOutXMLAzyk = async(invoice) => {
+    let outXMLAzyk = await SingleOutXMLAzyk
         .findOne({invoice: invoice._id})
-    if(outXMLShoroAzyk){
-        outXMLShoroAzyk.status = 'del'
-        await outXMLShoroAzyk.save()
+    if(outXMLAzyk){
+        outXMLAzyk.status = 'del'
+        await outXMLAzyk.save()
         return 1
     }
     return 0
 }
 
-module.exports.checkOutXMLShoroAzyk = async(guid, exc) => {
-    let outXMLShoroAzyk = await OutXMLShoroAzyk
-        .findOne({guid: guid})
-    if(outXMLShoroAzyk){
-        outXMLShoroAzyk.status =  exc?'error':'check'
-        outXMLShoroAzyk.exc =  exc?exc:null
-        await outXMLShoroAzyk.save()
-        await InvoiceAzyk.updateMany({_id: outXMLShoroAzyk.invoice}, !exc?{sync: 2}:{})
+module.exports.checkSingleOutXMLAzyk = async(pass, guid, exc) => {
+    let outXMLAzyk = await SingleOutXMLAzyk
+        .findOne({pass: pass, guid: guid})
+    if(outXMLAzyk){
+        outXMLAzyk.status =  exc?'error':'check'
+        outXMLAzyk.exc =  exc?exc:null
+        await outXMLAzyk.save()
+        await InvoiceAzyk.updateMany({_id: outXMLAzyk.invoice}, !exc?{sync: 2}:{})
     }
 }
 
-module.exports.checkOutXMLReturnedShoroAzyk = async(guid, exc) => {
-    let outXMLReturnedShoroAzyk = await OutXMLReturnedShoroAzyk
-        .findOne({guid: guid})
-    if(outXMLReturnedShoroAzyk){
-        outXMLReturnedShoroAzyk.status = exc?'error':'check'
-        outXMLReturnedShoroAzyk.exc =  exc?exc:null
-        await outXMLReturnedShoroAzyk.save()
-        await ReturnedAzyk.updateMany({_id: outXMLReturnedShoroAzyk.returned}, !exc?{sync: 2}:{})
+module.exports.checkSingleOutXMLReturnedAzyk = async(pass, guid, exc) => {
+    let outXMLReturnedAzyk = await SingleOutXMLReturnedAzyk
+        .findOne({pass: pass, guid: guid})
+    if(outXMLReturnedAzyk){
+        outXMLReturnedAzyk.status = exc?'error':'check'
+        outXMLReturnedAzyk.exc =  exc?exc:null
+        await outXMLReturnedAzyk.save()
+        await ReturnedAzyk.updateMany({_id: outXMLReturnedAzyk.returned}, !exc?{sync: 2}:{})
     }
 }
 
-module.exports.checkOutXMLClientShoroAzyk = async(guid, exc) => {
+module.exports.checkSingleOutXMLClientAzyk = async(pass, guid, exc) => {
     let organization = await OrganizationAzyk
-        .findOne({name: 'ЗАО «ШОРО»'})
+        .findOne({pass: pass})
     let guidClient = await Integrate1CAzyk
         .findOne({guid: guid, organization: organization._id})
     if (guidClient&&!exc) {
         let client = await ClientAzyk
             .findOne({_id: guidClient.client})
-        client.sync.push('ЗАО «ШОРО»')
+        client.sync.push(organization._id.toString())
         await client.save()
     }
-    else if (guidClient&&exc) {
-        let object = new OutXMLClientShoroAzyk({
+    /*else if (guidClient&&exc) {
+        let object = new SingleOutXMLClientAzyk({
             guid: guidClient.guid,
             client: guidClient.client,
             exc: exc
         });
-        await OutXMLClientShoroAzyk.create(object);
-    }
+        await SingleOutXMLClientAzyk.create(object);
+    }*/
 }
 
-module.exports.getOutXMLShoroAzyk = async() => {
+module.exports.getSingleOutXMLAzyk = async(pass) => {
     let result = builder.create('root').att('mode', 'sales');
     let date = new Date()
     if(date.getHours()>3)
         date.setDate(date.getDate() + 1)
     date.setHours(3, 0, 0, 0)
-    let outXMLShoros = await OutXMLShoroAzyk
-        .find({date: {$lte: date}, $and: [{status: {$ne: 'check'}}, {status: {$ne: 'error'}}]})
+    let outXMLs = await SingleOutXMLAzyk
+        .find({pass: pass, date: {$lte: date}, $and: [{status: {$ne: 'check'}}, {status: {$ne: 'error'}}]})
         .populate({path: 'invoice'})
         .sort('date')
         //.limit(20)
-    for(let i=0;i<outXMLShoros.length;i++){
+    for(let i=0;i<outXMLs.length;i++){
         let item = result
             .ele('item')
-        if(outXMLShoros[i].status==='del')
+        if(outXMLs[i].status==='del')
             item.att('del', '1')
-        if(outXMLShoros[i].promo===1)
+        if(outXMLs[i].promo===1)
             item.att('promo', '1')
-        if(outXMLShoros[i].inv===1)
+        if(outXMLs[i].inv===1)
             item.att('inv', '1')
-        if(outXMLShoros[i].payment!==undefined)
-            item.att('payment', outXMLShoros[i].payment)
-        item.att('guid', outXMLShoros[i].guid)
-        item.att('client', outXMLShoros[i].client)
-        item.att('agent', outXMLShoros[i].agent)
-        item.att('track', outXMLShoros[i].track?outXMLShoros[i].track:1)
-        item.att('forwarder', outXMLShoros[i].forwarder)
-        item.att('date', pdDDMMYYYY(outXMLShoros[i].date))
-        item.att('coment', outXMLShoros[i].invoice?`${outXMLShoros[i].invoice.info} ${outXMLShoros[i].invoice.address[2]?`${outXMLShoros[i].invoice.address[2]}, `:''}${outXMLShoros[i].invoice.address[0]}`:'')
+        if(outXMLs[i].payment!==undefined)
+            item.att('payment', outXMLs[i].payment)
+        item.att('guid', outXMLs[i].guid)
+        item.att('client', outXMLs[i].client)
+        item.att('agent', outXMLs[i].agent)
+        item.att('track', outXMLs[i].track?outXMLs[i].track:1)
+        item.att('forwarder', outXMLs[i].forwarder)
+        item.att('date', pdDDMMYYYY(outXMLs[i].date))
+        item.att('coment', outXMLs[i].invoice?`${outXMLs[i].invoice.info} ${outXMLs[i].invoice.address[2]?`${outXMLs[i].invoice.address[2]}, `:''}${outXMLs[i].invoice.address[0]}`:'')
 
-        outXMLShoros[i].data = outXMLShoros[i].data.sort(function (a, b) {
+        outXMLs[i].data = outXMLs[i].data.sort(function (a, b) {
             return checkInt(a.priotiry) - checkInt(b.priotiry)
         });
 
-        for(let ii=0;ii<outXMLShoros[i].data.length;ii++){
+        for(let ii=0;ii<outXMLs[i].data.length;ii++){
             item.ele('product')
-                .att('guid', outXMLShoros[i].data[ii].guid)
-                .att('package', outXMLShoros[i].data[ii].package)
-                .att('qty',  outXMLShoros[i].data[ii].qt)
-                .att('price', outXMLShoros[i].data[ii].price)
-                .att('amount', outXMLShoros[i].data[ii].amount)
+                .att('guid', outXMLs[i].data[ii].guid)
+                .att('package', outXMLs[i].data[ii].package)
+                .att('qty',  outXMLs[i].data[ii].qt)
+                .att('price', outXMLs[i].data[ii].price)
+                .att('amount', outXMLs[i].data[ii].amount)
         }
     }
     result = result.end({ pretty: true})
     return result
 }
 
-module.exports.getOutXMLClientShoroAzyk = async() => {
+module.exports.getSingleOutXMLClientAzyk = async(pass) => {
     let result = builder.create('root').att('mode', 'client');
     let organization = await OrganizationAzyk
-        .findOne({name: 'ЗАО «ШОРО»'})
+        .findOne({pass: pass})
     let integrate1Cs =  await Integrate1CAzyk
         .find({
             client: {$ne: null},
             organization: organization._id
         })
         .distinct('client')
-    let outXMLClientShoroAzyks =  await OutXMLClientShoroAzyk
-        .find()
-        .distinct('client')
-    let outXMLShoros = await ClientAzyk
+    let outXMLs = await ClientAzyk
         .aggregate([
             { $lookup:
                 {
@@ -357,23 +351,20 @@ module.exports.getOutXMLClientShoroAzyk = async() => {
             },
             {
                 $match:{
-                    $and: [
-                        {_id: {$nin: outXMLClientShoroAzyks}},
-                        {_id: {$in: integrate1Cs}}
-                    ],
-                    sync: {$ne: 'ЗАО «ШОРО»'},
+                    _id: {$in: integrate1Cs},
+                    sync: {$ne: organization._id.toString()},
                     'user.status': 'active',
                     del: {$ne: 'deleted'}
                 }
             },
             { $limit : 100 },
         ])
-    for(let i=0;i<outXMLShoros.length;i++){
+    for(let i=0;i<outXMLs.length;i++){
         let guidClient = await Integrate1CAzyk
-            .findOne({client: outXMLShoros[i]._id, organization: organization._id})
+            .findOne({client: outXMLs[i]._id, organization: organization._id})
         if(guidClient){
             let district = await DistrictAzyk
-                .findOne({client: outXMLShoros[i]._id, organization: organization._id})
+                .findOne({client: outXMLs[i]._id, organization: organization._id})
             let agent;
             if(district&&district.agent){
                 agent= await Integrate1CAzyk
@@ -382,9 +373,9 @@ module.exports.getOutXMLClientShoroAzyk = async() => {
             let item = result
                 .ele('item')
             item.att('guid', guidClient.guid)
-            item.att('name', outXMLShoros[i].address[0][2])
-            item.att('address', outXMLShoros[i].address[0][0])
-            item.att('tel', outXMLShoros[i].phone)
+            item.att('name', outXMLs[i].address[0][2])
+            item.att('address', outXMLs[i].address[0][0])
+            item.att('tel', outXMLs[i].phone)
             if(agent)
                 item.att('agent', agent.guid)
         }
@@ -393,54 +384,54 @@ module.exports.getOutXMLClientShoroAzyk = async() => {
     return result
 }
 
-module.exports.getOutXMLReturnedShoroAzyk = async() => {
+module.exports.getSingleOutXMLReturnedAzyk = async(pass) => {
     let result = builder.create('root').att('mode', 'returned');
-    let outXMLReturnedShoros = await OutXMLReturnedShoroAzyk
-        .find({$and: [{status: {$ne: 'check'}}, {status: {$ne: 'error'}}]})
+    let outXMLReturneds = await SingleOutXMLReturnedAzyk
+        .find({pass: pass, $and: [{status: {$ne: 'check'}}, {status: {$ne: 'error'}}]})
         .populate({path: 'returned'})
         .sort('date')
         //.limit(20)
-    for(let i=0;i<outXMLReturnedShoros.length;i++){
+    for(let i=0;i<outXMLReturneds.length;i++){
         let item = result
             .ele('item')
-        if(outXMLReturnedShoros[i].status==='del')
+        if(outXMLReturneds[i].status==='del')
             item.att('del', '1')
-        item.att('guid', outXMLReturnedShoros[i].guid)
-        item.att('client', outXMLReturnedShoros[i].client)
-        item.att('agent', outXMLReturnedShoros[i].agent)
-        item.att('forwarder', outXMLReturnedShoros[i].forwarder)
-        item.att('date', pdDDMMYYYY(outXMLReturnedShoros[i].date))
-        item.att('track', outXMLReturnedShoros[i].track?outXMLReturnedShoros[i].track:1)
-        item.att('coment', `${outXMLReturnedShoros[i].returned.info} ${outXMLReturnedShoros[i].returned.address[2]?`${outXMLReturnedShoros[i].returned.address[2]}, `:''}${outXMLReturnedShoros[i].returned.address[0]}`)
+        item.att('guid', outXMLReturneds[i].guid)
+        item.att('client', outXMLReturneds[i].client)
+        item.att('agent', outXMLReturneds[i].agent)
+        item.att('forwarder', outXMLReturneds[i].forwarder)
+        item.att('date', pdDDMMYYYY(outXMLReturneds[i].date))
+        item.att('track', outXMLReturneds[i].track?outXMLReturneds[i].track:1)
+        item.att('coment', `${outXMLReturneds[i].returned.info} ${outXMLReturneds[i].returned.address[2]?`${outXMLReturneds[i].returned.address[2]}, `:''}${outXMLReturneds[i].returned.address[0]}`)
 
-        outXMLReturnedShoros[i].data = outXMLReturnedShoros[i].data.sort(function (a, b) {
+        outXMLReturneds[i].data = outXMLReturneds[i].data.sort(function (a, b) {
             return checkInt(a.priotiry) - checkInt(b.priotiry)
         });
 
-        for(let ii=0;ii<outXMLReturnedShoros[i].data.length;ii++){
+        for(let ii=0;ii<outXMLReturneds[i].data.length;ii++){
             item.ele('product')
-                .att('guid', outXMLReturnedShoros[i].data[ii].guid)
-                .att('qty',  outXMLReturnedShoros[i].data[ii].qt)
-                .att('price', outXMLReturnedShoros[i].data[ii].price)
-                .att('amount', outXMLReturnedShoros[i].data[ii].amount)
+                .att('guid', outXMLReturneds[i].data[ii].guid)
+                .att('qty',  outXMLReturneds[i].data[ii].qt)
+                .att('price', outXMLReturneds[i].data[ii].price)
+                .att('amount', outXMLReturneds[i].data[ii].amount)
         }
     }
     result = result.end({ pretty: true})
     return result
 }
 
-module.exports.reductionOutAdsXMLShoroAzyk = async() => {
+module.exports.reductionOutAdsXMLAzyk = async(pass) => {
     let dateXml = new Date()
     dateXml.setHours(3, 0, 0, 0)
     let guidItems = {}
     let organization = await OrganizationAzyk
-        .findOne({name: 'ЗАО «ШОРО»'})
+        .findOne({pass: pass})
     let districts = await DistrictAzyk.find({
         organization: organization._id
     })
     for(let i=0;i<districts.length;i++) {
-        let outXMLAdsShoroAzyk = await OutXMLAdsShoroAzyk.findOne({district: districts[i]._id})
-        if(outXMLAdsShoroAzyk) {
+        let outXMLAdsAzyk = await SingleOutXMLAdsAzyk.findOne({district: districts[i]._id})
+        if(outXMLAdsAzyk) {
             let guidAgent = await Integrate1CAzyk
                 .findOne({agent: districts[i].agent})
             let guidEcspeditor = await Integrate1CAzyk
@@ -460,17 +451,19 @@ module.exports.reductionOutAdsXMLShoroAzyk = async() => {
                         path: 'adss'
                     })
                 if (orders.length>0) {
-                    let newOutXMLShoroAzyk = new OutXMLShoroAzyk({
+                    let newOutXMLAzyk = new SingleOutXMLAzyk({
                         data: [],
                         guid: await uuidv1(),
                         date: dateXml,
                         number: `акции ${districts[i].name}`,
-                        client: outXMLAdsShoroAzyk.guid,
+                        client: outXMLAdsAzyk.guid,
                         agent: guidAgent.guid,
                         forwarder: guidEcspeditor.guid,
                         invoice: null,
                         status: 'create',
-                        promo: 1
+                        promo: 1,
+                        organization: organization._id,
+                        pass: organization.pass
                     });
                     let itemsData = {}
                     for (let i1 = 0; i1 < orders.length; i1++) {
@@ -504,8 +497,8 @@ module.exports.reductionOutAdsXMLShoroAzyk = async() => {
                             amount: Math.round(itemData.qt * itemData.price)
                         }
                     })
-                    newOutXMLShoroAzyk.data = itemsData
-                    await OutXMLShoroAzyk.create(newOutXMLShoroAzyk);
+                    newOutXMLAzyk.data = itemsData
+                    await SingleOutXMLAzyk.create(newOutXMLAzyk);
                 }
             }
         }

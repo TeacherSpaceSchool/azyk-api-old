@@ -5,7 +5,7 @@ const DistributerAzyk = require('../models/distributerAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
 const ClientAzyk = require('../models/clientAzyk');
 const randomstring = require('randomstring');
-const { setOutXMLReturnedShoroAzyk, cancelOutXMLReturnedShoroAzyk, setOutXMLReturnedShoroAzykLogic } = require('../module/integrate/outXMLShoroAzyk');
+const { setSingleOutXMLReturnedAzyk, cancelSingleOutXMLReturnedAzyk, setSingleOutXMLReturnedAzykLogic } = require('../module/singleOutXMLAzyk');
 const { pubsub } = require('./index');
 const { withFilter } = require('graphql-subscriptions');
 const RELOAD_RETURNED = 'RELOAD_RETURNED';
@@ -1811,7 +1811,7 @@ const resolversMutation = {
         return {data: 'OK'};
     },
     setReturnedLogic: async(parent, {track, forwarder, returneds}) => {
-        await setOutXMLReturnedShoroAzykLogic(returneds, forwarder, track)
+        await setSingleOutXMLReturnedAzykLogic(returneds, forwarder, track)
         return {data: 'OK'};
     },
     setReturned: async(parent, {items, returned, confirmationForwarder, cancelForwarder}, {user}) => {
@@ -1883,14 +1883,16 @@ const resolversMutation = {
             }
         }
         await object.save();
-        if(object.organization.name==='ЗАО «ШОРО»'){
+
+        if(object.organization.pass&&object.organization.pass.length){
             if(object.confirmationForwarder) {
-                await setOutXMLReturnedShoroAzyk(object)
+                await setSingleOutXMLReturnedAzyk(object)
             }
             else if(object.cancelForwarder) {
-                await cancelOutXMLReturnedShoroAzyk(object)
+                await cancelSingleOutXMLReturnedAzyk(object)
             }
         }
+
         let objectHistoryReturned = new HistoryReturnedAzyk({
             returned: returned,
             editor: editor,

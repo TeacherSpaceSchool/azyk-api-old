@@ -5,7 +5,8 @@ const OutXMLAdsShoroSchema = mongoose.Schema({
     district: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'DistrictAzyk'
-    }
+    },
+
 }, {
     timestamps: true
 });

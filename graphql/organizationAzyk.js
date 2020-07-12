@@ -38,8 +38,10 @@ const type = `
     consignation: Boolean
     onlyDistrict: Boolean
     onlyIntegrate: Boolean
+    autoAccept: Boolean
     del: String
     priotiry: Int
+    pass: String
   }
 `;
 
@@ -53,8 +55,8 @@ const query = `
 `;
 
 const mutation = `
-    addOrganization(warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, unite: Boolean!, superagent: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!): Data
-    setOrganization(warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, unite: Boolean, superagent: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean): Data
+    addOrganization(pass: String, warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, unite: Boolean!, superagent: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!, autoAccept: Boolean!): Data
+    setOrganization(pass: String, warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, unite: Boolean, superagent: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean, autoAccept: Boolean): Data
     restoreOrganization(_id: [ID]!): Data
     deleteOrganization(_id: [ID]!): Data
     onoffOrganization(_id: [ID]!): Data
@@ -210,7 +212,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrganization: async(parent, {warehouse, superagent, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    addOrganization: async(parent, {autoAccept, pass, warehouse, superagent, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -232,8 +234,11 @@ const resolversMutation = {
                 superagent: superagent,
                 onlyIntegrate: onlyIntegrate,
                 miniInfo: miniInfo,
-                warehouse: warehouse
+                warehouse: warehouse,
+                autoAccept: autoAccept
             });
+            if(pass)
+                objectOrganization.pass = pass
             objectOrganization = await OrganizationAzyk.create(objectOrganization)
             let objectBonus = new BonusAzyk({
                 target: 0,
@@ -244,7 +249,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setOrganization: async(parent, {warehouse, miniInfo, superagent, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    setOrganization: async(parent, {autoAccept, pass, warehouse, miniInfo, superagent, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===_id.toString())) {
             let object = await OrganizationAzyk.findById(_id)
             if (image) {
@@ -253,6 +258,7 @@ const resolversMutation = {
                 filename = await saveImage(stream, filename)
                 object.image = urlMain + filename
             }
+            if(pass) object.pass = pass
             if(name) object.name = name
             if(info) object.info = info
             if(phone) object.phone = phone
@@ -262,6 +268,7 @@ const resolversMutation = {
             if(superagent!=undefined) object.superagent = superagent
             if(unite!=undefined) object.unite = unite
             if(onlyDistrict!=undefined) object.onlyDistrict = onlyDistrict
+            if(autoAccept!=undefined) object.autoAccept = autoAccept
             if(onlyIntegrate!=undefined) object.onlyIntegrate = onlyIntegrate
             if(priotiry!=undefined) object.priotiry = priotiry
             if(consignation!=undefined) object.consignation = consignation

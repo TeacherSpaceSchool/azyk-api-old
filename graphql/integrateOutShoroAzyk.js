@@ -1,6 +1,6 @@
-const OutXMLShoroAzyk = require('../models/integrate/outXMLShoroAzyk');
-const OutXMLReturnedShoroAzyk = require('../models/integrate/outXMLReturnedShoroAzyk');
-const OutXMLClientShoroAzyk = require('../models/integrate/outXMLClientShoroAzyk');
+const OutXMLShoroAzyk = require('../models/singleOutXMLAzyk');
+const OutXMLReturnedShoroAzyk = require('../models/singleOutXMLReturnedAzyk');
+const OutXMLClientShoroAzyk = require('../models/integrate/shoro/outXMLClientShoroAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
 const InvoiceAzyk = require('../models/invoiceAzyk');
@@ -18,6 +18,7 @@ const type = `
     forwarder: String
     invoice: Invoice
     status: String
+    organization: String
     exc: String
   }
   type OutXMLReturnedShoro{
@@ -28,7 +29,8 @@ const type = `
     number: String
     client: String
     agent: String
-    forwarder: String
+     organization: String
+   forwarder: String
     returned: Returned
     status: String
     exc: String
@@ -36,7 +38,8 @@ const type = `
   type OutXMLClientShoroSchema{
     _id: ID
     createdAt: Date
-    guid: String
+     organization: String
+   guid: String
     client: Client
     exc: String
   }

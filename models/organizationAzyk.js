@@ -49,6 +49,15 @@ const OrganizationAzykSchema = mongoose.Schema({
         type: Boolean,
         default: false
     },
+    autoAccept: {
+        type: Boolean,
+        default: false
+    },
+    pass: {
+        type: String,
+        default: '',
+        unique: true
+    },
 }, {
     timestamps: true
 });

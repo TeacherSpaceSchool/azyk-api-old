@@ -1,16 +1,16 @@
 let express = require('express');
 let router = express.Router();
-const {getOutXMLClientShoroAzyk, checkOutXMLClientShoroAzyk, getOutXMLShoroAzyk, checkOutXMLShoroAzyk, getOutXMLReturnedShoroAzyk, checkOutXMLReturnedShoroAzyk} = require('../module/integrate/outXMLShoroAzyk');
+const {getSingleOutXMLClientAzyk, checkSingleOutXMLClientAzyk, getSingleOutXMLAzyk, checkSingleOutXMLAzyk, getSingleOutXMLReturnedAzyk, checkSingleOutXMLReturnedAzyk} = require('../module/singleOutXMLAzyk');
 let logger = require('logger').createLogger('integrate1Cshoro.log');
 const ModelsErrorAzyk = require('../models/errorAzyk');
 const ReceivedDataAzyk = require('../models/receivedDataAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
 
-router.post('/shoro/put/client', async (req, res, next) => {
+router.post('/:pass/put/client', async (req, res, next) => {
     let startDate = new Date()
     let organization = await OrganizationAzyk
-        .findOne({name: 'ЗАО «ШОРО»'})
+        .findOne({pass: req.params.pass})
     res.set('Content+Type', 'application/xml');
     try{
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
@@ -45,9 +45,9 @@ router.post('/shoro/put/client', async (req, res, next) => {
     }
 });
 
-router.post('/shoro/put/employment', async (req, res, next) => {
+router.post('/:pass/put/employment', async (req, res, next) => {
     let organization = await OrganizationAzyk
-        .findOne({name: 'ЗАО «ШОРО»'})
+        .findOne({pass: req.params.pass})
     res.set('Content+Type', 'application/xml');
     try{
         let position = ''
@@ -84,13 +84,11 @@ router.post('/shoro/put/employment', async (req, res, next) => {
     }
 });
 
-router.get('/shoro/out/client', async (req, res, next) => {
-    let startDate = new Date()
+router.get('/:pass/out/client', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
         await res.status(200);
-        await res.end(await getOutXMLClientShoroAzyk())
-        logger.info(`out client start: ${startDate}; time: ${(new Date() - startDate) / 1000}; url: ${req._parsedOriginalUrl.pathname}`);
+        await res.end(await getSingleOutXMLClientAzyk(req.params.pass))
     } catch (err) {
         let _object = new ModelsErrorAzyk({
             err: err.message,
@@ -103,13 +101,11 @@ router.get('/shoro/out/client', async (req, res, next) => {
     }
 });
 
-router.get('/shoro/out/returned', async (req, res, next) => {
-    let startDate = new Date()
+router.get('/:pass/out/returned', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
         await res.status(200);
-        await res.end(await getOutXMLReturnedShoroAzyk())
-        logger.info(`out returned start: ${startDate}; time: ${(new Date() - startDate) / 1000}; url: ${req._parsedOriginalUrl.pathname}`);
+        await res.end(await getSingleOutXMLReturnedAzyk(req.params.pass))
     } catch (err) {
         let _object = new ModelsErrorAzyk({
             err: err.message,
@@ -122,13 +118,11 @@ router.get('/shoro/out/returned', async (req, res, next) => {
     }
 });
 
-router.get('/shoro/out/sales', async (req, res, next) => {
-    let startDate = new Date()
+router.get('/:pass/out/sales', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
         await res.status(200);
-        await res.end(await getOutXMLShoroAzyk())
-        logger.info(`out sales start: ${startDate}; time: ${(new Date() - startDate) / 1000}; url: ${req._parsedOriginalUrl.pathname}`);
+        await res.end(await getSingleOutXMLAzyk(req.params.pass))
     } catch (err) {
         let _object = new ModelsErrorAzyk({
             err: err.message,
@@ -141,16 +135,14 @@ router.get('/shoro/out/sales', async (req, res, next) => {
     }
 });
 
-router.post('/shoro/put/returned/confirm', async (req, res, next) => {
-    let startDate = new Date()
+router.post('/:pass/put/returned/confirm', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            await checkOutXMLReturnedShoroAzyk(req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
+            await checkSingleOutXMLReturnedAzyk(req.params.pass, req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
         }
          await res.status(200);
         await res.end('success')
-        logger.info(`put returned start: ${startDate}; time: ${(new Date() - startDate) / 1000}; url: ${req.route.path}`);
     } catch (err) {
         let _object = new ModelsErrorAzyk({
             err: err.message,
@@ -163,16 +155,14 @@ router.post('/shoro/put/returned/confirm', async (req, res, next) => {
     }
 });
 
-router.post('/shoro/put/sales/confirm', async (req, res, next) => {
-    let startDate = new Date()
+router.post('/:pass/put/sales/confirm', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            await checkOutXMLShoroAzyk(req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
+            await checkSingleOutXMLAzyk(req.params.pass, req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
         }
         await res.status(200);
         await res.end('success')
-        logger.info(`put sales start: ${startDate}; time: ${(new Date() - startDate) / 1000}; url: ${req.route.path}`);
     } catch (err) {
         let _object = new ModelsErrorAzyk({
             err: err.message,
@@ -185,16 +175,15 @@ router.post('/shoro/put/sales/confirm', async (req, res, next) => {
     }
 });
 
-router.post('/shoro/put/client/confirm', async (req, res, next) => {
-    let startDate = new Date()
+router.post('/:pass/put/client/confirm', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            await checkOutXMLClientShoroAzyk(req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
+
+            await checkSingleOutXMLClientAzyk(req.params.pass, req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
         }
         await res.status(200);
         await res.end('success')
-        logger.info(`put client start: ${startDate}; time: ${(new Date() - startDate) / 1000}; url: ${req.route.path}`);
     } catch (err) {
         let _object = new ModelsErrorAzyk({
             err: err.message,

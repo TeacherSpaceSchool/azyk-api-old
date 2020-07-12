@@ -16,7 +16,8 @@ const bodyParser = require('body-parser');
 let graphql  = require('./graphql/index');
 const subscribe = require('./routes/subscribe');
 const push = require('./routes/push');
-const integrateShoroRouter = require('./routes/integrateShoro');
+//const integrateShoroRouter = require('./routes/integrateShoro');
+const singleIntegrateRouter = require('./routes/singleIntegrate');
 require('body-parser-xml-json')(bodyParser);
 
 passportEngine.start();
@@ -76,7 +77,8 @@ app.use('/', adminRouter);
 app.use('/users', usersRouter);
 app.use('/subscribe', subscribe);
 app.use('/push', push);
-app.use('/integrate', integrateShoroRouter);
+//app.use('/integrate', integrateShoroRouter);
+app.use('/integrate', singleIntegrateRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
