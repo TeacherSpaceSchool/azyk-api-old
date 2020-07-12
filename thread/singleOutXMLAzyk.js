@@ -20,6 +20,7 @@ if(!isMainThread) {
         try{
             let dateStart = new Date()
             dateStart.setHours(3, 0, 0, 0)
+            dateStart.setDate(dateStart.getDate() - 1)
             let dateEnd = new Date(dateStart)
             dateEnd.setDate(dateEnd.getDate() + 1)
             let organizations = await OrganizationAzyk.find({
@@ -33,21 +34,21 @@ if(!isMainThread) {
                 $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
                 organization: {$in: organizations}
             })
-                //.select('client organization orders dateDelivery paymentMethod number _id inv')
+            //.select('client organization orders dateDelivery paymentMethod number _id inv')
                 .populate({
                     path: 'client',
-                  //  select: '_id'
+                    //  select: '_id'
                 })
                 .populate({
                     path: 'organization',
-                 //   select: '_id pass'
+                    //   select: '_id pass'
                 })
                 .populate({
                     path: 'orders',
-                  //  select: '_id item count returned allPrice ',
+                    //  select: '_id item count returned allPrice ',
                     populate: {
                         path: 'item',
-                    //    select: '_id priotiry packaging'
+                        //    select: '_id priotiry packaging'
                     }
                 })
 
