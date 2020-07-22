@@ -1841,7 +1841,6 @@ const resolvers = {
                     organization: organization
                 }
             ).select('address').lean()
-            console.log(data)
             data = data.map(element=>element.address)
             return data
         }
