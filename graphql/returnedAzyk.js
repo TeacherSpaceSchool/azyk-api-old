@@ -7,6 +7,7 @@ const ClientAzyk = require('../models/clientAzyk');
 const randomstring = require('randomstring');
 const { setSingleOutXMLReturnedAzyk, cancelSingleOutXMLReturnedAzyk, setSingleOutXMLReturnedAzykLogic } = require('../module/singleOutXMLAzyk');
 const { pubsub } = require('./index');
+const { checkFloat } = require('../module/const');
 const { withFilter } = require('graphql-subscriptions');
 const RELOAD_RETURNED = 'RELOAD_RETURNED';
 const HistoryReturnedAzyk = require('../models/historyReturnedAzyk');
@@ -17,9 +18,9 @@ const type = `
     _id: ID
     item: String
     count: Int
-    allPrice: Int
-    allTonnage: Int
-    allSize: Int
+    allPrice: Float
+    allTonnage: Float
+    allSize: Float
     weight: Float
     size: Float
     price: Float
@@ -30,15 +31,15 @@ const type = `
     updatedAt: Date
     items: [ReturnedItems]
     client: Client
-    allPrice: Int 
+    allPrice: Float 
     info: String,
     address: [String]
     number: String
     confirmationForwarder: Boolean
     sync: Int
     cancelForwarder: Boolean
-    allTonnage: Int
-    allSize: Int
+    allTonnage: Float
+    allSize: Float
     editor: String
     sale: Organization
     provider: Organization
@@ -67,9 +68,9 @@ const type = `
     _id: ID
     item: String
     count: Int
-    allPrice: Int
-    allTonnage: Int
-    allSize: Int
+    allPrice: Float
+    allTonnage: Float
+    allSize: Float
     name: String
     weight: Float
     size: Float
@@ -277,6 +278,12 @@ const resolvers = {
             dateEnd = new Date(dateStart)
             dateEnd.setDate(dateEnd.getDate() + 1)
         }
+        else {
+            dateStart = new Date()
+            dateStart.setHours(3, 0, 0, 0)
+            dateEnd = new Date(dateStart)
+            dateEnd.setDate(dateEnd.getDate() + 1)
+        }
         let _organizations;
         let _clients;
         let returneds = [];
@@ -436,7 +443,7 @@ const resolvers = {
                     tonnage += returneds[i].allTonnage
             }
         }
-        return [lengthList.toString(), price.toString(), tonnage.toString(), size.toString()]
+        return [lengthList.toString(), checkFloat(price).toString(), checkFloat(tonnage).toString(), checkFloat(size).toString()]
     },
     returnedsFromDistrict: async(parent, {organization, district, date}, {user}) =>  {
         let dateStart;
@@ -1855,7 +1862,7 @@ const resolversMutation = {
                 allSize += items[i].allSize
             }
 
-            object.allPrice = Math.round(allPrice)
+            object.allPrice = checkFloat(allPrice)
             object.allTonnage = allTonnage
             object.allSize = allSize
             object.items = items

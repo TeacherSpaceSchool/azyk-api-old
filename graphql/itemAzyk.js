@@ -16,7 +16,7 @@ const type = `
     deliveryDays: [String]
     unit: String
     createdAt: Date
-    stock: Int
+    stock: Float
     name: String
     categorys: [String]
     info: String
@@ -49,8 +49,8 @@ const query = `
 `;
 
 const mutation = `
-    addItem( categorys: [String]!, unit: String, priotiry: Int, apiece: Boolean, packaging: Int!, stock: Int!, weight: Float!, size: Float!, name: String!, deliveryDays: [String], info: String!, image: Upload, price: Float!, subCategory: ID!, organization: ID!, hit: Boolean!, latest: Boolean!): Data
-    setItem(_id: ID!, unit: String, categorys: [String], priotiry: Int, apiece: Boolean, packaging: Int, stock: Int, weight: Float, size: Float, name: String, info: String, deliveryDays: [String], image: Upload, price: Float, subCategory: ID, organization: ID, hit: Boolean, latest: Boolean): Data
+    addItem( categorys: [String]!, unit: String, priotiry: Int, apiece: Boolean, packaging: Int!, stock: Float!, weight: Float!, size: Float!, name: String!, deliveryDays: [String], info: String!, image: Upload, price: Float!, subCategory: ID!, organization: ID!, hit: Boolean!, latest: Boolean!): Data
+    setItem(_id: ID!, unit: String, categorys: [String], priotiry: Int, apiece: Boolean, packaging: Int, stock: Float, weight: Float, size: Float, name: String, info: String, deliveryDays: [String], image: Upload, price: Float, subCategory: ID, organization: ID, hit: Boolean, latest: Boolean): Data
     deleteItem(_id: [ID]!): Data
     restoreItem(_id: [ID]!): Data
     onoffItem(_id: [ID]!): Data
@@ -395,8 +395,8 @@ const resolversMutation = {
                 latest: latest,
                 status: 'active',
                 deliveryDays: deliveryDays,
-                weight: Math.round(weight),
-                size: Math.round(size),
+                weight: weight,
+                size: size,
                 priotiry: priotiry,
                 unit: unit
             });

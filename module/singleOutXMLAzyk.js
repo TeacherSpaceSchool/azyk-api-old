@@ -12,6 +12,7 @@ const { pdDDMMYYYY, checkInt } = require('./const');
 const uuidv1 = require('uuid/v1.js');
 const builder = require('xmlbuilder');
 const paymentMethod = {'Наличные': 0, 'Перечисление': 1, 'Консигнация': 5}
+const { checkFloat } = require('../module/const');
 
 module.exports.setSingleOutXMLReturnedAzyk = async(returned) => {
     let outXMLReturnedAzyk = await SingleOutXMLReturnedAzyk
@@ -96,13 +97,13 @@ module.exports.setSingleOutXMLAzyk = async(invoice) => {
                 .findOne({item: invoice.orders[i].item._id})
             if(guidItem) {
                 count = invoice.orders[i].count-invoice.orders[i].returned
-                price = Math.round(invoice.orders[i].allPrice/invoice.orders[i].count)
+                price = checkFloat(invoice.orders[i].allPrice/invoice.orders[i].count)
                 outXMLAzyk.data.push({
                     guid: guidItem.guid,
                     package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
                     qt: count,
                     price: price,
-                    amount: count * price,
+                    amount: checkFloat(count * price),
                     priotiry: invoice.orders[i].item.priotiry
                 })
             }
@@ -146,13 +147,13 @@ module.exports.setSingleOutXMLAzyk = async(invoice) => {
                             .findOne({item: invoice.orders[i].item._id})
                         if (guidItem) {
                             count = invoice.orders[i].count-invoice.orders[i].returned
-                            price = Math.round(invoice.orders[i].allPrice/invoice.orders[i].count)
+                            price = checkFloat(invoice.orders[i].allPrice/invoice.orders[i].count)
                             newOutXMLAzyk.data.push({
                                 guid: guidItem.guid,
                                 package: Math.round(count / (invoice.orders[i].item.packaging ? invoice.orders[i].item.packaging : 1)),
                                 qt: count,
                                 price: price,
-                                amount: count * price,
+                                amount: checkFloat(count * price),
                                 priotiry: invoice.orders[i].item.priotiry
                             })
                         }
@@ -494,7 +495,7 @@ module.exports.reductionOutAdsXMLAzyk = async(pass) => {
                             qt: itemData.qt,
                             price: itemData.price,
                             priotiry: itemData.priotiry,
-                            amount: Math.round(itemData.qt * itemData.price)
+                            amount: checkFloat(itemData.qt * itemData.price)
                         }
                     })
                     newOutXMLAzyk.data = itemsData

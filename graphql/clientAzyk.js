@@ -253,7 +253,7 @@ const resolvers = {
                 .distinct('client')
             if(user.onlyIntegrate){
                 clients = await Integrate1CAzyk
-                    .find({client: {$in: clients}})
+                    .find({client: {$in: clients}, organization: user.organization})
                     .distinct('client')
             }
             clients = await ClientAzyk
@@ -779,10 +779,12 @@ const resolvers = {
                 let clients = await DistrictAzyk
                     .find({agent: user.employment})
                     .distinct('client')
+                    .lean()
                 if(user.onlyIntegrate){
                     clients = await Integrate1CAzyk
-                        .find({client: {$in: clients}})
+                        .find({client: {$in: clients}, organization: user.organization})
                         .distinct('client')
+                        .lean()
                 }
                 clients = await ClientAzyk
                     .aggregate(
@@ -993,7 +995,7 @@ const resolvers = {
             return clients
         }
         else if(['суперорганизация', 'организация'].includes(user.role)) {
-            let organization = await OrganizationAzyk.findOne({_id: user.organization})
+            let organization = await OrganizationAzyk.findOne({_id: user.organization}).lean()
             let clients;
             if(organization.accessToClient)
                 clients = await ClientAzyk
@@ -1144,7 +1146,9 @@ const resolvers = {
             return clients
         }
     },
-    client: async(parent, {_id}) => {
+    client: async(parent, {_id}, {user}) => {
+        if (user.role === 'client')
+            _id = user._id
         if(mongoose.Types.ObjectId.isValid(_id)) {
             return await ClientAzyk.findOne({
                 $or: [

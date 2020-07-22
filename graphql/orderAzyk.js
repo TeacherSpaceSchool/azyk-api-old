@@ -20,6 +20,7 @@ const { pubsub } = require('./index');
 const { withFilter } = require('graphql-subscriptions');
 const RELOAD_ORDER = 'RELOAD_ORDER';
 const HistoryOrderAzyk = require('../models/historyOrderAzyk');
+const { checkFloat } = require('../module/const');
 
 const type = `
   type Order {
@@ -29,13 +30,13 @@ const type = `
     item: Item
     client: Client
     count: Int
-    allPrice: Int
+    allPrice: Float
     status: String
     allTonnage: Float
     allSize: Float
     consignment: Int
     returned: Int
-    consignmentPrice: Int
+    consignmentPrice: Float
  }
   type Invoice {
     _id: ID
@@ -44,9 +45,9 @@ const type = `
     updatedAt: Date
     orders: [Order]
     client: Client
-    allPrice: Int 
-    consignmentPrice: Int
-    returnedPrice: Int
+    allPrice: Float 
+    consignmentPrice: Float
+    returnedPrice: Float
     info: String,
     address: [String]
     paymentMethod: String
@@ -125,7 +126,7 @@ const query = `
 `;
 
 const mutation = `
-    addOrders(dateDelivery: Date!, info: String, usedBonus: Boolean, inv: Boolean, unite: Boolean, paymentMethod: String, address: [[String]], organization: ID!, client: ID!): Data
+    addOrders(dateDelivery: Date!, info: String, usedBonus: Boolean, inv: Boolean, unite: Boolean, paymentMethod: String, organization: ID!, client: ID!): Data
     setOrder(orders: [OrderInput], invoice: ID): Invoice
     setInvoice(adss: [ID], taken: Boolean, invoice: ID!, confirmationClient: Boolean, confirmationForwarder: Boolean, cancelClient: Boolean, cancelForwarder: Boolean, paymentConsignation: Boolean): Data
     setInvoicesLogic(track: Int, forwarder: ID, invoices: [ID]!): Data
@@ -189,6 +190,16 @@ const resolvers = {
             dateEnd = new Date(dateStart)
             dateEnd.setDate(dateEnd.getDate() + 1)
         }
+        else {
+            dateStart = new Date()
+            dateEnd = new Date(dateStart)
+            if(dateStart.getHours()>3)
+                dateEnd.setDate(dateEnd.getDate() + 1)
+            else
+                dateStart.setDate(dateEnd.getDate() - 1)
+            dateStart.setHours(3, 0, 0, 0)
+            dateEnd.setHours(3, 0, 0, 0)
+        }
         let _organizations;
         let _clients;
         let _agents;
@@ -210,7 +221,7 @@ const resolvers = {
                     {
                         del: {$ne: 'deleted'},
                         taken: true,
-                        ...(date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}),
+                        $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
                         ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
                         ...(filter === 'акция' ? {adss: {$ne: []}} : {}),
                         client: user.client,
@@ -238,7 +249,7 @@ const resolvers = {
                     {
                         del: {$ne: 'deleted'},
                         taken: true,
-                        ...(date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}),
+                        $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
                         ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
                         ...(filter === 'акция' ? {adss: {$ne: []}} : {}),
                         ...(search.length>0?{
@@ -269,7 +280,8 @@ const resolvers = {
                         ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
                         ...(filter === 'акция' ? {adss: {$ne: []}} : {}),
                         $and: [
-                            ...(date === '' ? []:[{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]),
+                            {createdAt: {$gte: dateStart}},
+                            {createdAt: {$lt: dateEnd}},
                             {
                                 $or: [
                                     {organization: user.organization},
@@ -306,7 +318,8 @@ const resolvers = {
                         ...(filter === 'акция' ? {adss: {$ne: []}} : {}),
                         client: {$in: clients},
                         $and: [
-                            ...(date === '' ? []:[{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]),
+                            {createdAt: {$gte: dateStart}},
+                            {createdAt: {$lt: dateEnd}},
                             {
                                 $or: [
                                     {organization: user.organization},
@@ -343,13 +356,6 @@ const resolvers = {
                         dateEnd = new Date(dateStart)
                         dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 3))
                     }
-                }
-                else {
-                    dateEnd = new Date()
-                    dateEnd.setDate(dateEnd.getDate() + 1)
-                    dateEnd.setHours(3, 0, 0, 0)
-                    dateStart = new Date(dateEnd)
-                    dateStart.setDate(dateStart.getDate() - 3)
                 }
                 let clients = await DistrictAzyk
                     .find({agent: user.employment})
@@ -472,7 +478,7 @@ const resolvers = {
             if (invoices[i].paymentConsignation)
                 consignmentPayment += invoices[i].consignmentPrice
         }
-        return [lengthList.toString(), price.toString(), consignment.toString(), consignmentPayment.toString(), tonnage.toString(), size.toString()]
+        return [lengthList.toString(), checkFloat(price).toString(), checkFloat(consignment).toString(), checkFloat(consignmentPayment).toString(), checkFloat(tonnage).toString(), checkFloat(size).toString()]
     },
     invoices: async(parent, {search, sort, filter, date, skip}, {user}) =>  {
         let dateStart;
@@ -2307,9 +2313,10 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrders: async(parent, {dateDelivery, info, paymentMethod, address, organization, usedBonus, client, inv, unite}, {user}) => {
+    addOrders: async(parent, {dateDelivery, info, paymentMethod, organization, usedBonus, client, inv, unite}, {user}) => {
         if(user.client)
             client = user.client
+        client = await ClientAzyk.findOne({}).select('address id').lean()
         let baskets = await BasketAzyk.find(
             user.client?
                 {client: user.client}:
@@ -2330,7 +2337,7 @@ const resolversMutation = {
             dateEnd.setDate(dateEnd.getDate() + 1)
             let superDistrict = await DistrictAzyk.findOne({
                 organization: null,
-                client: client
+                client: client._id
             }).lean()
             let distributers = await DistributerAzyk.find({
                 $or: [
@@ -2344,7 +2351,7 @@ const resolversMutation = {
                 for(let i=0; i<distributers.length; i++){
                     let findDistrict = await DistrictAzyk.findOne({
                         organization: distributers[i].distributer,
-                        client: client
+                        client: client._id
                     }).lean()
                     if(findDistrict&&distributers[i].sales.toString().includes(organization))
                         districtSales = findDistrict
@@ -2355,7 +2362,7 @@ const resolversMutation = {
             if(!districtSales||!districtProvider) {
                 let findDistrict = await DistrictAzyk.findOne({
                     organization: organization,
-                    client: client
+                    client: client._id
                 })
                     .lean()
                 if(!districtSales)
@@ -2367,7 +2374,7 @@ const resolversMutation = {
             if(unite&&!inv)
                 objectInvoice = await InvoiceAzyk.findOne({
                     organization: organization,
-                    client: client,
+                    client: client._id,
                     dateDelivery: dateDelivery,
                     $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
                     del: {$ne: 'deleted'},
@@ -2376,12 +2383,12 @@ const resolversMutation = {
                 })
                     .populate('client')
                     .sort('-createdAt')
-            let discount = await DiscountClient.findOne({client: client, organization: organization}).lean()
+            let discount = await DiscountClient.findOne({client: client._id, organization: organization}).lean()
             discount = discount?discount.discount:0
             if(!objectInvoice){
                 if(usedBonus){
                     let bonus = await BonusAzyk.findOne({organization: organization}).lean();
-                    let bonusClient = await BonusClientAzyk.findOne({client: client, bonus: bonus._id})
+                    let bonusClient = await BonusClientAzyk.findOne({client: client._id, bonus: bonus._id})
                     usedBonus = bonusClient.addedBonus;
                     bonusClient.addedBonus = 0
                     await bonusClient.save();
@@ -2390,16 +2397,19 @@ const resolversMutation = {
                     usedBonus=0
                 let orders = [];
                 for(let ii=0; ii<baskets.length;ii++){
-                    let price = Math.round((baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)-(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)/100*discount)
+                    let price = !discount?
+                        baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price
+                        :
+                        checkFloat((baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)-(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)/100*discount)
                     let objectOrder = new OrderAzyk({
                         item: baskets[ii].item._id,
-                        client: client,
+                        client: client._id,
                         count: baskets[ii].count,
                         consignment: baskets[ii].consignment,
-                        consignmentPrice: Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)),
-                        allTonnage: Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0)),
-                        allSize: Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0)),
-                        allPrice: Math.round(price*baskets[ii].count),
+                        consignmentPrice: checkFloat(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)),
+                        allTonnage: checkFloat(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0)),
+                        allSize: checkFloat(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0)),
+                        allPrice: checkFloat(price*baskets[ii].count),
                         status: 'обработка',
                         agent: user.employment,
                     });
@@ -2423,13 +2433,13 @@ const resolversMutation = {
                 objectInvoice = new InvoiceAzyk({
                     discount: discount,
                     orders: orders,
-                    client: client,
-                    allPrice: Math.round(allPrice),
-                    consignmentPrice: Math.round(consignmentPrice),
-                    allTonnage: Math.round(allTonnage),
-                    allSize: Math.round(allSize),
+                    client: client._id,
+                    allPrice: checkFloat(allPrice),
+                    consignmentPrice: checkFloat(consignmentPrice),
+                    allTonnage: checkFloat(allTonnage),
+                    allSize: checkFloat(allSize),
                     info: info,
-                    address: address[0],
+                    address: client.address[0],
                     paymentMethod: paymentMethod,
                     number: number,
                     agent: user.employment,
@@ -2458,26 +2468,29 @@ const resolversMutation = {
                         _id: {$in: objectInvoice.orders},
                     })
                     if(objectOrder){
-                        price = Math.round(objectOrder.allPrice/objectOrder.count)
+                        price = checkFloat(objectOrder.allPrice/objectOrder.count)
                         objectOrder.count+=baskets[ii].count
                         objectOrder.consignment+=baskets[ii].consignment
-                        objectOrder.consignmentPrice+=Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
-                        objectOrder.allTonnage+=Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0))
-                        objectOrder.allSize+=Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0))
-                        objectOrder.allPrice+=Math.round(price*baskets[ii].count)
+                        objectOrder.consignmentPrice+=checkFloat(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
+                        objectOrder.allTonnage+=checkFloat(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0))
+                        objectOrder.allSize+=checkFloat(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0))
+                        objectOrder.allPrice+=checkFloat(price*baskets[ii].count)
                         await objectOrder.save()
                     }
                     else {
-                        price = Math.round((baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)-(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)/100*discount)
+                        price = !discount?
+                            baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price
+                            :
+                            checkFloat((baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)-(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)/100*discount)
                         objectOrder = new OrderAzyk({
                             item: baskets[ii].item._id,
-                            client: client,
+                            client: client._id,
                             count: baskets[ii].count,
                             consignment: baskets[ii].consignment,
-                            consignmentPrice: Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)),
-                            allTonnage: Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0)),
-                            allSize: Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0)),
-                            allPrice: Math.round(price*baskets[ii].count),
+                            consignmentPrice: checkFloat(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price)),
+                            allTonnage: checkFloat(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0)),
+                            allSize: checkFloat(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0)),
+                            allPrice: checkFloat(price*baskets[ii].count),
                             status: 'обработка',
                             agent: user.employment,
                         });
@@ -2485,9 +2498,9 @@ const resolversMutation = {
                         objectInvoice.orders.push(objectOrder);
                     }
                     objectInvoice.allPrice+=price*baskets[ii].count
-                    objectInvoice.allTonnage+=Math.round(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0))
-                    objectInvoice.allSize+=Math.round(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0))
-                    objectInvoice.consignmentPrice+=Math.round(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
+                    objectInvoice.allTonnage+=checkFloat(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0))
+                    objectInvoice.allSize+=checkFloat(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0))
+                    objectInvoice.consignmentPrice+=checkFloat(baskets[ii].consignment*(baskets[ii].item.stock?baskets[ii].item.stock:baskets[ii].item.price))
                 }
                 await OrderAzyk.updateMany({_id: {$in: objectInvoice.orders}}, {status: 'обработка', returned: 0})
                 objectInvoice.returnedPrice = 0
@@ -2530,7 +2543,7 @@ const resolversMutation = {
                 who: user.role==='admin'?null:user._id,
                 agent: districtSales?districtSales.agent:undefined,
                 superagent: superDistrict?superDistrict.agent:undefined,
-                client: client,
+                client: client._id,
                 organization: organization,
                 invoice: newInvoice,
                 distributer: districtSales&&districtSales.organization.toString()!==organization.toString()?districtSales.organization:undefined,
@@ -2693,27 +2706,27 @@ const resolversMutation = {
                     {
                         count: orders[i].count,
                         allPrice: orders[i].allPrice,
-                        consignmentPrice: Math.round(orders[i].consignmentPrice),
+                        consignmentPrice: checkFloat(orders[i].consignmentPrice),
                         returned: orders[i].returned,
                         consignment: orders[i].consignment,
-                        allSize: Math.round(orders[i].allSize),
-                        allTonnage: Math.round(orders[i].allTonnage)
+                        allSize: checkFloat(orders[i].allSize),
+                        allTonnage: checkFloat(orders[i].allTonnage)
                     });
-                returnedPrice += Math.round(orders[i].returned * (orders[i].allPrice / orders[i].count))
+                returnedPrice += checkFloat(orders[i].returned * (orders[i].allPrice / orders[i].count))
                 allPrice += orders[i].allPrice
                 allTonnage += orders[i].allTonnage
                 allSize += orders[i].allSize
                 consignmentPrice += orders[i].consignmentPrice
             }
             if(object.usedBonus&&object.usedBonus>0)
-                object.allPrice = Math.round(allPrice - object.usedBonus)
+                object.allPrice = checkFloat(allPrice - object.usedBonus)
             else
-                object.allPrice = Math.round(allPrice)
-            object.allTonnage = allTonnage
-            object.consignmentPrice = Math.round(consignmentPrice)
-            object.allSize = allSize
+                object.allPrice = checkFloat(allPrice)
+            object.allTonnage = checkFloat(allTonnage)
+            object.consignmentPrice = checkFloat(consignmentPrice)
+            object.allSize = checkFloat(allSize)
             object.orders = orders.map(order=>order._id)
-            object.returnedPrice = returnedPrice
+            object.returnedPrice = checkFloat(returnedPrice)
             await object.save();
         }
         let resInvoice = await InvoiceAzyk.findOne({_id: invoice})
@@ -2889,7 +2902,7 @@ const resolversMutation = {
             }
             else if(!cancelClient) {
                 let difference = (new Date()).getTime() - (object.cancelClient).getTime();
-                let differenceMinutes = Math.round(difference / 60000);
+                let differenceMinutes = checkFloat(difference / 60000);
                 if (differenceMinutes < 10||user.role==='admin') {
                     object.cancelClient = undefined
                     await OrderAzyk.updateMany({_id: {$in: object.orders}}, {status: 'обработка'})
@@ -2919,7 +2932,7 @@ const resolversMutation = {
             }
             else if(!cancelForwarder) {
                 let difference = (new Date()).getTime() - (object.cancelForwarder).getTime();
-                let differenceMinutes = Math.round(difference / 60000);
+                let differenceMinutes = checkFloat(difference / 60000);
                 if (differenceMinutes < 10||user.role==='admin') {
                     object.cancelForwarder = undefined
                     object.cancelClient = undefined

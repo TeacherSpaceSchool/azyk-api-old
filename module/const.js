@@ -3,20 +3,17 @@ const randomstring = require('randomstring');
 const app = require('../app');
 const fs = require('fs');
 const path = require('path');
-
 const urlMain = `${process.env.URL.trim()}:3000`,
     adminLogin = 'admin',
     skip = 1,
     adminPass = 'hGNSKtmSBG'
-const validMail = (mail) =>
-{
+
+const validMail = (mail) => {
     return /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()\.,;\s@\"]+\.{0,1})+([^<>()\.,;:\s@\"]{2,}|[\d\.]+))$/.test(mail);
 }
-const validPhone = (phone) =>
-{
+const validPhone = (phone) => {
     return /^[+]{1}996[0-9]{9}$/.test(phone);
 }
-
 const getGeoDistance = (lat1, lon1, lat2, lon2) => {
     lat1 = parseFloat(lat1)
     lon1 = parseFloat(lon1)
@@ -50,6 +47,10 @@ module.exports.tomtom = 'waWMYtFJZce2G49GAz0nXJG5Grw3OpNm'
 
 const checkInt = (int) => {
     return isNaN(parseInt(int))?0:parseInt(int)
+}
+const checkFloat = (float) => {
+    float = parseFloat(float)
+    return isNaN(float)?0:Math.round(float * 10)/10
 }
 
 module.exports.saveFile = (stream, filename) => {
@@ -128,3 +129,4 @@ module.exports.validMail = validMail;
 module.exports.adminPass = adminPass;
 module.exports.adminLogin = adminLogin;
 module.exports.urlMain = urlMain;
+module.exports.checkFloat = checkFloat;
