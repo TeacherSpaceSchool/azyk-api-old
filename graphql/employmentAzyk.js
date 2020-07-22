@@ -64,7 +64,7 @@ const resolvers = {
     employments: async(parent, {organization, search, sort, filter}, {user}) => {
         if(user.role==='admin'){
             if(organization==='super'){
-                let employments = await UserAzyk.find({role: {'$regex': 'супер', '$options': 'i'}})
+                let employments = await UserAzyk.find({$or: [{role: 'суперменеджер'}, {role: 'суперагент'}, {role: 'суперэкспедитор'}]})
                     .distinct('_id')
                 employments = await EmploymentAzyk.find({
                     user: {$in: employments},
