@@ -2020,7 +2020,6 @@ const resolvers = {
                             select: 'role',
                         }]})
                     .lean()
-
                 for(let i=0; i<data.length; i++) {
                     let type = data[i].agent&&['суперменеджер', 'суперагент', 'суперэкспедитор'].includes(data[i].agent.user.role)?'оффлайн':'онлайн'
                     let id = `${type}${data[i].organization._id}`
