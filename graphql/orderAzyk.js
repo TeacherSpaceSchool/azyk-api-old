@@ -2316,7 +2316,7 @@ const resolversMutation = {
     addOrders: async(parent, {dateDelivery, info, paymentMethod, organization, usedBonus, client, inv, unite}, {user}) => {
         if(user.client)
             client = user.client
-        client = await ClientAzyk.findOne({}).select('address id').lean()
+        client = await ClientAzyk.findOne({_id: client}).select('address id').lean()
         let baskets = await BasketAzyk.find(
             user.client?
                 {client: user.client}:
