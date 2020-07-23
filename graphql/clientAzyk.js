@@ -669,10 +669,11 @@ const resolvers = {
             return clients
         }
         else if(user.role==='суперагент'){
-            if(skip != undefined||search.length>2) {
-                let clients = await DistrictAzyk
-                    .find({agent: user.employment})
-                    .distinct('client')
+            let clients = await DistrictAzyk
+                .find({agent: user.employment})
+                .distinct('client')
+                .lean()
+            if((clients.length&&skip != undefined)||search.length>2) {
                 clients = await ClientAzyk
                     .aggregate(
                         [
@@ -683,7 +684,7 @@ const resolvers = {
                                     ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                     ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
                                     del: {$ne: 'deleted'},
-                                    _id: {$in: clients},
+                                    ...clients.length?{_id: {$in: clients}}:{},
                                     $or: [
                                         {name: {'$regex': search, '$options': 'i'}},
                                         {email: {'$regex': search, '$options': 'i'}},
@@ -775,16 +776,33 @@ const resolvers = {
             } else return []
         }
         else if('агент'===user.role) {
-            if(skip != undefined||search.length>2) {
-                let clients = await DistrictAzyk
-                    .find({agent: user.employment})
-                    .distinct('client')
-                    .lean()
-                if(user.onlyIntegrate){
-                    clients = await Integrate1CAzyk
-                        .find({client: {$in: clients}, organization: user.organization})
-                        .distinct('client')
-                        .lean()
+            let clients = await DistrictAzyk
+                .find({agent: user.employment})
+                .distinct('client')
+                .lean()
+            if((clients.length&&skip != undefined)||search.length>2) {
+                let organization = await OrganizationAzyk.findOne({_id: user.organization}).select('accessToClient').lean()
+                if(clients.length) {
+                    if (user.onlyIntegrate) {
+                        clients = await Integrate1CAzyk
+                            .find({client: {$in: clients}, organization: user.organization})
+                            .distinct('client')
+                            .lean()
+                    }
+                }
+                else {
+                    if(!organization.accessToClient) {
+                        clients = await OrderAzyk.find({organization: user.organization}).distinct('client').lean()
+                    }
+                    if (user.onlyIntegrate) {
+                        clients = await Integrate1CAzyk
+                            .find({
+                                ...clients.length?{client: {$in: clients}}:{client: {$ne: null}},
+                                organization: user.organization
+                            })
+                            .distinct('client')
+                            .lean()
+                    }
                 }
                 clients = await ClientAzyk
                     .aggregate(
@@ -796,7 +814,7 @@ const resolvers = {
                                     ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                     ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
                                     del: {$ne: 'deleted'},
-                                    _id: {$in: clients},
+                                    ...clients.length?{_id: {$in: clients}}:{},
                                     $or: [
                                         {name: {'$regex': search, '$options': 'i'}},
                                         {email: {'$regex': search, '$options': 'i'}},

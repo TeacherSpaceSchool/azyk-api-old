@@ -351,10 +351,15 @@ const resolvers = {
                     now.setDate(now.getDate() + 1)
                     now.setHours(3, 0, 0, 0)
                     let differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
-                    if(differenceDates>3) {
+                    if(differenceDates>5) {
                         dateStart = new Date()
                         dateEnd = new Date(dateStart)
-                        dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 3))
+                        if(dateStart.getHours()>3)
+                            dateEnd.setDate(dateEnd.getDate() + 1)
+                        else
+                            dateStart.setDate(dateEnd.getDate() - 1)
+                        dateStart.setHours(3, 0, 0, 0)
+                        dateEnd.setHours(3, 0, 0, 0)
                     }
                 }
                 let clients = await DistrictAzyk
@@ -367,7 +372,7 @@ const resolvers = {
                         taken: true,
                         ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
                         ...(filter === 'акция' ? {adss: {$ne: []}} : {}),
-                        client: {$in: clients},
+                        ...clients.length?{client: {$in: clients}}:{agent: user.employment},
                         $and: [
                             {createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}},
                             {
@@ -401,18 +406,16 @@ const resolvers = {
                     now.setDate(now.getDate() + 1)
                     now.setHours(3, 0, 0, 0)
                     let differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
-                    if(differenceDates>3) {
+                    if(differenceDates>5) {
                         dateStart = new Date()
                         dateEnd = new Date(dateStart)
-                        dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 3))
+                        if(dateStart.getHours()>3)
+                            dateEnd.setDate(dateEnd.getDate() + 1)
+                        else
+                            dateStart.setDate(dateEnd.getDate() - 1)
+                        dateStart.setHours(3, 0, 0, 0)
+                        dateEnd.setHours(3, 0, 0, 0)
                     }
-                }
-                else {
-                    dateEnd = new Date()
-                    dateEnd.setDate(dateEnd.getDate() + 1)
-                    dateEnd.setHours(3, 0, 0, 0)
-                    dateStart = new Date(dateEnd)
-                    dateStart.setDate(dateStart.getDate() - 3)
                 }
                 let clients = await DistrictAzyk
                     .find({agent: user.employment})
@@ -430,7 +433,7 @@ const resolvers = {
                         taken: true,
                         ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
                         ...(filter === 'акция' ? {adss: {$ne: []}} : {}),
-                        client: {$in: clients},
+                        ...clients.length?{client: {$in: clients}}:{agent: user.employment},
                         $and: [
                             {createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}},
                             {
@@ -806,9 +809,11 @@ const resolvers = {
                 now.setDate(now.getDate() + 1)
                 let differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
                 if(differenceDates>5) {
-                    dateStart = new Date()
-                    dateEnd = new Date(dateStart)
-                    dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 5))
+                    dateEnd = new Date()
+                    dateEnd.setHours(3, 0, 0, 0)
+                    dateEnd.setDate(dateEnd.getDate() + 1)
+                    dateStart = new Date(dateEnd)
+                    dateStart = new Date(dateStart.setDate(dateStart.getDate() - 5))
                 }
             }
             else {
@@ -816,7 +821,7 @@ const resolvers = {
                 dateEnd.setHours(3, 0, 0, 0)
                 dateEnd.setDate(dateEnd.getDate() + 1)
                 dateStart = new Date(dateEnd)
-                dateStart = new Date(dateStart.setDate(dateStart.getDate() - 5))
+                dateStart.setDate(dateStart.getDate() - 5)
             }
             let clients = await DistrictAzyk
                 .find({agent: user.employment})
@@ -832,7 +837,7 @@ const resolvers = {
                     {
                         $match: {
                             del: {$ne: 'deleted'},
-                            client: {$in: clients},
+                            ...clients.length?{client: {$in: clients}}:{agent: user.employment},
                         }
                     },
                     {
@@ -978,9 +983,11 @@ const resolvers = {
                 now.setHours(3, 0, 0, 0)
                 let differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
                 if(differenceDates>5) {
-                    dateStart = new Date()
-                    dateEnd = new Date(dateStart)
-                    dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 5))
+                    dateEnd = new Date()
+                    dateEnd.setDate(dateEnd.getDate() + 1)
+                    dateEnd.setHours(3, 0, 0, 0)
+                    dateStart = new Date(dateEnd)
+                    dateStart.setDate(dateStart.getDate() - 5)
                 }
             }
             else {
@@ -999,7 +1006,7 @@ const resolvers = {
                     {
                         $match: {
                             del: {$ne: 'deleted'},
-                            client: {$in: clients},
+                            ...clients.length?{client: {$in: clients}}:{agent: user.employment},
                         }
                     },
                     {
