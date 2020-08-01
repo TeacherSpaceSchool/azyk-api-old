@@ -1,6 +1,5 @@
 const OutXMLShoroAzyk = require('../models/singleOutXMLAzyk');
 const OutXMLReturnedShoroAzyk = require('../models/singleOutXMLReturnedAzyk');
-const OutXMLClientShoroAzyk = require('../models/integrate/shoro/outXMLClientShoroAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
 const InvoiceAzyk = require('../models/invoiceAzyk');
@@ -35,57 +34,48 @@ const type = `
     status: String
     exc: String
   }
-  type OutXMLClientShoroSchema{
-    _id: ID
-    createdAt: Date
-     organization: String
-   guid: String
-    client: Client
-    exc: String
-  }
 `;
 
 const query = `
-    outXMLClientShoros(skip: Int): [OutXMLClientShoroSchema]
-    statisticOutXMLClientShoros: [String]
-    outXMLShoros(search: String!, filter: String!, skip: Int): [OutXMLShoro]
-    statisticOutXMLShoros: [String]
-    outXMLReturnedShoros(search: String!, filter: String!, skip: Int): [OutXMLReturnedShoro]
-    statisticOutXMLReturnedShoros: [String]
+    outXMLShoros(search: String!, filter: String!, skip: Int, organization: ID!): [OutXMLShoro]
+    statisticOutXMLShoros(organization: ID!): [String]
+    outXMLReturnedShoros(search: String!, filter: String!, skip: Int, organization: ID!): [OutXMLReturnedShoro]
+    statisticOutXMLReturnedShoros(organization: ID!): [String]
     filterOutXMLShoro: [Filter]
 `;
 
 const mutation = `
-    deleteOutXMLClientShoro(_id: ID!): Data
     setDateOutXMLShoro(_id: ID!, date: String!): Data
     restoreOutXMLShoro(_id: ID!): OutXMLShoro
     deleteOutXMLShoro(_id: ID!): Data
-    deleteOutXMLShoroAll: Data
+    deleteOutXMLShoroAll(organization: ID!): Data
     setDateOutXMLReturnedShoro(_id: ID!, date: String!): Data
     restoreOutXMLReturnedShoro(_id: ID!): OutXMLReturnedShoro
     deleteOutXMLReturnedShoro(_id: ID!): Data
-    deleteOutXMLReturnedShoroAll: Data
+    deleteOutXMLReturnedShoroAll(organization: ID!): Data
 `;
 
 const resolvers = {
-    outXMLShoros: async(parent, {search, filter, skip}, {user}) => {
+    outXMLShoros: async(parent, {search, filter, skip, organization}, {user}) => {
         if('admin'===user.role){
             let outXMLShoro = await OutXMLShoroAzyk
                 .find({
                     status: {'$regex': filter, '$options': 'i'},
-                    number: {'$regex': search, '$options': 'i'}
+                    number: {'$regex': search, '$options': 'i'},
+                    organization: organization
                 })
                 .sort('-createdAt')
                 .skip(skip!=undefined?skip:0)
                 .limit(skip!=undefined?15:10000000000)
+                .lean()
             return outXMLShoro
         }
         else return []
     },
-    statisticOutXMLShoros: async(parent, ctx, {user}) => {
+    statisticOutXMLShoros: async(parent, {organization}, {user}) => {
         if('admin'===user.role){
             let outXMLShoro = await OutXMLShoroAzyk
-                .find()
+                .find({organization: organization}).lean()
             let procces = 0;
             let error = 0;
             let check = 0;
@@ -102,30 +92,11 @@ const resolvers = {
         }
         else return []
     },
-    outXMLClientShoros: async(parent, {skip}, {user}) => {
-        if('admin'===user.role){
-            let outXMLShoro = await OutXMLClientShoroAzyk
-                .find()
-                .populate('client')
-                .sort('-createdAt')
-                .skip(skip!=undefined?skip:0)
-                .limit(skip!=undefined?15:10000000000)
-            return outXMLShoro
-        }
-        else return []
-    },
-    statisticOutXMLClientShoros: async(parent, ctx, {user}) => {
-        if('admin'===user.role){
-            let outXMLShoro = await OutXMLClientShoroAzyk
-                .count()
-            return [outXMLShoro]
-        }
-        else return []
-    },
-    statisticOutXMLReturnedShoros: async(parent, ctx, {user}) => {
+    statisticOutXMLReturnedShoros: async(parent, {organization}, {user}) => {
         if('admin'===user.role){
             let outXMLReturnedShoroAzyk = await OutXMLReturnedShoroAzyk
-                .find()
+                .find({organization: organization})
+                .lean()
             let procces = 0;
             let error = 0;
             let check = 0;
@@ -142,12 +113,13 @@ const resolvers = {
         }
         else return []
     },
-    outXMLReturnedShoros: async(parent, {search, filter, skip}, {user}) => {
+    outXMLReturnedShoros: async(parent, {search, filter, skip, organization}, {user}) => {
         if('admin'===user.role){
             let outXMLShoro = await OutXMLReturnedShoroAzyk
                 .find({
                     status: {'$regex': filter, '$options': 'i'},
-                    number: {'$regex': search, '$options': 'i'}
+                    number: {'$regex': search, '$options': 'i'},
+                    organization: organization
                 })
                 .sort('-createdAt')
                 .skip(skip!=undefined?skip:0)
@@ -189,12 +161,6 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    deleteOutXMLClientShoro: async(parent, { _id }, {user}) => {
-        if('admin'===user.role){
-            await OutXMLClientShoroAzyk.deleteMany({_id: _id})
-        }
-        return {data: 'OK'}
-    },
     setDateOutXMLShoro: async(parent, {_id, date}, {user}) => {
         if('admin'===user.role){
             let object = await OutXMLShoroAzyk.findById(_id)
@@ -240,9 +206,9 @@ const resolversMutation = {
         }
         return {data: 'OK'}
     },
-    deleteOutXMLShoroAll: async(parent, ctx, {user}) => {
+    deleteOutXMLShoroAll: async(parent, {organization}, {user}) => {
         if('admin'===user.role){
-            let objects = await OutXMLShoroAzyk.find({status: {$ne: 'check'}}).distinct('_id')
+            let objects = await OutXMLShoroAzyk.find({organization: organization, status: {$ne: 'check'}}).distinct('_id')
             await InvoiceAzyk.updateMany({_id: {$in: objects}}, {sync: 0});
             await OutXMLShoroAzyk.deleteMany({status: {$ne: 'check'}})
         }
@@ -293,9 +259,9 @@ const resolversMutation = {
         }
         return {data: 'OK'}
     },
-    deleteOutXMLReturnedShoroAll: async(parent, ctx, {user}) => {
+    deleteOutXMLReturnedShoroAll: async(parent, {organization}, {user}) => {
         if('admin'===user.role){
-            let objects = await OutXMLReturnedShoroAzyk.find({status: {$ne: 'check'}}).distinct('_id')
+            let objects = await OutXMLReturnedShoroAzyk.find({organization: organization, status: {$ne: 'check'}}).distinct('_id')
             await ReturnedAzyk.updateMany({_id: {$in: objects}}, {sync: 0});
             await OutXMLReturnedShoroAzyk.deleteMany({status: {$ne: 'check'}})
         }

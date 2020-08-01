@@ -5,7 +5,10 @@ let logger = require('logger').createLogger('integrate1Cshoro.log');
 const ModelsErrorAzyk = require('../models/errorAzyk');
 const ReceivedDataAzyk = require('../models/receivedDataAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
+const EmploymentAzyk = require('../models/employmentAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
+const UserAzyk = require('../models/userAzyk');
+const randomstring = require('randomstring');
 
 router.post('/:pass/put/client', async (req, res, next) => {
     let startDate = new Date()
@@ -13,22 +16,31 @@ router.post('/:pass/put/client', async (req, res, next) => {
         .findOne({pass: req.params.pass})
     res.set('Content+Type', 'application/xml');
     try{
+        let agent
+        let _object
+        let integrate1CAzyk
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            let integrate1CAzyk = await Integrate1CAzyk.findOne({
+            integrate1CAzyk = await Integrate1CAzyk.findOne({
                 organization: organization._id,
                 guid: req.body.elements[0].elements[i].attributes.guid
             })
-            let _object = new ReceivedDataAzyk({
-                status: integrate1CAzyk?'Изменить':'Добавить',
-                organization: organization._id,
-                name: req.body.elements[0].elements[i].attributes.name,
-                guid: req.body.elements[0].elements[i].attributes.guid,
-                addres: req.body.elements[0].elements[i].attributes.address,
-                agent: req.body.elements[0].elements[i].attributes.agent,
-                phone: req.body.elements[0].elements[i].attributes.tel,
-                type: 'клиент'
-            });
-            await ReceivedDataAzyk.create(_object)
+            agent = await Integrate1CAzyk.findOne({
+                organization: organization,
+                guid: req.body.elements[0].elements[i].attributes.agent
+            })
+            if(agent&&!integrate1CAzyk) {
+                _object = new ReceivedDataAzyk({
+                    status: integrate1CAzyk ? 'изменить' : 'добавить',
+                    organization: organization._id,
+                    name: req.body.elements[0].elements[i].attributes.name,
+                    guid: req.body.elements[0].elements[i].attributes.guid,
+                    addres: req.body.elements[0].elements[i].attributes.address,
+                    agent: agent.agent,
+                    phone: req.body.elements[0].elements[i].attributes.tel,
+                    type: 'клиент'
+                });
+                await ReceivedDataAzyk.create(_object)
+            }
         }
         await res.status(200);
         await res.end('success')
@@ -51,24 +63,46 @@ router.post('/:pass/put/employment', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
         let position = ''
-        if(req.body.elements[0].attributes.mode==='agent')
-            position = 'агент'
-        else if(req.body.elements[0].attributes.mode==='forwarder')
+        let _object
+        if(req.body.elements[0].attributes.mode==='forwarder')
             position = 'экспедитор'
+        else
+            position = 'агент'
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            let integrate1CAzyk = await Integrate1CAzyk.findOne({
+            console.log(position)
+            _object = await Integrate1CAzyk.findOne({
                 organization: organization._id,
                 guid: req.body.elements[0].elements[i].attributes.guid
-            })
-            let _object = new ReceivedDataAzyk({
-                status: integrate1CAzyk?'Изменить':'Добавить',
-                organization: organization._id,
-                name: req.body.elements[0].elements[i].attributes.name,
-                guid: req.body.elements[0].elements[i].attributes.guid,
-                position: position,
-                type: 'сотрудник'
-            });
-            await ReceivedDataAzyk.create(_object)
+            }).lean()
+            if(_object){
+                _object = await EmploymentAzyk.findOne({$or: [{_id: _object.agent}, {_id: _object.ecspeditor}]})
+                _object.name = req.body.elements[0].elements[i].attributes.name
+                await _object.save()
+            }
+            else {
+                _object = new UserAzyk({
+                    login: randomstring.generate(20),
+                    role: position,
+                    status: 'active',
+                    password: '12345678',
+                });
+                _object = await UserAzyk.create(_object);
+                _object = new EmploymentAzyk({
+                    name: req.body.elements[0].elements[i].attributes.name,
+                    email: '',
+                    phone: '',
+                    organization: organization._id,
+                    user: _object._id,
+                });
+                _object = await EmploymentAzyk.create(_object);
+                _object = new Integrate1CAzyk({
+                    agent: _object._id,
+                    organization: organization._id,
+                    guid: req.body.elements[0].elements[i].attributes.guid,
+                });
+                _object = await Integrate1CAzyk.create(_object)
+
+            }
         }
         await res.status(200);
         await res.end('success')

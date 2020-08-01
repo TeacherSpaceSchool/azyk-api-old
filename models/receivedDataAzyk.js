@@ -8,7 +8,10 @@ const ReceivedDataAzykSchema = mongoose.Schema({
     guid: String,
     name: String,
     addres: String,
-    agent: String,
+    agent: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'EmploymentAzyk'
+    },
     phone: String,
     type: String,
     status: String,

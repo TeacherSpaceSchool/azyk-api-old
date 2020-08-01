@@ -1,4 +1,5 @@
 const ReceivedDataAzyk = require('../models/receivedDataAzyk');
+const DistrictAzyk = require('../models/districtAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
 const ClientAzyk = require('../models/clientAzyk');
 const UserAzyk = require('../models/userAzyk');
@@ -12,7 +13,7 @@ const type = `
     guid: String
     name: String
     addres: String
-    agent: String
+    agent: Employment
     phone: String
     type: String
     status: String
@@ -21,20 +22,21 @@ const type = `
 `;
 
 const query = `
-    receivedDatas(search: String!, filter: String!): [ReceivedData]
+    receivedDatas(search: String!, filter: String!, organization: ID!): [ReceivedData]
     filterReceivedData: [Filter]
 `;
 
 const mutation = `
-    clearAllReceivedDatas: Data
+    clearAllReceivedDatas(organization: ID!): Data
     deleteReceivedData(_ids: [ID]!): Data
     addReceivedDataClient(_id: ID!): Data
 `;
 
 const resolvers = {
-    receivedDatas: async(parent, {search, filter}, {user}) => {
+    receivedDatas: async(parent, {search, filter, organization}, {user}) => {
         if('admin'===user.role){
             return await ReceivedDataAzyk.find({
+                organization: organization,
                 type: {'$regex': filter, '$options': 'i'},
                 ...search.length ? {
                     $or: [
@@ -42,7 +44,9 @@ const resolvers = {
                         {addres: {'$regex': search, '$options': 'i'}}
                     ]
                 } : {},
-            }).populate('organization').sort('-createdAt')
+            })
+                .populate('agent')
+                .sort('-createdAt')
         }
     },
     filterReceivedData: async(parent, ctx, {user}) => {
@@ -67,9 +71,9 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    clearAllReceivedDatas: async(parent, ctx, {user}) => {
+    clearAllReceivedDatas: async(parent, {organization}, {user}) => {
         if('admin'===user.role){
-            await ReceivedDataAzyk.deleteMany()
+            await ReceivedDataAzyk.deleteMany({organization: organization})
         }
         return {data: 'OK'}
     },
@@ -81,7 +85,7 @@ const resolversMutation = {
     },
     addReceivedDataClient: async(parent, { _id }, {user}) => {
         if('admin'===user.role){
-            let receivedData = await ReceivedDataAzyk.find({_id: _id})
+            let receivedData = await ReceivedDataAzyk.findOne({_id: _id})
             let integrate1CAzyk = await Integrate1CAzyk.findOne({
                 organization: receivedData.organization,
                 guid: receivedData.guid
@@ -112,6 +116,12 @@ const resolversMutation = {
                     guid: receivedData.guid,
                 });
                 await Integrate1CAzyk.create(_object)
+                let district = await DistrictAzyk.findOne({
+                    agent: receivedData.agent
+                })
+                district.client.push(_client._id)
+                await district.save()
+                await ReceivedDataAzyk.deleteMany({_id: _id})
             }
 
         }

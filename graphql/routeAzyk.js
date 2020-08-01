@@ -102,6 +102,8 @@ const resolvers = {
             let allPrice = 0
             let allTonnage = 0
             let allSize = 0
+            let consignation
+            let consigmentOrder
             for(let i = 0; i<data.length;i++){
                 for(let i1 = 0; i1<data[i].orders.length;i1++) {
                     if(!items[data[i].orders[i1].item._id])
@@ -310,6 +312,17 @@ const resolvers = {
                         worksheet.getCell(`A${row}`).value = 'Телефон получателя:';
                     }
                     worksheet.getCell(`B${row}`).value = data[i].client.phone[i1];
+                }
+                consignation = 0
+                consigmentOrder = await InvoiceAzyk.find({consignmentPrice: {$gt: 0}, paymentConsignation: {$ne: true}, client: data[i].client._id}).select('consignmentPrice').lean()
+                for(let i1 = 0; i1<consigmentOrder.length;i1++){
+                    consignation+=consigmentOrder[i1].consignmentPrice
+                }
+                if(consignation){
+                    row+=1;
+                    worksheet.getCell(`A${row}`).font = {bold: true};
+                    worksheet.getCell(`A${row}`).value = 'Всего консигнаций:';
+                    worksheet.getCell(`B${row}`).value = `${consignation} сом`;
                 }
                 if(data[i].adss) {
                     row+=1;
