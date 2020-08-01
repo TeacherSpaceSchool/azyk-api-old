@@ -38,6 +38,7 @@ const query = `
     clientsSimpleStatistic(search: String!, filter: String!, date: String): [String]
     clients(search: String!, sort: String!, filter: String!, date: String, skip: Int): [Client]
     clientsSync(search: String!, organization: ID!, skip: Int!): [Client]
+    clientsSyncStatistic(search: String!, organization: ID!): String
     clientsTrashSimpleStatistic(search: String!): [String]
     clientsTrash(search: String!, skip: Int): [Client]
     client(_id: ID!): Client
@@ -556,6 +557,20 @@ const resolvers = {
                         }
                     ])
             return clients
+        }
+    },
+    clientsSyncStatistic: async(parent, {search, organization}, {user}) => {
+        if(user.role==='admin'){
+            let clients = await ClientAzyk.find({
+                sync: organization.toString(),
+                $or: [
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                ]
+            })
+                .select('_id')
+                .lean()
+            return clients.length.toString()
         }
     },
     clientsSync: async(parent, {search, organization, skip}, {user}) => {
