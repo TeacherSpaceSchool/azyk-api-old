@@ -332,7 +332,10 @@ module.exports.getSingleOutXMLClientAzyk = async(pass) => {
             organization: organization._id
         })
         .distinct('client')
-    let outXMLs = await ClientAzyk
+        .lean()
+    let outXMLs = await DistrictAzyk
+        .find({organization: organization._id}).distinct('client').lean()
+    outXMLs = await ClientAzyk
         .aggregate([
             { $lookup:
                 {
@@ -352,7 +355,10 @@ module.exports.getSingleOutXMLClientAzyk = async(pass) => {
             },
             {
                 $match:{
-                    _id: {$in: integrate1Cs},
+                    $and: [
+                        {_id: {$in: outXMLs}},
+                        {_id: {$in: integrate1Cs}}
+                    ],
                     sync: {$ne: organization._id.toString()},
                     'user.status': 'active',
                     del: {$ne: 'deleted'}
@@ -362,21 +368,21 @@ module.exports.getSingleOutXMLClientAzyk = async(pass) => {
         ])
     for(let i=0;i<outXMLs.length;i++){
         let guidClient = await Integrate1CAzyk
-            .findOne({$and: [{client: outXMLs[i]._id}, {client: {$ne: null}}], organization: organization._id})
+            .findOne({$and: [{client: outXMLs[i]._id}, {client: {$ne: null}}], organization: organization._id}).lean()
         if(guidClient){
             let district = await DistrictAzyk
-                .findOne({client: outXMLs[i]._id, organization: organization._id})
+                .findOne({client: outXMLs[i]._id, organization: organization._id}).lean()
             let agent;
             if(district&&district.agent){
                 agent= await Integrate1CAzyk
-                    .findOne({$and: [{agent: district.agent}, {agent: {$ne: null}}], organization: organization._id})
+                    .findOne({$and: [{agent: district.agent}, {agent: {$ne: null}}], organization: organization._id}).lean()
             }
             let item = result
                 .ele('item')
             item.att('guid', guidClient.guid)
-            item.att('name', outXMLs[i].address[0][2])
-            item.att('address', outXMLs[i].address[0][0])
-            item.att('tel', outXMLs[i].phone)
+            item.att('name', outXMLs[i].address[0][2]?outXMLs[i].address[0][2]:'')
+            item.att('address', outXMLs[i].address[0][0]?outXMLs[i].address[0][0]:'')
+            item.att('tel', outXMLs[i].phone?outXMLs[i].phone:'')
             if(agent)
                 item.att('agent', agent.guid)
         }

@@ -45,7 +45,7 @@ const resolvers = {
                     ]
                 } : {},
             })
-                .populate('agent')
+                //.populate('agent')
                 .sort('-createdAt')
         }
     },
