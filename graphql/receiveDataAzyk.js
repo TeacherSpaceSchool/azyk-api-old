@@ -13,7 +13,7 @@ const type = `
     guid: String
     name: String
     addres: String
-    agent: Employment
+    agent: String
     phone: String
     type: String
     status: String
