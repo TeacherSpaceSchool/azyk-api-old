@@ -50,7 +50,8 @@ const resolvers = {
         }
     },
     distributer: async(parent, {_id}, {user}) => {
-        if((mongoose.Types.ObjectId.isValid(_id)||_id==='super')&&user.role==='admin'){
+        if((mongoose.Types.ObjectId.isValid(_id)||_id==='super')){
+            if(!['admin', 'суперагент'].includes(user.role)) _id = user.organization
             return await DistributerAzyk.findOne(
                 _id!=='super'?
                     {$or:[{_id: _id}, {distributer: _id}]}

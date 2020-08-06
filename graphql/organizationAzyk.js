@@ -97,7 +97,7 @@ const resolvers = {
             return await OrganizationAzyk.find({
                 _id: {$in: brandOrganizations},
                 name: {'$regex': search, '$options': 'i'},
-                status: filter.length===0?{'$regex': filter, '$options': 'i'}:filter,
+                status: 'active',
                 del: {$ne: 'deleted'}
             })
                 .sort('-priotiry')

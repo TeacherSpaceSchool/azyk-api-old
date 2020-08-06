@@ -112,9 +112,9 @@ const type = `
 `;
 
 const query = `
-    invoices(search: String!, sort: String!, filter: String!, date: String!, skip: Int): [Invoice]
+    invoices(search: String!, sort: String!, filter: String!, date: String!, skip: Int, organization: ID): [Invoice]
     invoicesFromDistrict(organization: ID!, district: ID!, date: String!): [Invoice]
-   invoicesSimpleStatistic(search: String!, filter: String!, date: String): [String]
+   invoicesSimpleStatistic(search: String!, filter: String!, date: String, organization: ID): [String]
     invoicesTrash(search: String!, skip: Int): [Invoice]
    invoicesTrashSimpleStatistic(search: String!): [String]
     orderHistorys(invoice: ID!): [HistoryOrder]
@@ -181,7 +181,7 @@ const resolvers = {
         }
         return [invoices.length.toString()]
     },
-    invoicesSimpleStatistic: async(parent, {search, filter, date,}, {user}) => {
+    invoicesSimpleStatistic: async(parent, {search, filter, date, organization}, {user}) => {
         let dateStart;
         let dateEnd;
         if(date!==''){
@@ -225,6 +225,7 @@ const resolvers = {
                         ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
                         ...(filter === 'акция' ? {adss: {$ne: []}} : {}),
                         client: user.client,
+                        ...organization?{organization: new mongoose.Types.ObjectId(organization)}:{},
                         ...(search.length>0?{
                                 $or: [
                                     {number: {'$regex': search, '$options': 'i'}},
@@ -252,6 +253,7 @@ const resolvers = {
                         $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
                         ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
                         ...(filter === 'акция' ? {adss: {$ne: []}} : {}),
+                        ...organization?{organization: new mongoose.Types.ObjectId(organization)}:{},
                         ...(search.length>0?{
                                 $or: [
                                     {number: {'$regex': search, '$options': 'i'}},
@@ -434,6 +436,7 @@ const resolvers = {
                         ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
                         ...(filter === 'акция' ? {adss: {$ne: []}} : {}),
                         ...clients.length?{client: {$in: clients}}:{agent: user.employment},
+                        ...organization?{organization: new mongoose.Types.ObjectId(organization)}:{},
                         $and: [
                             {createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}},
                             {
@@ -483,7 +486,7 @@ const resolvers = {
         }
         return [lengthList.toString(), checkFloat(price).toString(), checkFloat(consignment).toString(), checkFloat(consignmentPayment).toString(), checkFloat(tonnage).toString(), checkFloat(size).toString()]
     },
-    invoices: async(parent, {search, sort, filter, date, skip}, {user}) =>  {
+    invoices: async(parent, {search, sort, filter, date, skip, organization}, {user}) =>  {
         let dateStart;
         let dateEnd;
         if(date!==''){
@@ -510,11 +513,13 @@ const resolvers = {
         }
         if(user.role==='admin') {
             //console.time('get BD')
+            console.log(organization)
             let invoices =  await InvoiceAzyk.aggregate(
                 [
                     {
                         $match:{
-                            del: {$ne: 'deleted'}
+                            del: {$ne: 'deleted'},
+                            ...organization?{organization: new mongoose.Types.ObjectId(organization)}:{},
                         }
                     },
                     {
@@ -655,7 +660,6 @@ const resolvers = {
                         }
                     }
                 ])
-            //console.timeEnd('get BD')
             return invoices
         }
         else if(user.role==='client'){
@@ -664,6 +668,7 @@ const resolvers = {
                     {
                         $match: {
                             del: {$ne: 'deleted'},
+                            ...organization?{organization: new mongoose.Types.ObjectId(organization)}:{},
                             client: user.client
                         }
                     },
@@ -838,6 +843,7 @@ const resolvers = {
                         $match: {
                             del: {$ne: 'deleted'},
                             ...clients.length?{client: {$in: clients}}:{agent: user.employment},
+                            ...organization?{organization: new mongoose.Types.ObjectId(organization)}:{},
                         }
                     },
                     {

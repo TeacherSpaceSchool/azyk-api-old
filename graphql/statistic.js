@@ -2385,23 +2385,53 @@ const resolvers = {
                     /*_id: {$in: data}*/
                     organization: organization
                 }
-            ).lean()
+            )
+                .sort('name')
+                .lean()
             return data;
         }
     },
     activeOrganization: async(parent, ctx, {user}) => {
-        if(['admin', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
-            let data/* = await InvoiceAzyk.find(
-                {
-                    del: {$ne: 'deleted'},
-                    taken: true
-                }
-            ).distinct('organization').lean()*/
-            data = await OrganizationAzyk.find(
+        if('admin'===user.role){
+            let data = await OrganizationAzyk.find(
                 {
                     /*_id: {$in: data}*/
                 }
-            ).lean()
+            )
+                .sort('name')
+                .lean()
+            return data;
+        }
+        else if('суперагент'===user.role){
+            let data = await OrganizationAzyk.find(
+                {
+                    status: 'active',
+                    superagent: true,
+                    del: {$ne: 'deleted'}
+                }
+            )
+                .sort('name')
+                .lean()
+            return data;
+        }
+        else if('client'===user.role){
+            let data = await OrganizationAzyk.find(
+                {
+                    status: 'active',
+                    del: {$ne: 'deleted'}
+                }
+            )
+                .sort('name')
+                .lean()
+            return data;
+        }
+        else if(['суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
+            let data = await OrganizationAzyk.find(
+                {
+                    _id: user.organization
+                }
+            )
+                .lean()
             return data;
         }
     },
@@ -2411,7 +2441,9 @@ const resolvers = {
                 {
                     superagent: true
                 }
-            ).lean()
+            )
+                .sort('name')
+                .lean()
             return data;
         }
     },
