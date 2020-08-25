@@ -47,6 +47,7 @@ const query = `
 `;
 
 const mutation = `
+    clearClientsSync(organization: ID!): Data
     addClient(category: String!, image: Upload, name: String!, email: String, city: String!, address: [[String]]!, phone: [String]!, info: String, password: String!, login: String!): Data
     setClient(category: String, _id: ID!, device: String, image: Upload, name: String, city: String, phone: [String], login: String, email: String, address: [[String]], info: String, newPass: String): Data
     deleteClient(_id: [ID]!): Data
@@ -1398,6 +1399,11 @@ const resolversMutation = {
                 await Integrate1CAzyk.deleteMany({client: objects[i]._id})
             }
         }
+        return {data: 'OK'}
+    },
+    clearClientsSync: async(parent, { organization }, {user}) => {
+        if(user.role==='admin')
+            await ClientAzyk.updateMany({sync: organization.toString()}, {$pull: { sync: organization.toString()}});
         return {data: 'OK'}
     },
     restoreClient: async(parent, { _id }, {user}) => {

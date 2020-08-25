@@ -1616,8 +1616,8 @@ const resolvers = {
                             dateStart ? {createdAt: {$gte: dateStart}} : {},
                             dateEnd ? {createdAt: {$lt: dateEnd}} : {}
                         ],
-                        del: {$ne: 'deleted'},
-                        taken: true,
+                        //del: {$ne: 'deleted'},
+                        //taken: true,
                         ...(company!=='super'?{organization: company}:{...online?{organization: {$in: superOrganizations}}:{}}),
                         agent: {$nin: excludedAgents},
                     }
@@ -1627,8 +1627,10 @@ const resolvers = {
                 for(let i=0; i<data.length; i++) {
                     let district = {_id: 'Прочие', name: 'Прочие'}
                     for(let i1=0; i1<districts.length; i1++) {
-                        if(districts[i1].client.toString().includes(data[i].client.toString()))
+                        if(districts[i1].client.toString().includes(data[i].client.toString())) {
                             district = districts[i1]
+                            break
+                        }
                     }
                     if (!statistic[district._id])
                         statistic[district._id] = {

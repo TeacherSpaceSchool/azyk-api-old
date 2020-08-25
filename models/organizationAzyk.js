@@ -55,8 +55,7 @@ const OrganizationAzykSchema = mongoose.Schema({
     },
     pass: {
         type: String,
-        default: '',
-        unique: true
+        default: ''
     },
 }, {
     timestamps: true

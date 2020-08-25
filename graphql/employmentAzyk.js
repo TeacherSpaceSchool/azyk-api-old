@@ -245,7 +245,10 @@ const resolvers = {
     employment: async(parent, {_id}, {user}) => {
         if(user.role&&user.role!=='client'&&mongoose.Types.ObjectId.isValid(_id)) {
             let result = await EmploymentAzyk.findOne({
-                user: _id
+                $or: [
+                    {_id: _id},
+                    {user: _id}
+                ]
             }).populate({ path: 'user'}).populate({ path: 'organization' })
             if(result === null||!['admin', 'суперорганизация', 'организация'].includes(user.role))
                 return await EmploymentAzyk.findOne({user: user._id}).populate({ path: 'user'}).populate({ path: 'organization' })
