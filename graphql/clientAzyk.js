@@ -1329,8 +1329,8 @@ const resolversMutation = {
     setClient: async(parent, {_id, image, name, email, address, info, newPass, phone, login, city, device, category}, {user, res}) => {
         let object = await ClientAzyk.findOne({_id: _id})
         if(
-            ['суперорганизация', 'организация', 'агент', 'admin', 'суперагент'].includes(user.role)||
-            object.user&&object.user.toString()===user._id.toString()
+            ['суперорганизация', 'организация', 'агент', 'admin', 'суперагент'].includes(user.role)/*||
+            object.user&&object.user.toString()===user._id.toString()*/
         ) {
             if (image) {
                 let {stream, filename} = await image;
