@@ -1604,12 +1604,22 @@ const resolvers = {
                 }
             }
             else {
-                let districts = await DistrictAzyk.find({
+                console.time('all statistic order')
+                console.time('find district')
+                let data = await DistrictAzyk.find({
                     ...(company!=='super'?{organization: company}:{organization: null}),
                     name: {$ne: 'super'}
                 })
                     .select('_id name client')
                     .lean()
+                let districts = {}
+                for(let i=0; i<data.length; i++) {
+                    for(let i1=0; i1<data[i].client.length; i1++) {
+                        districts[data[i].client[i1].toString()] = data[i]
+                    }
+                }
+                console.timeEnd('find district')
+                console.time('find order')
                 data = await InvoiceAzyk.find(
                     {
                         $and: [
@@ -1624,14 +1634,13 @@ const resolvers = {
                 )
                     .select('_id returnedPrice allPrice paymentConsignation consignmentPrice client')
                     .lean()
+                console.timeEnd('find order')
                 for(let i=0; i<data.length; i++) {
                     let district = {_id: 'Прочие', name: 'Прочие'}
-                    for(let i1=0; i1<districts.length; i1++) {
-                        if(districts[i1].client.toString().includes(data[i].client.toString())) {
-                            district = districts[i1]
-                            break
-                        }
+                    if(districts[data[i].client.toString()]) {
+                        district = districts[data[i].client.toString()]
                     }
+
                     if (!statistic[district._id])
                         statistic[district._id] = {
                             profit: 0,
@@ -1653,6 +1662,7 @@ const resolvers = {
                         consignmentPriceAll += data[i].consignmentPrice
                     }
                 }
+                console.timeEnd('all statistic order')
 
             }
 

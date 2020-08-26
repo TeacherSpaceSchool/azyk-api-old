@@ -96,10 +96,13 @@ router.post('/:pass/put/employment', async (req, res, next) => {
                 });
                 _object = await EmploymentAzyk.create(_object);
                 _object = new Integrate1CAzyk({
-                    agent: _object._id,
                     organization: organization._id,
                     guid: req.body.elements[0].elements[i].attributes.guid,
                 });
+                if(req.body.elements[0].attributes.mode==='forwarder')
+                    _object.ecspeditor = _object._id
+                else
+                    _object.agent = _object._id
                 _object = await Integrate1CAzyk.create(_object)
 
             }
