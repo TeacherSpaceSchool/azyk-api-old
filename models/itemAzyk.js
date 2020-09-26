@@ -34,6 +34,7 @@ const ItemAzykSchema = mongoose.Schema({
     status: String,
     info: String,
     categorys: [String],
+    city: String,
     favorite: [mongoose.Schema.Types.ObjectId],
     basket: [mongoose.Schema.Types.ObjectId],
     weight: {

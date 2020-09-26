@@ -69,7 +69,6 @@ router.post('/:pass/put/employment', async (req, res, next) => {
         else
             position = 'агент'
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            console.log(position)
             _object = await Integrate1CAzyk.findOne({
                 organization: organization._id,
                 guid: req.body.elements[0].elements[i].attributes.guid
@@ -94,17 +93,13 @@ router.post('/:pass/put/employment', async (req, res, next) => {
                     organization: organization._id,
                     user: _object._id,
                 });
-                _object = await EmploymentAzyk.create(_object);
+                await EmploymentAzyk.create(_object);
                 _object = new Integrate1CAzyk({
                     organization: organization._id,
                     guid: req.body.elements[0].elements[i].attributes.guid,
+                    ...req.body.elements[0].attributes.mode==='forwarder'?{ecspeditor: _object._id}:{agent: _object._id}
                 });
-                if(req.body.elements[0].attributes.mode==='forwarder')
-                    _object.ecspeditor = _object._id
-                else
-                    _object.agent = _object._id
                 _object = await Integrate1CAzyk.create(_object)
-
             }
         }
         await res.status(200);

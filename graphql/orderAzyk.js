@@ -193,7 +193,7 @@ const resolvers = {
         else {
             dateStart = new Date()
             dateEnd = new Date(dateStart)
-            if(dateStart.getHours()>3)
+            if(dateStart.getHours()>=3)
                 dateEnd.setDate(dateEnd.getDate() + 1)
             else
                 dateStart.setDate(dateEnd.getDate() - 1)
@@ -356,7 +356,7 @@ const resolvers = {
                     if(differenceDates>5) {
                         dateStart = new Date()
                         dateEnd = new Date(dateStart)
-                        if(dateStart.getHours()>3)
+                        if(dateStart.getHours()>=3)
                             dateEnd.setDate(dateEnd.getDate() + 1)
                         else
                             dateStart.setDate(dateEnd.getDate() - 1)
@@ -411,7 +411,7 @@ const resolvers = {
                     if(differenceDates>5) {
                         dateStart = new Date()
                         dateEnd = new Date(dateStart)
-                        if(dateStart.getHours()>3)
+                        if(dateStart.getHours()>=3)
                             dateEnd.setDate(dateEnd.getDate() + 1)
                         else
                             dateStart.setDate(dateEnd.getDate() - 1)
@@ -513,7 +513,6 @@ const resolvers = {
         }
         if(user.role==='admin') {
             //console.time('get BD')
-            console.log(organization)
             let invoices =  await InvoiceAzyk.aggregate(
                 [
                     {

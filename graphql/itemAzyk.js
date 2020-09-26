@@ -34,6 +34,7 @@ const type = `
     size: Float
     priotiry: Int
     del: String
+    city: String
   }
 `;
 
@@ -49,8 +50,8 @@ const query = `
 `;
 
 const mutation = `
-    addItem( categorys: [String]!, unit: String, priotiry: Int, apiece: Boolean, packaging: Int!, stock: Float!, weight: Float!, size: Float!, name: String!, deliveryDays: [String], info: String!, image: Upload, price: Float!, subCategory: ID!, organization: ID!, hit: Boolean!, latest: Boolean!): Data
-    setItem(_id: ID!, unit: String, categorys: [String], priotiry: Int, apiece: Boolean, packaging: Int, stock: Float, weight: Float, size: Float, name: String, info: String, deliveryDays: [String], image: Upload, price: Float, subCategory: ID, organization: ID, hit: Boolean, latest: Boolean): Data
+    addItem( categorys: [String]!, city: String!, unit: String, priotiry: Int, apiece: Boolean, packaging: Int!, stock: Float!, weight: Float!, size: Float!, name: String!, deliveryDays: [String], info: String!, image: Upload, price: Float!, subCategory: ID!, organization: ID!, hit: Boolean!, latest: Boolean!): Data
+    setItem(_id: ID!, unit: String, city: String, categorys: [String], priotiry: Int, apiece: Boolean, packaging: Int, stock: Float, weight: Float, size: Float, name: String, info: String, deliveryDays: [String], image: Upload, price: Float, subCategory: ID, organization: ID, hit: Boolean, latest: Boolean): Data
     deleteItem(_id: [ID]!): Data
     restoreItem(_id: [ID]!): Data
     onoffItem(_id: [ID]!): Data
@@ -196,6 +197,7 @@ const resolvers = {
         let items =  await ItemAzyk.find({
             status: 'active',
             del: {$ne: 'deleted'},
+            city: user.city,
             $or: [
                 {hit: true},
                 {latest:true}
@@ -206,7 +208,8 @@ const resolvers = {
             .populate({
                 path: 'organization',
                 match: {
-                    status: 'active'
+                    status: 'active',
+                    cities: user.city
                 }
             })
             .sort('-priotiry')
@@ -252,11 +255,12 @@ const resolvers = {
     },
     brands: async(parent, {organization, search, sort}, {user}) => {
         if(mongoose.Types.ObjectId.isValid(organization)) {
+
             let items = await ItemAzyk.find({
                 ...user.role==='admin'?{}:{status: 'active'},
                 organization: organization,
                 del: {$ne: 'deleted'},
-                ...user.role==='client'?{categorys: user.category}:{}
+                ...user.role==='client'?{categorys: user.category, city: user.city}:{}
             })
                 .populate('subCategory')
                 .populate({
@@ -376,7 +380,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addItem: async(parent, {categorys, unit, apiece, priotiry, stock, name, image, info, price, subCategory, organization, hit, latest, deliveryDays, packaging, weight, size}, {user}) => {
+    addItem: async(parent, {categorys, city, unit, apiece, priotiry, stock, name, image, info, price, subCategory, organization, hit, latest, deliveryDays, packaging, weight, size}, {user}) => {
         if(['admin', 'суперорганизация', 'организация'].includes(user.role)){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -398,7 +402,8 @@ const resolversMutation = {
                 weight: weight,
                 size: size,
                 priotiry: priotiry,
-                unit: unit
+                unit: unit,
+                city: city
             });
             if(['суперорганизация', 'организация'].includes(user.role)) _object.organization = user.organization
             if(apiece!=undefined) _object.apiece = apiece
@@ -406,7 +411,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setItem: async(parent, {unit, categorys, apiece, _id, priotiry, weight, size, stock, name, image, info, price, subCategory, organization, packaging, hit, latest, deliveryDays}, {user}) => {
+    setItem: async(parent, {city, unit, categorys, apiece, _id, priotiry, weight, size, stock, name, image, info, price, subCategory, organization, packaging, hit, latest, deliveryDays}, {user}) => {
         let object = await ItemAzyk.findById(_id)
         if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===object.organization.toString())) {
             if (image) {
@@ -415,6 +420,7 @@ const resolversMutation = {
                 filename = await saveImage(stream, filename)
                 object.image = urlMain + filename
             }
+            if(city)object.city = city
             if(name)object.name = name
             if(weight!=undefined)object.weight = weight
             if(size!=undefined)object.size = size

@@ -12,7 +12,6 @@ const { reductionInvoices } = require('../module/invoiceAzyk');
 const { startClientRedis } = require('../module/redis');
 const { reductionToUser, createAdmin } = require('../module/user');
 const { Worker, isMainThread } = require('worker_threads');
-
 const OrganizationAzyk = require('../models/organizationAzyk');
 const InvoiceAzyk = require('../models/invoiceAzyk');
 const OrderAzyk = require('../models/orderAzyk');
@@ -94,9 +93,9 @@ let start = async () => {
     //await reductionSubCategoryAzyk()
     //await reductionToRoute()
     //await reductionToBonus()
-    //await reductionToClient()
-    //await reductionToOrganization()
-    //await reductionToItem()
+    await reductionToClient()
+    await reductionToOrganization()
+    await reductionToItem()
     //await reductionToUser()
     //await reductionToAgentRoute();
     //await reductionOutAdsXMLShoroAzyk()

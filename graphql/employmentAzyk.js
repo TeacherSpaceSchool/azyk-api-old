@@ -153,6 +153,7 @@ const resolvers = {
                     del: {$ne: 'deleted'}})
                     .populate({path: 'user', match: {role: 'суперэкспедитор', status: 'active'}})
                     .populate({path: 'organization'})
+                    .sort('name')
                 employments = employments.filter(employment => (employment.user))
                 return employments
             }
@@ -161,6 +162,7 @@ const resolvers = {
                     del: {$ne: 'deleted'}})
                     .populate({path: 'user', match: {role: 'экспедитор', status: 'active'}})
                     .populate({path: 'organization'})
+                    .sort('name')
                 employments = employments.filter(employment => (employment.user))
                 return employments
             }
@@ -173,6 +175,7 @@ const resolvers = {
             })
                 .populate({path: 'user', match: {role: 'экспедитор', status: 'active'}})
                 .populate({path: 'organization'})
+                .sort('name')
             employments = employments.filter(employment => (employment.user))
             return employments
         }
@@ -185,6 +188,7 @@ const resolvers = {
                     del: {$ne: 'deleted'}})
                     .populate({path: 'user', match: {role: 'менеджер', status: 'active'}})
                     .populate({path: 'organization'})
+                    .sort('name')
                 employments = employments.filter(employment => (employment.user))
                 return employments
             }
@@ -195,6 +199,7 @@ const resolvers = {
                     del: {$ne: 'deleted'}})
                     .populate({ path: 'user' })
                     .populate({ path: 'organization'})
+                    .sort('name')
                 return employments
             }
             else return []
@@ -206,6 +211,7 @@ const resolvers = {
             })
                 .populate({path: 'user', match: {role: 'менеджер', status: 'active'}})
                 .populate({path: 'organization'})
+                .sort('name')
             employments = employments.filter(employment => (employment.user))
             return employments
         }
@@ -217,6 +223,7 @@ const resolvers = {
                     del: {$ne: 'deleted'}})
                     .populate({path: 'user', match: {role: 'агент', status: 'active'}})
                     .populate({path: 'organization'})
+                    .sort('name')
                 employments = employments.filter(employment => (employment.user))
                 return employments
             }
@@ -227,6 +234,7 @@ const resolvers = {
                     del: {$ne: 'deleted'}})
                     .populate({ path: 'user' })
                     .populate({ path: 'organization'})
+                    .sort('name')
                 return employments
             }
             else return []
@@ -238,6 +246,7 @@ const resolvers = {
             })
                 .populate({path: 'user', match: {role: 'агент', status: 'active'}})
                 .populate({path: 'organization'})
+                .sort('name')
             employments = employments.filter(employment => (employment.user))
             return employments
         }

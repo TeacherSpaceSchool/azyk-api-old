@@ -57,6 +57,7 @@ const OrganizationAzykSchema = mongoose.Schema({
         type: String,
         default: ''
     },
+    cities:  [String],
 }, {
     timestamps: true
 });

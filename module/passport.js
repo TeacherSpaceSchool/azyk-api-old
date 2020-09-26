@@ -107,6 +107,7 @@ const verifydeuserGQL = async (req, res) => {
                     let client = await ClientAzyk.findOne({user: user._id})
                     user.client = client._id
                     user.category = client.category
+                    user.city = client.city
                     client.lastActive = new Date()
                     client.save()
                     resolve(user)

@@ -47,7 +47,7 @@ module.exports.setSingleOutXMLReturnedAzyk = async(returned) => {
                     .findOne({$and: [{ecspeditor: district.ecspeditor}, {ecspeditor: {$ne: null}}], organization: returned.organization._id})
                 if (guidAgent && guidEcspeditor) {
                     let date = new Date(returned.createdAt)
-                    if(date.getHours()>3)
+                    if(date.getHours()>=3)
                         date.setDate(date.getDate() + 1)
                     if(date.getDay()===0)
                         date.setDate(date.getDate() + 1)
@@ -278,7 +278,7 @@ module.exports.checkSingleOutXMLClientAzyk = async(pass, guid, exc) => {
 module.exports.getSingleOutXMLAzyk = async(pass) => {
     let result = builder.create('root').att('mode', 'sales');
     let date = new Date()
-    if(date.getHours()>3)
+    if(date.getHours()>=3)
         date.setDate(date.getDate() + 1)
     date.setHours(3, 0, 0, 0)
     let outXMLs = await SingleOutXMLAzyk

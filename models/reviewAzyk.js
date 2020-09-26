@@ -1,15 +1,17 @@
 const mongoose = require('mongoose');
 
 const ReviewAzykSchema = mongoose.Schema({
-    what: mongoose.Schema.Types.ObjectId,
-    likes: Number,
-    dislikes: Number,
-    image: Number,
+    organization: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'OrganizationAzyk'
+    },
     client: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ClientAzyk'
     },
-    status: String,
+    taken: Boolean,
+    type: String,
+    text: String
 }, {
     timestamps: true
 });

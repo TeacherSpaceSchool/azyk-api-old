@@ -32,6 +32,7 @@ const StatisticAzyk = require('./statistic');
 const SubscriberAzyk = require('./subscriberAzyk');
 const AgentRouteAzyk = require('./agentRouteAzyk');
 const ReceiveDataAzyk = require('./receiveDataAzyk');
+const ReviewAzyk = require('./reviewAzyk');
 const DistrictAzyk = require('./districtAzyk');
 const Integrate1CAzyk = require('./integrate1CAzyk');
 const ErrorAzyk = require('./errorAzyk');
@@ -59,6 +60,7 @@ const typeDefs = gql`
         image: String
     }
     ${DistrictAzyk.type}
+    ${ReviewAzyk.type}
     ${DeliveryDateAzyk.type}
     ${ErrorAzyk.type}
     ${AgentRouteAzyk.type}
@@ -95,6 +97,7 @@ const typeDefs = gql`
     type Mutation {
         ${Integrate1CAzyk.mutation}
         ${DistrictAzyk.mutation}
+        ${ReviewAzyk.mutation}
         ${DeliveryDateAzyk.mutation}
         ${ErrorAzyk.mutation}
         ${AgentRouteAzyk.mutation}
@@ -131,6 +134,7 @@ const typeDefs = gql`
     type Query {
         ${Integrate1CAzyk.query}
         ${DistrictAzyk.query}
+        ${ReviewAzyk.query}
         ${DeliveryDateAzyk.query}
         ${ErrorAzyk.query}
         ${AgentRouteAzyk.query}
@@ -190,6 +194,7 @@ const resolvers = {
     Query: {
         ...Integrate1CAzyk.resolvers,
         ...DistrictAzyk.resolvers,
+        ...ReviewAzyk.resolvers,
         ...DeliveryDateAzyk.resolvers,
         ...ErrorAzyk.resolvers,
         ...AgentRouteAzyk.resolvers,
@@ -226,6 +231,7 @@ const resolvers = {
     Mutation: {
         ...Integrate1CAzyk.resolversMutation,
         ...AgentRouteAzyk.resolversMutation,
+        ...ReviewAzyk.resolversMutation,
         ...DistrictAzyk.resolversMutation,
         ...DeliveryDateAzyk.resolversMutation,
         ...ErrorAzyk.resolversMutation,

@@ -39,6 +39,7 @@ const type = `
     onlyDistrict: Boolean
     onlyIntegrate: Boolean
     autoAccept: Boolean
+    cities: [String]
     del: String
     priotiry: Int
     pass: String
@@ -55,8 +56,8 @@ const query = `
 `;
 
 const mutation = `
-    addOrganization(pass: String, warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, unite: Boolean!, superagent: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!, autoAccept: Boolean!): Data
-    setOrganization(pass: String, warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, unite: Boolean, superagent: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean, autoAccept: Boolean): Data
+    addOrganization(cities: [String]!, pass: String, warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, unite: Boolean!, superagent: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!, autoAccept: Boolean!): Data
+    setOrganization(cities: [String], pass: String, warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, unite: Boolean, superagent: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean, autoAccept: Boolean): Data
     restoreOrganization(_id: [ID]!): Data
     deleteOrganization(_id: [ID]!): Data
     onoffOrganization(_id: [ID]!): Data
@@ -109,7 +110,8 @@ const resolvers = {
                 _id: {$in: brandOrganizations},
                 name: {'$regex': search, '$options': 'i'},
                 status: 'active',
-                del: {$ne: 'deleted'}
+                del: {$ne: 'deleted'},
+                cities: user.city
             })
                 .sort('-priotiry')
                 .sort(sort)
@@ -212,7 +214,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrganization: async(parent, {autoAccept, pass, warehouse, superagent, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    addOrganization: async(parent, {cities, autoAccept, pass, warehouse, superagent, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -235,6 +237,7 @@ const resolversMutation = {
                 onlyIntegrate: onlyIntegrate,
                 miniInfo: miniInfo,
                 warehouse: warehouse,
+                cities: cities,
                 autoAccept: autoAccept
             });
             if(pass)
@@ -249,7 +252,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setOrganization: async(parent, {autoAccept, pass, warehouse, miniInfo, superagent, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    setOrganization: async(parent, {cities, autoAccept, pass, warehouse, miniInfo, superagent, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===_id.toString())) {
             let object = await OrganizationAzyk.findById(_id)
             if (image) {
@@ -258,7 +261,8 @@ const resolversMutation = {
                 filename = await saveImage(stream, filename)
                 object.image = urlMain + filename
             }
-            if(pass) object.pass = pass
+            if(pass!==undefined) object.pass = pass
+            if(cities) object.cities = cities
             if(name) object.name = name
             if(info) object.info = info
             if(phone) object.phone = phone

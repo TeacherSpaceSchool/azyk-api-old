@@ -15,10 +15,9 @@ const type = `
 `;
 
 const query = `
-    equipments(search: String!, sort: String!, filter: String!): [Equipment]
+    equipments(organization: ID!, search: String!, sort: String!): [Equipment]
     equipment(_id: ID!): Equipment
     sortEquipment: [Sort]
-    filterEquipment: [Filter]
 `;
 
 const mutation = `
@@ -28,56 +27,25 @@ const mutation = `
 `;
 
 const resolvers = {
-    equipments: async(parent, {search, sort, filter}, {user}) => {
-        if(user.role==='admin'){
-            let equipments =  await EquipmentAzyk.find(
-                mongoose.Types.ObjectId.isValid(filter)?{organization: filter}:{}
+    equipments: async(parent, {organization, search, sort}, {user}) => {
+        if(user.organization) organization = user.organization()
+        let equipments =  await EquipmentAzyk.find({
+            organization: organization
+        })
+            .populate({
+                path: 'client',
+                select: 'name'
+            })
+            .sort(sort)
+            .lean()
+        equipments = equipments.filter(
+            equipment => (
+                (equipment.name.toLowerCase()).includes(search.toLowerCase()) ||
+                (equipment.number.toLowerCase()).includes(search.toLowerCase()) ||
+                equipment.client&&(equipment.client.name.toLowerCase()).includes(search.toLowerCase())
             )
-                .populate('client')
-                .populate('organization')
-                .sort(sort)
-            equipments = equipments.filter(
-                equipment => (
-                    (equipment.name.toLowerCase()).includes(search.toLowerCase()) ||
-                    (equipment.number.toLowerCase()).includes(search.toLowerCase()) ||
-                    equipment.organization&&(equipment.organization.name.toLowerCase()).includes(search.toLowerCase()) ||
-                    equipment.client&&(equipment.client.name.toLowerCase()).includes(search.toLowerCase())
-                )
-            )
-            return equipments
-        }
-        else if(['экспедитор', 'менеджер', 'агент', 'суперорганизация', 'организация'].includes(user.role)){
-            let equipments =  await EquipmentAzyk.find(
-                mongoose.Types.ObjectId.isValid(filter)?{client: filter, organization: user.organization}:{organization: user.organization}
-            )
-                .populate('client')
-                .populate('organization')
-                .sort(sort)
-            equipments = equipments.filter(
-                equipment => (
-                    (equipment.name.toLowerCase()).includes(search.toLowerCase()) ||
-                    (equipment.number.toLowerCase()).includes(search.toLowerCase()) ||
-                    equipment.client&&(equipment.client.name.toLowerCase()).includes(search.toLowerCase())
-                )
-            )
-            return equipments
-        }
-        else  if(user.role==='client'){
-            let equipments =  await EquipmentAzyk.find(
-                mongoose.Types.ObjectId.isValid(filter)?{organization: filter, client: user.client}:{client: user.client}
-            )
-                .populate('client')
-                .populate('organization')
-                .sort(sort)
-            equipments = equipments.filter(
-                equipment => (
-                    (equipment.name.toLowerCase()).includes(search.toLowerCase()) ||
-                    (equipment.number.toLowerCase()).includes(search.toLowerCase()) ||
-                    equipment.organization&&(equipment.organization.name.toLowerCase()).includes(search.toLowerCase())
-                )
-            )
-            return equipments
-        }
+        )
+        return equipments
     },
     equipment: async(parent, {_id}, {user}) => {
         let equipment = await EquipmentAzyk.findOne({_id: _id})
@@ -98,51 +66,7 @@ const resolvers = {
                 field: '-createdAt'
             },
         ]
-    },
-    filterEquipment: async(parent, ctx, {user}) => {
-        if(['admin', 'client'].includes(user.role)){
-            let filter = [
-                {
-                    name: 'Все',
-                    value: ''
-                }
-            ]
-            let objects = await EquipmentAzyk.find().distinct('organization')
-            objects = await OrganizationAzyk.find({_id: {$in: objects}})
-            for(let i = 0; i<objects.length; i++){
-                filter = [
-                    ... filter,
-                    {
-                        name: objects[i].name,
-                        value: objects[i]._id
-                    }
-                ]
-            }
-            return filter
-        }
-        else if(user.role){
-            let filter = [
-                {
-                    name: 'Все',
-                    value: ''
-                }
-            ]
-            let objects = await EquipmentAzyk.find().distinct('client')
-            objects = await ClientAzyk.find({_id: {$in: objects}})
-            for(let i = 0; i<objects.length; i++){
-                filter = [
-                    ... filter,
-                    {
-                        name: objects[i].name,
-                        value: objects[i]._id
-                    }
-                ]
-            }
-            return filter
-        }
-        else
-            return []
-    },
+    }
 };
 
 const resolversMutation = {
