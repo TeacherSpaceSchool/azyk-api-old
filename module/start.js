@@ -93,9 +93,9 @@ let start = async () => {
     //await reductionSubCategoryAzyk()
     //await reductionToRoute()
     //await reductionToBonus()
-    await reductionToClient()
-    await reductionToOrganization()
-    await reductionToItem()
+    //await reductionToClient()
+    //await reductionToOrganization()
+    //await reductionToItem()
     //await reductionToUser()
     //await reductionToAgentRoute();
     //await reductionOutAdsXMLShoroAzyk()
