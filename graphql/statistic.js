@@ -76,7 +76,7 @@ const query = `
     activeItem(organization: ID!): [Item]
     activeOrganization: [Organization]
     superagentOrganization: [Organization]
-    statisticClientGeo(organization: ID, item: ID): [GeoStatistic]
+    statisticClientGeo(search: String, organization: ID, item: ID): [GeoStatistic]
     statisticDevice: Statistic
     checkIntegrateClient(organization: ID, type: String, document: Upload): Statistic
 `;
@@ -2610,11 +2610,20 @@ const resolvers = {
             return data;
         }
     },
-    statisticClientGeo: async(parent, { organization, item }, {user}) => {
+    statisticClientGeo: async(parent, { search, organization, item }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             organization = user.organization?user.organization:organization
             let clients =
-                await ClientAzyk.find({del: {$ne: 'deleted'}})
+                await ClientAzyk.find({
+                    del: {$ne: 'deleted'},
+                    ...search&&search.length?{$or: [
+                        {name: {'$regex': search, '$options': 'i'}},
+                        {email: {'$regex': search, '$options': 'i'}},
+                        {city: {'$regex': search, '$options': 'i'}},
+                        {info: {'$regex': search, '$options': 'i'}},
+                        {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
+                    ]}:{}
+                })
                     .select('address name _id notification lastActive')
                     .lean()
             let address = []
