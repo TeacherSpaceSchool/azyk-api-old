@@ -555,8 +555,8 @@ const resolvers = {
         if(['admin', 'суперорганизация'].includes(user.role)){
             organization = user.organization?user.organization:organization
             let now = new Date()
-            now.setDate(now.getDate() + 1)
-            now.setHours(3, 0, 0, 0)
+            /*now.setDate(now.getDate() + 1)
+            now.setHours(3, 0, 0, 0)*/
 
             let noActive = 0;
             let todayActive = 0;
