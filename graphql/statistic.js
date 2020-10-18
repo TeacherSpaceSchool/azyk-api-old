@@ -12,7 +12,7 @@ const AgentRouteAzyk = require('../models/agentRouteAzyk');
 const ItemAzyk = require('../models/itemAzyk');
 const UserAzyk = require('../models/userAzyk');
 const AdsAzyk = require('../models/adsAzyk');
-const {pdDDMMYYYY} = require('../module/const');
+const {pdDDMMYYYY, statsCollection} = require('../module/const');
 const ExcelJS = require('exceljs');
 const randomstring = require('randomstring');
 const app = require('../app');
@@ -78,6 +78,7 @@ const query = `
     superagentOrganization: [Organization]
     statisticClientGeo(search: String, organization: ID, item: ID): [GeoStatistic]
     statisticDevice: Statistic
+    statisticStorageSize: Statistic
     checkIntegrateClient(organization: ID, type: String, document: Upload): Statistic
 `;
 
@@ -773,7 +774,7 @@ const resolvers = {
                 data.push({
                     _id: keys[i],
                     data: [
-                        statistic[keys[i]].item,
+                        '',
                         statistic[keys[i]].client.length,
                         statistic[keys[i]].invoice.length,
                         checkFloat(statistic[keys[i]].profit),
@@ -801,6 +802,83 @@ const resolvers = {
             ]
             return {
                 columns: ['товар', 'клиентов(шт)', 'заказов(шт)', 'выручка(сом)', 'отказов(сом)', 'средний чек(сом)', 'процент'],
+                row: data
+            };
+        }
+    },
+    statisticStorageSize: async(parent, ctx, {user}) => {
+        if(['admin'].includes(user.role)){
+            let allSize = 0
+            let allCount = 0
+            let mbSize = 1048576
+            let size = 0
+            let stats
+            let data = []
+            let collections = [
+                {name: 'Маршрут агента', collection: '../models/agentRouteAzyk'},
+                {name: 'Акции', collection: '../models/adsAzyk'},
+                {name: 'История посещения агентов',collection: '../models/agentHistoryGeoAzyk'},
+                {name: 'Маршрут агента', collection: '../models/agentRouteAzyk'},
+                {name: 'Транспорт', collection: '../models/autoAzyk'},
+                {name: 'Корзина', collection: '../models/basketAzyk'},
+                {name: 'Блог', collection: '../models/blogAzyk'},
+                {name: 'Бонус', collection: '../models/bonusAzyk'},
+                {name: 'Бонус клиента', collection: '../models/bonusClientAzyk'},
+                {name: 'Категории', collection: '../models/categoryAzyk'},
+                {name: 'Клиенты', collection: '../models/clientAzyk'},
+                {name: 'Контакты', collection: '../models/contactAzyk'},
+                {name: 'Дни доставки', collection: '../models/deliveryDateAzyk'},
+                {name: 'Скидка', collection: '../models/discountClientAzyk'},
+                {name: 'Дистрибьютор', collection: '../models/distributerAzyk'},
+                {name: 'Районы', collection: '../models/districtAzyk'},
+                {name: 'Сотрудники', collection: '../models/employmentAzyk'},
+                {name: 'Инвентарь', collection: '../models/equipmentAzyk'},
+                {name: 'Ошибка', collection: '../models/errorAzyk'},
+                {name: 'FAQ', collection: '../models/faqAzyk'},
+                {name: 'История заказов', collection: '../models/historyOrderAzyk'},
+                {name: 'История возратов', collection: '../models/historyReturnedAzyk'},
+                {name: 'Интеграция 1С', collection: '../models/integrate1CAzyk'},
+                {name: 'Накладные', collection: '../models/invoiceAzyk'},
+                {name: 'Товары', collection: '../models/itemAzyk'},
+                {name: 'Уведомления', collection: '../models/notificationStatisticAzyk'},
+                {name: 'Заказы', collection: '../models/orderAzyk'},
+                {name: 'Организации', collection: '../models/organizationAzyk'},
+                {name: 'Принятая интеграция', collection: '../models/receivedDataAzyk'},
+                {name: 'Возвраты', collection: '../models/returnedAzyk'},
+                {name: 'Отзывы', collection: '../models/reviewAzyk'},
+                {name: 'Маршруты', collection: '../models/routeAzyk'},
+                {name: 'Акционая интеграция', collection: '../models/singleOutXMLAdsAzyk'},
+                {name: 'Выгрузка заказов', collection: '../models/singleOutXMLAzyk'},
+                {name: 'Выгрузка вощвратов', collection: '../models/singleOutXMLReturnedAzyk'},
+                {name: 'Подкатегории', collection: '../models/subCategoryAzyk'},
+                {name: 'Подписчики', collection: '../models/subscriberAzyk'},
+                {name: 'Пользователи', collection: '../models/userAzyk'},
+                {name: 'Лотереи', collection: '../models/lotteryAzyk'}
+            ]
+            for(let i=0; i<collections.length; i++){
+                stats = await statsCollection(collections[i].collection)
+                size = checkFloat(stats.storageSize/mbSize)
+                allSize += size
+                allCount += stats.count
+                data.push(
+                    {_id: `#${i}`, data: [collections[i].name, size, stats.count]}
+                )
+            }
+            data = data.sort(function(a, b) {
+                return b.data[1] - a.data[1]
+            });
+            data = [
+                {
+                    _id: 'Всего',
+                    data: [
+                        checkFloat(allSize),
+                        allCount
+                    ]
+                },
+                ...data
+            ]
+            return {
+                columns: ['коллекция', 'размер(MB)', 'количество(шт)'],
                 row: data
             };
         }
@@ -1286,7 +1364,7 @@ const resolvers = {
                 data.push({
                     _id: keys[i],
                     data: [
-                        statistic[keys[i]].item,
+                        '',
                         checkFloat(statistic[keys[i]].profit),
                         statistic[keys[i]].complet.length,
                         checkFloat(statistic[keys[i]].returned),

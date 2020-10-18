@@ -286,40 +286,43 @@ module.exports.getSingleOutXMLAzyk = async(pass) => {
         .populate({path: 'invoice'})
         .sort('date')
         //.limit(20)
-    for(let i=0;i<outXMLs.length;i++){
-        let item = result
-            .ele('item')
-        if(outXMLs[i].status==='del')
-            item.att('del', '1')
-        if(outXMLs[i].promo===1)
-            item.att('promo', '1')
-        if(outXMLs[i].inv===1)
-            item.att('inv', '1')
-        if(outXMLs[i].payment!==undefined)
-            item.att('payment', outXMLs[i].payment)
-        item.att('guid', outXMLs[i].guid)
-        item.att('client', outXMLs[i].client)
-        item.att('agent', outXMLs[i].agent)
-        item.att('track', outXMLs[i].track?outXMLs[i].track:1)
-        item.att('forwarder', outXMLs[i].forwarder)
-        item.att('date', pdDDMMYYYY(outXMLs[i].date))
-        item.att('coment', outXMLs[i].invoice?`${outXMLs[i].invoice.info} ${outXMLs[i].invoice.address[2]?`${outXMLs[i].invoice.address[2]}, `:''}${outXMLs[i].invoice.address[0]}`:'')
+    if(outXMLs.length) {
+        for (let i = 0; i < outXMLs.length; i++) {
+            let item = result
+                .ele('item')
+            if (outXMLs[i].status === 'del')
+                item.att('del', '1')
+            if (outXMLs[i].promo === 1)
+                item.att('promo', '1')
+            if (outXMLs[i].inv === 1)
+                item.att('inv', '1')
+            if (outXMLs[i].payment !== undefined)
+                item.att('payment', outXMLs[i].payment)
+            item.att('guid', outXMLs[i].guid)
+            item.att('client', outXMLs[i].client)
+            item.att('agent', outXMLs[i].agent)
+            item.att('track', outXMLs[i].track ? outXMLs[i].track : 1)
+            item.att('forwarder', outXMLs[i].forwarder)
+            item.att('date', pdDDMMYYYY(outXMLs[i].date))
+            item.att('coment', outXMLs[i].invoice ? `${outXMLs[i].invoice.info} ${outXMLs[i].invoice.address[2] ? `${outXMLs[i].invoice.address[2]}, ` : ''}${outXMLs[i].invoice.address[0]}` : '')
 
-        outXMLs[i].data = outXMLs[i].data.sort(function (a, b) {
-            return checkInt(a.priotiry) - checkInt(b.priotiry)
-        });
+            outXMLs[i].data = outXMLs[i].data.sort(function (a, b) {
+                return checkInt(a.priotiry) - checkInt(b.priotiry)
+            });
 
-        for(let ii=0;ii<outXMLs[i].data.length;ii++){
-            item.ele('product')
-                .att('guid', outXMLs[i].data[ii].guid)
-                .att('package', outXMLs[i].data[ii].package)
-                .att('qty',  outXMLs[i].data[ii].qt)
-                .att('price', outXMLs[i].data[ii].price)
-                .att('amount', outXMLs[i].data[ii].amount)
+            for (let ii = 0; ii < outXMLs[i].data.length; ii++) {
+                item.ele('product')
+                    .att('guid', outXMLs[i].data[ii].guid)
+                    .att('package', outXMLs[i].data[ii].package)
+                    .att('qty', outXMLs[i].data[ii].qt)
+                    .att('price', outXMLs[i].data[ii].price)
+                    .att('amount', outXMLs[i].data[ii].amount)
+            }
         }
+        result = result.end({pretty: true})
+        return result
     }
-    result = result.end({ pretty: true})
-    return result
+    else return ''
 }
 
 module.exports.getSingleOutXMLClientAzyk = async(pass) => {
@@ -366,7 +369,8 @@ module.exports.getSingleOutXMLClientAzyk = async(pass) => {
             },
             { $limit : 100 },
         ])
-    for(let i=0;i<outXMLs.length;i++){
+    if(outXMLs.length) {
+        for(let i=0;i<outXMLs.length;i++){
         let guidClient = await Integrate1CAzyk
             .findOne({$and: [{client: outXMLs[i]._id}, {client: {$ne: null}}], organization: organization._id}).lean()
         if(guidClient){
@@ -387,8 +391,10 @@ module.exports.getSingleOutXMLClientAzyk = async(pass) => {
                 item.att('agent', agent.guid)
         }
     }
-    result = result.end({ pretty: true})
-    return result
+        result = result.end({ pretty: true})
+        return result
+    }
+    else return ''
 }
 
 module.exports.getSingleOutXMLReturnedAzyk = async(pass) => {
@@ -398,7 +404,8 @@ module.exports.getSingleOutXMLReturnedAzyk = async(pass) => {
         .populate({path: 'returned'})
         .sort('date')
         //.limit(20)
-    for(let i=0;i<outXMLReturneds.length;i++){
+    if(outXMLReturneds.length) {
+        for(let i=0;i<outXMLReturneds.length;i++){
         let item = result
             .ele('item')
         if(outXMLReturneds[i].status==='del')
@@ -423,8 +430,10 @@ module.exports.getSingleOutXMLReturnedAzyk = async(pass) => {
                 .att('amount', outXMLReturneds[i].data[ii].amount)
         }
     }
-    result = result.end({ pretty: true})
-    return result
+        result = result.end({ pretty: true})
+        return result
+    }
+    else return ''
 }
 
 module.exports.reductionOutAdsXMLAzyk = async(pass) => {

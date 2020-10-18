@@ -45,9 +45,14 @@ module.exports.weekDay = [
 
 module.exports.tomtom = 'waWMYtFJZce2G49GAz0nXJG5Grw3OpNm'
 
+const statsCollection = async (collection) => {
+    return (await (require(collection)).collection.stats())
+}
+
 const checkInt = (int) => {
     return isNaN(parseInt(int))?0:parseInt(int)
 }
+
 const checkFloat = (float) => {
     float = parseFloat(float)
     return isNaN(float)?0:Math.round(float * 10)/10
@@ -118,6 +123,7 @@ const pdHHMM = (date) =>
 }
 
 
+module.exports.statsCollection = statsCollection;
 module.exports.getGeoDistance = getGeoDistance;
 module.exports.checkInt = checkInt;
 module.exports.pdHHMM = pdHHMM;
