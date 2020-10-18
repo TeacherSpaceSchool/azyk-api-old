@@ -136,6 +136,11 @@ const resolvers = {
                         }
                     },
                 ])
+        for(let i=0; i<clients.length; i++){
+            for(let i1=0; i1<clients[i].address.length; i1++) {
+                clients[i].name+=` | ${clients[i].address[i1][2]?`${clients[i].address[i1][2]}, `:''}${clients[i].address[i1][0]}`
+            }
+        }
         return clients
     },
     lotterys: async(parent, ctx, {user}) => {
