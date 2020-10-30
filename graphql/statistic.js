@@ -66,7 +66,7 @@ const query = `
     statisticAzykStoreOrder(company: ID, filter: String, dateStart: Date, dateType: String): Statistic
     statisticAzykStoreAgents(company: ID, dateStart: Date, dateType: String, filter: String): Statistic
     statisticAzykStoreAgent(agent: ID!, dateStart: Date, dateType: String): Statistic
-    statisticClient(client: ID!, dateStart: Date, dateType: String): Statistic
+    statisticClient(client: ID!, dateStart: Date, dateType: String, online: Boolean): Statistic
     statisticGeoOrder(organization: ID!, dateStart: Date): [[String]]
     statisticDistributer(distributer: ID!, organization: ID, dateStart: Date, dateType: String, type: String): Statistic
     statisticReturned(company: String, dateStart: Date, dateType: String): Statistic
@@ -2522,7 +2522,7 @@ const resolvers = {
             };
         }
     },
-    statisticClient: async(parent, { client, dateStart, dateType }, {user}) => {
+    statisticClient: async(parent, { client, dateStart, dateType, online }, {user}) => {
         if('admin'===user.role){
             let dateEnd
             if(dateStart){
@@ -2546,6 +2546,11 @@ const resolvers = {
             let consignmentPriceAll = 0
             let completAll = 0
             if(client){
+                let excludedAgents = []
+                if(online){
+                    excludedAgents = await UserAzyk.find({$or: [{role: 'агент'}, {role: 'менеджер'}, {role: 'организация'}, {role: 'суперорганизация'}]}).distinct('_id').lean()
+                    excludedAgents = await EmploymentAzyk.find({user: {$in: excludedAgents}}).distinct('_id').lean()
+                }
                 data = await InvoiceAzyk.find(
                     {
                         $and: [
@@ -2554,7 +2559,8 @@ const resolvers = {
                         ],
                         taken: true,
                         del: {$ne: 'deleted'},
-                        client: client
+                        client: client,
+                        agent: {$nin: excludedAgents}
                     }
                 )
                     .select('organization agent returnedPrice allPrice _id consignmentPrice paymentConsignation')
