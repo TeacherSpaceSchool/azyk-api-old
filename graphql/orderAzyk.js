@@ -48,7 +48,7 @@ const type = `
     allPrice: Float 
     consignmentPrice: Float
     returnedPrice: Float
-    info: String,
+    info: String
     address: [String]
     paymentMethod: String
     district: String
@@ -2423,6 +2423,7 @@ const resolversMutation = {
                         allTonnage: checkFloat(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0)),
                         allSize: checkFloat(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0)),
                         allPrice: checkFloat(price*baskets[ii].count),
+                        costPrice: baskets[ii].item.costPrice?baskets[ii].item.costPrice:0,
                         status: 'обработка',
                         agent: user.employment,
                     });
@@ -2504,6 +2505,7 @@ const resolversMutation = {
                             allTonnage: checkFloat(baskets[ii].count*(baskets[ii].item.weight?baskets[ii].item.weight:0)),
                             allSize: checkFloat(baskets[ii].count*(baskets[ii].item.size?baskets[ii].item.size:0)),
                             allPrice: checkFloat(price*baskets[ii].count),
+                            costPrice: baskets[ii].item.costPrice?baskets[ii].item.costPrice:0,
                             status: 'обработка',
                             agent: user.employment,
                         });
@@ -2711,7 +2713,7 @@ const resolversMutation = {
             let allPrice = 0
             let allTonnage = 0
             let allSize = 0
-            let returnedPrice = 0
+           let returnedPrice = 0
             let consignmentPrice = 0
             for(let i=0; i<orders.length;i++){
                 await OrderAzyk.updateMany(

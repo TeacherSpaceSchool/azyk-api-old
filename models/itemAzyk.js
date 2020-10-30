@@ -10,6 +10,10 @@ const ItemAzykSchema = mongoose.Schema({
     name: String,
     image: String,
     price: Number,
+    costPrice: {
+        type: Number,
+        default: 0
+    },
     packaging:  {
         type: Number,
         default: 1

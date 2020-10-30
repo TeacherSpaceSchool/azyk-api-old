@@ -56,16 +56,17 @@ const query = `
     unloadingAgentRoutes(organization: ID!): Data
     checkAgentRoute(agentRoute: ID!): Statistic
     unloadingAdsOrders(organization: ID!, dateStart: Date!): Data
-    statisticClient(company: String, dateStart: Date, dateType: String, online: Boolean): Statistic
+    statisticClients(company: String, dateStart: Date, dateType: String, online: Boolean): Statistic
     statisticClientActivity(organization: ID, online: Boolean): Statistic
     statisticItemActivity(organization: ID, online: Boolean): Statistic
     statisticOrganizationActivity(organization: ID, online: Boolean): Statistic
     statisticItem(company: String, dateStart: Date, dateType: String, online: Boolean): Statistic
     statisticAdss(company: String, dateStart: Date, dateType: String, online: Boolean): Statistic
     statisticOrder(company: String, dateStart: Date, dateType: String, online: Boolean): Statistic
-    statisticAzykStoreOrder(company: ID, dateStart: Date, dateType: String): Statistic
+    statisticAzykStoreOrder(company: ID, filter: String, dateStart: Date, dateType: String): Statistic
     statisticAzykStoreAgents(company: ID, dateStart: Date, dateType: String, filter: String): Statistic
     statisticAzykStoreAgent(agent: ID!, dateStart: Date, dateType: String): Statistic
+    statisticClient(client: ID!, dateStart: Date, dateType: String): Statistic
     statisticGeoOrder(organization: ID!, dateStart: Date): [[String]]
     statisticDistributer(distributer: ID!, organization: ID, dateStart: Date, dateType: String, type: String): Statistic
     statisticReturned(company: String, dateStart: Date, dateType: String): Statistic
@@ -666,16 +667,16 @@ const resolvers = {
                 {
                     _id: 'All',
                     data: [
-                        noActive,//0
-                        noOrder,//1
-                        allActive,//2
-                        allOrder,//3
-                        todayActive,//4
-                        todayOrder,//5
-                        weekActive,//6
-                        weekOrder,//7
-                        monthActive,//8
-                        monthOrder,//9
+                        noActive,
+                        noOrder,
+                        allActive,
+                        allOrder,
+                        todayActive,
+                        todayOrder,
+                        weekActive,
+                        weekOrder,
+                        monthActive,
+                        monthOrder,
                     ]
                 },
                 ...data
@@ -774,7 +775,7 @@ const resolvers = {
                 data.push({
                     _id: keys[i],
                     data: [
-                        '',
+                        statistic[keys[i]].item,
                         statistic[keys[i]].client.length,
                         statistic[keys[i]].invoice.length,
                         checkFloat(statistic[keys[i]].profit),
@@ -1050,7 +1051,7 @@ const resolvers = {
             return data;
         }
     },
-    statisticClient: async(parent, { company, dateStart, dateType, online  }, {user}) => {
+    statisticClients: async(parent, { company, dateStart, dateType, online  }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             company = user.organization?user.organization:company
             let dateEnd
@@ -1276,6 +1277,7 @@ const resolvers = {
     },
     statisticItem: async(parent, { company, dateStart, dateType, online }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
+            //console.time('get BD')
             company = user.organization?user.organization:company
             let dateEnd
             if(dateStart){
@@ -1364,7 +1366,7 @@ const resolvers = {
                 data.push({
                     _id: keys[i],
                     data: [
-                        '',
+                        statistic[keys[i]].item,
                         checkFloat(statistic[keys[i]].profit),
                         statistic[keys[i]].complet.length,
                         checkFloat(statistic[keys[i]].returned),
@@ -1390,6 +1392,7 @@ const resolvers = {
                 },
                 ...data
             ]
+            //console.timeEnd('get BD')
             return {
                 columns: ['товар', 'выручка(сом)', 'выполнен(шт)', 'отказов(шт)', 'конс(сом)', 'средний чек(сом)', 'процент'],
                 row: data
@@ -1817,11 +1820,13 @@ const resolvers = {
             };
         }
     },
-    statisticAzykStoreOrder: async(parent, { company, dateStart, dateType }, {user}) => {
+    statisticAzykStoreOrder: async(parent, { company, dateStart, dateType, filter }, {user}) => {
         if(['admin'].includes(user.role)){
             let dateEnd
             let statistic = {}, data = []
+            let priceAll = 0
             let profitAll = 0
+            let profit = 0
             let consignmentPriceAll = 0
             let completAll = 0
             let returnedPriceAll = 0
@@ -1854,13 +1859,6 @@ const resolvers = {
             else {
                 organizations = await OrganizationAzyk.find({_id: company, superagent: true}).distinct('_id')
             }
-
-            let districts = await DistrictAzyk.find({
-                organization: null,
-                name: {$ne: 'super'}
-            })
-                .select('_id name client')
-                .lean()
             data = await InvoiceAzyk.find(
                 {
                     $and: [
@@ -1878,39 +1876,97 @@ const resolvers = {
                     path : 'organization',
                     select: 'name _id'
                 })
+                .populate({
+                    path : 'orders',
+                    select: 'allPrice count returned costPrice'
+                })
                 .lean()
-            for(let i=0; i<data.length; i++) {
-                for(let i1=0; i1<districts.length; i1++) {
-                    if(districts[i1].client.toString().includes(data[i].client.toString()))
-                        data[i].district = districts[i1]
+            if(filter==='район'||company){
+                let districts = await DistrictAzyk.find({
+                    organization: null,
+                    name: {$ne: 'super'}
+                })
+                    .select('_id name client')
+                    .lean()
+                for(let i=0; i<data.length; i++) {
+                    for(let i1=0; i1<districts.length; i1++) {
+                        if(districts[i1].client.toString().includes(data[i].client.toString()))
+                            data[i].district = districts[i1]
+                    }
+                    if(!data[i].district)
+                        data[i].district = {_id: 'lol', name: 'Без района'}
                 }
-                if(!data[i].district)
-                    data[i].district = {_id: 'lol', name: 'Без района'}
-            }
-            for(let i=0; i<data.length; i++) {
-                if (!statistic[data[i].district._id]) statistic[data[i].district._id] = {
-                    profit: 0,
-                    complet: 0,
-                    consignmentPrice: 0,
-                    returnedPrice: 0,
-                    organization: data[i].district.name,
-                    clients: {}
-                }
+                for(let i=0; i<data.length; i++) {
+                    if (!statistic[data[i].district._id]) statistic[data[i].district._id] = {
+                        price: 0,
+                        profit: 0,
+                        complet: 0,
+                        consignmentPrice: 0,
+                        returnedPrice: 0,
+                        organization: data[i].district.name,
+                        clients: {}
+                    }
+                    profit = 0
+                    for(let i1=0; i1<data[i].orders.length; i1++) {
+                        if(data[i].orders[i1].costPrice){
+                            profit += ((data[i].orders[i1].allPrice/data[i].orders[i1].count)*(data[i].orders[i1].count-data[i].orders[i1].returned)) - (data[i].orders[i1].costPrice*(data[i].orders[i1].count-data[i].orders[i1].returned))
+                        }
+                    }
+                    statistic[data[i].district._id].profit += profit
+                    profitAll += profit
+                    if (!statistic[data[i].district._id].clients[data[i].client]) {
+                        statistic[data[i].district._id].clients[data[i].client] = 1
+                    }
+                    if (data[i].allPrice!==data[i].returnedPrice) {
+                        statistic[data[i].district._id].complet += 1
+                        completAll += 1
+                    }
+                    statistic[data[i].district._id].price += data[i].allPrice - data[i].returnedPrice
+                    priceAll += data[i].allPrice - data[i].returnedPrice
+                    statistic[data[i].district._id].returnedPrice += data[i].returnedPrice
+                    returnedPriceAll += data[i].returnedPrice
+                    if (data[i].consignmentPrice && !data[i].paymentConsignation) {
+                        statistic[data[i].district._id].consignmentPrice += data[i].consignmentPrice
+                        consignmentPriceAll += data[i].consignmentPrice
+                    }
 
-                if (!statistic[data[i].district._id].clients[data[i].client]) {
-                    statistic[data[i].district._id].clients[data[i].client] = 1
                 }
-                if (data[i].allPrice!==data[i].returnedPrice) {
-                    statistic[data[i].district._id].complet += 1
-                    completAll += 1
-                }
-                statistic[data[i].district._id].profit += data[i].allPrice - data[i].returnedPrice
-                profitAll += data[i].allPrice - data[i].returnedPrice
-                statistic[data[i].district._id].returnedPrice += data[i].returnedPrice
-                returnedPriceAll += data[i].returnedPrice
-                if (data[i].consignmentPrice && !data[i].paymentConsignation) {
-                    statistic[data[i].district._id].consignmentPrice += data[i].consignmentPrice
-                    consignmentPriceAll += data[i].consignmentPrice
+            }
+            else {
+                for(let i=0; i<data.length; i++) {
+                    if (!statistic[data[i].organization._id]) statistic[data[i].organization._id] = {
+                        price: 0,
+                        profit: 0,
+                        complet: 0,
+                        consignmentPrice: 0,
+                        returnedPrice: 0,
+                        organization: data[i].organization.name,
+                        clients: {}
+                    }
+                    profit = 0
+                    for(let i1=0; i1<data[i].orders.length; i1++) {
+                        if(data[i].orders[i1].costPrice){
+                            profit += ((data[i].orders[i1].allPrice/data[i].orders[i1].count)*(data[i].orders[i1].count-data[i].orders[i1].returned)) - (data[i].orders[i1].costPrice*(data[i].orders[i1].count-data[i].orders[i1].returned))
+                        }
+                    }
+                    statistic[data[i].organization._id].profit += profit
+                    profitAll += profit
+                    if (!statistic[data[i].organization._id].clients[data[i].client]) {
+                        statistic[data[i].organization._id].clients[data[i].client] = 1
+                    }
+                    if (data[i].allPrice!==data[i].returnedPrice) {
+                        statistic[data[i].organization._id].complet += 1
+                        completAll += 1
+                    }
+                    statistic[data[i].organization._id].price += data[i].allPrice - data[i].returnedPrice
+                    priceAll += data[i].allPrice - data[i].returnedPrice
+                    statistic[data[i].organization._id].returnedPrice += data[i].returnedPrice
+                    returnedPriceAll += data[i].returnedPrice
+                    if (data[i].consignmentPrice && !data[i].paymentConsignation) {
+                        statistic[data[i].organization._id].consignmentPrice += data[i].consignmentPrice
+                        consignmentPriceAll += data[i].consignmentPrice
+                    }
+
                 }
 
             }
@@ -1923,13 +1979,14 @@ const resolvers = {
                     _id: keys[i],
                     data: [
                         statistic[keys[i]].organization,
-                        checkFloat(statistic[keys[i]].profit),
+                        checkFloat(statistic[keys[i]].price),
                         statistic[keys[i]].complet,
                         checkFloat(statistic[keys[i]].returnedPrice),
                         checkFloat(statistic[keys[i]].consignmentPrice),
-                        checkFloat(statistic[keys[i]].profit/statistic[keys[i]].complet),
+                        checkFloat(statistic[keys[i]].profit),
+                        checkFloat(statistic[keys[i]].price/statistic[keys[i]].complet),
                         Object.keys(statistic[keys[i]].clients).length,
-                        checkFloat(statistic[keys[i]].profit*100/profitAll)
+                        checkFloat(statistic[keys[i]].price*100/priceAll)
                     ]
                 })
             }
@@ -1941,16 +1998,17 @@ const resolvers = {
                     _id: 'All',
                     data: [
                         data.length,
-                        checkFloat(profitAll),
+                        checkFloat(priceAll),
                         completAll,
                         checkFloat(returnedPriceAll),
                         checkFloat(consignmentPriceAll),
+                        checkFloat(profitAll),
                     ]
                 },
                 ...data
             ]
             return {
-                columns: ['район', 'выручка(сом)', 'выполнен(шт)', 'отказы(сом)', 'конс(сом)', 'средний чек(сом)', 'клиенты', 'процент'],
+                columns: ['район', 'выручка(сом)', 'выполнен(шт)', 'отказы(сом)', 'конс(сом)', 'прибыль(сом)', 'средний чек(сом)', 'клиенты', 'процент'],
                 row: data
             };
         }
@@ -2288,10 +2346,12 @@ const resolvers = {
             }
             let statistic = {}, data = []
 
-            let profitAll = 0
+            let priceAll = 0
             let returnedAll = 0
             let consignmentPriceAll = 0
             let completAll = 0
+            let profitAll = 0
+            let profit = 0
 
             let organizations
             let agents = await EmploymentAzyk.find({organization: null})
@@ -2330,6 +2390,10 @@ const resolvers = {
                     path: 'agent',
                     select: 'name _id'
                 })
+                .populate({
+                    path : 'orders',
+                    select: 'allPrice count returned costPrice'
+                })
                 .lean()
             if(!company) {
                 for(let i=0; i<data.length; i++) {
@@ -2345,25 +2409,35 @@ const resolvers = {
                         id = `${type}${data[i].organization._id}`
                         name = `${data[i].organization.name} ${type}`
                     }
-                    if (!statistic[id]) statistic[id] = {
-                        profit: 0,
-                        returned: 0,
-                        complet: 0,
-                        consignmentPrice: 0,
-                        organization: name
-                    }
+                    if (!statistic[id])
+                        statistic[id] = {
+                            price: 0,
+                            returned: 0,
+                            complet: 0,
+                            consignmentPrice: 0,
+                            organization: name,
+                            profit: 0
+                        }
                     if(data[i].allPrice!==data[i].returnedPrice) {
                         statistic[id].complet += 1
                         completAll += 1
                     }
-                    statistic[id].profit += data[i].allPrice - data[i].returnedPrice
-                    profitAll += data[i].allPrice - data[i].returnedPrice
+                    statistic[id].price += data[i].allPrice - data[i].returnedPrice
+                    priceAll += data[i].allPrice - data[i].returnedPrice
                     statistic[id].returned += data[i].returnedPrice
                     returnedAll += data[i].returnedPrice
                     if (data[i].consignmentPrice && !data[i].paymentConsignation) {
                         statistic[id].consignmentPrice += data[i].consignmentPrice
                         consignmentPriceAll += data[i].consignmentPrice
                     }
+                    profit = 0
+                    for(let i1=0; i1<data[i].orders.length; i1++) {
+                        if(data[i].orders[i1].costPrice){
+                            profit += ((data[i].orders[i1].allPrice/data[i].orders[i1].count)*(data[i].orders[i1].count-data[i].orders[i1].returned)) - (data[i].orders[i1].costPrice*(data[i].orders[i1].count-data[i].orders[i1].returned))
+                        }
+                    }
+                    statistic[id].profit += profit
+                    profitAll += profit
 
 
                 }
@@ -2372,25 +2446,35 @@ const resolvers = {
                 for(let i=0; i<data.length; i++) {
                     let name = data[i].agent?data[i].agent.name:'AZYK.STORE'
                     let id = data[i].agent?data[i].agent._id:'AZYK.STORE'
-                    if (!statistic[id]) statistic[id] = {
-                        profit: 0,
-                        returned: 0,
-                        complet: 0,
-                        consignmentPrice: 0,
-                        organization: name
-                    }
+                    if (!statistic[id])
+                        statistic[id] = {
+                            price: 0,
+                            returned: 0,
+                            complet: 0,
+                            consignmentPrice: 0,
+                            organization: name,
+                            profit: 0
+                        }
                     if(data[i].allPrice!==data[i].returnedPrice) {
                         statistic[id].complet += 1
                         completAll += 1
                     }
-                    statistic[id].profit += data[i].allPrice - data[i].returnedPrice
-                    profitAll += data[i].allPrice - data[i].returnedPrice
+                    statistic[id].price += data[i].allPrice - data[i].returnedPrice
+                    priceAll += data[i].allPrice - data[i].returnedPrice
                     statistic[id].returned += data[i].returnedPrice
                     returnedAll += data[i].returnedPrice
                     if (data[i].consignmentPrice && !data[i].paymentConsignation) {
                         statistic[id].consignmentPrice += data[i].consignmentPrice
                         consignmentPriceAll += data[i].consignmentPrice
                     }
+                    profit = 0
+                    for(let i1=0; i1<data[i].orders.length; i1++) {
+                        if(data[i].orders[i1].costPrice){
+                            profit += ((data[i].orders[i1].allPrice/data[i].orders[i1].count)*(data[i].orders[i1].count-data[i].orders[i1].returned)) - (data[i].orders[i1].costPrice*(data[i].orders[i1].count-data[i].orders[i1].returned))
+                        }
+                    }
+                    statistic[id].profit += profit
+                    profitAll += profit
 
 
                 }
@@ -2404,12 +2488,13 @@ const resolvers = {
                     _id: keys[i],
                     data: [
                         statistic[keys[i]].organization,
-                        checkFloat(statistic[keys[i]].profit),
+                        checkFloat(statistic[keys[i]].price),
                         statistic[keys[i]].complet,
                         checkFloat(statistic[keys[i]].returned),
                         checkFloat(statistic[keys[i]].consignmentPrice),
-                        checkFloat(statistic[keys[i]].profit/statistic[keys[i]].complet),
-                        checkFloat(statistic[keys[i]].profit*100/profitAll)
+                        checkFloat(statistic[keys[i]].profit),
+                        checkFloat(statistic[keys[i]].price/statistic[keys[i]].complet),
+                        checkFloat(statistic[keys[i]].price*100/priceAll)
 
                     ]
                 })
@@ -2422,21 +2507,22 @@ const resolvers = {
                     _id: 'All',
                     data: [
                         data.length,
-                        checkFloat(profitAll),
+                        checkFloat(priceAll),
                         completAll,
                         checkFloat(returnedAll),
-                        checkFloat(consignmentPriceAll)
+                        checkFloat(consignmentPriceAll),
+                        checkFloat(profitAll)
                     ]
                 },
                 ...data
             ]
             return {
-                columns: ['агент', 'выручка(сом)', 'выполнен(шт)', 'отказов(сом)', 'конс(сом)', 'средний чек(сом)', 'процент'],
+                columns: ['агент', 'выручка(сом)', 'выполнен(шт)', 'отказов(сом)', 'конс(сом)', 'прибыль(сом)', 'средний чек(сом)', 'процент'],
                 row: data
             };
         }
     },
-    statisticAzykStoreAgent: async(parent, { agent, dateStart, dateType }, {user}) => {
+    statisticClient: async(parent, { client, dateStart, dateType }, {user}) => {
         if('admin'===user.role){
             let dateEnd
             if(dateStart){
@@ -2459,7 +2545,7 @@ const resolvers = {
             let returnedAll = 0
             let consignmentPriceAll = 0
             let completAll = 0
-            if(agent){
+            if(client){
                 data = await InvoiceAzyk.find(
                     {
                         $and: [
@@ -2468,7 +2554,7 @@ const resolvers = {
                         ],
                         taken: true,
                         del: {$ne: 'deleted'},
-                        agent: agent
+                        client: client
                     }
                 )
                     .select('organization agent returnedPrice allPrice _id consignmentPrice paymentConsignation')
@@ -2497,8 +2583,6 @@ const resolvers = {
                         statistic[data[i].organization._id].consignmentPrice += data[i].consignmentPrice
                         consignmentPriceAll += data[i].consignmentPrice
                     }
-
-
                 }
             }
 
@@ -2537,7 +2621,129 @@ const resolvers = {
                 ...data
             ]
             return {
-                columns: ['агент', 'выручка(сом)', 'выполнен(шт)', 'отказов(сом)', 'конс(сом)', 'средний чек(сом)', 'процент'],
+                columns: ['организация', 'выручка(сом)', 'выполнен(шт)', 'отказов(сом)', 'конс(сом)', 'средний чек(сом)', 'процент'],
+                row: data
+            };
+        }
+    },
+    statisticAzykStoreAgent: async(parent, { agent, dateStart, dateType }, {user}) => {
+        if('admin'===user.role){
+            let dateEnd
+            if(dateStart){
+                dateStart= new Date(dateStart)
+                dateStart.setHours(3, 0, 0, 0)
+                dateEnd = new Date(dateStart)
+
+                if(dateType==='year')
+                    dateEnd.setFullYear(dateEnd.getFullYear() + 1)
+                else if(dateType==='day')
+                    dateEnd.setDate(dateEnd.getDate() + 1)
+                else if(dateType==='week')
+                    dateEnd.setDate(dateEnd.getDate() + 7)
+                else
+                    dateEnd.setMonth(dateEnd.getMonth() + 1)
+            }
+            let statistic = {}, data = []
+            let profitAll = 0
+            let profit = 0
+            let priceAll = 0
+            let returnedAll = 0
+            let consignmentPriceAll = 0
+            let completAll = 0
+            if(agent){
+                data = await InvoiceAzyk.find(
+                    {
+                        $and: [
+                            dateStart ? {createdAt: {$gte: dateStart}} : {},
+                            dateEnd ? {createdAt: {$lt: dateEnd}} : {}
+                        ],
+                        taken: true,
+                        del: {$ne: 'deleted'},
+                        agent: agent
+                    }
+                )
+                    .select('organization agent returnedPrice allPrice _id consignmentPrice paymentConsignation')
+                    .populate({
+                        path: 'organization',
+                        select: '_id name'
+                    })
+                    .populate({
+                        path : 'orders',
+                        select: 'allPrice count returned costPrice'
+                    })
+                    .lean()
+                for(let i=0; i<data.length; i++) {
+                    if (!statistic[data[i].organization._id]) statistic[data[i].organization._id] = {
+                        price: 0,
+                        returned: 0,
+                        complet: 0,
+                        consignmentPrice: 0,
+                        organization: data[i].organization.name,
+                        profit: 0
+                    }
+                    profit = 0
+                    for(let i1=0; i1<data[i].orders.length; i1++) {
+                        if(data[i].orders[i1].costPrice){
+                            profit += ((data[i].orders[i1].allPrice/data[i].orders[i1].count)*(data[i].orders[i1].count-data[i].orders[i1].returned)) - (data[i].orders[i1].costPrice*(data[i].orders[i1].count-data[i].orders[i1].returned))
+                        }
+                    }
+                    statistic[data[i].organization._id].profit += profit
+                    profitAll += profit
+                    if(data[i].allPrice!==data[i].returnedPrice) {
+                        statistic[data[i].organization._id].complet += 1
+                        completAll += 1
+                    }
+                    statistic[data[i].organization._id].price += data[i].allPrice - data[i].returnedPrice
+                    priceAll += data[i].allPrice - data[i].returnedPrice
+                    statistic[data[i].organization._id].returned += data[i].returnedPrice
+                    returnedAll += data[i].returnedPrice
+                    if (data[i].consignmentPrice && !data[i].paymentConsignation) {
+                        statistic[data[i].organization._id].consignmentPrice += data[i].consignmentPrice
+                        consignmentPriceAll += data[i].consignmentPrice
+                    }
+
+
+                }
+            }
+
+            const keys = Object.keys(statistic)
+            data = []
+
+            for(let i=0; i<keys.length; i++){
+                data.push({
+                    _id: keys[i],
+                    data: [
+                        statistic[keys[i]].organization,
+                        checkFloat(statistic[keys[i]].price),
+                        statistic[keys[i]].complet,
+                        checkFloat(statistic[keys[i]].returned),
+                        checkFloat(statistic[keys[i]].consignmentPrice),
+                        checkFloat(statistic[keys[i]].profit),
+                        checkFloat(statistic[keys[i]].price/statistic[keys[i]].complet),
+                        checkFloat(statistic[keys[i]].price*100/priceAll)
+
+                    ]
+                })
+            }
+            data = data.sort(function(a, b) {
+                return b.data[0] - a.data[0]
+            });
+            data = [
+                {
+                    _id: 'All',
+                    data: [
+                        data.length,
+                        checkFloat(priceAll),
+                        completAll,
+                        checkFloat(returnedAll),
+                        checkFloat(consignmentPriceAll),
+                        checkFloat(profitAll)
+                    ]
+                },
+                ...data
+            ]
+            return {
+                columns: ['организация', 'выручка(сом)', 'выполнен(шт)', 'отказов(сом)', 'конс(сом)', 'прибыль(сом)', 'средний чек(сом)', 'процент'],
                 row: data
             };
         }

@@ -10,7 +10,7 @@ const randomstring = require('randomstring');
 const { tomtom } = require('../module/const');
 const axios = require('axios');
 const ExcelJS = require('exceljs');
-const { urlMain, pdDDMMYYYY } = require('../module/const');
+const { urlMain, pdDDMMYYYY, checkInt, checkFloat } = require('../module/const');
 const app = require('../app');
 const fs = require('fs');
 const path = require('path');
@@ -58,6 +58,7 @@ const query = `
 const mutation = `
     buildRoute(provider: ID!,autoTonnage: Int!, length: Int, orders: [ID]!): [Delivery],
     addRoute(deliverys: [DeliveryInput]!, provider: ID!, selectProdusers: [ID]!, selectDistricts: [ID]!, selectEcspeditor: ID!, selectAuto: ID!, selectedOrders: [ID]!, dateDelivery: Date!, allTonnage: Int!): Data,
+    setRoute(route: ID!, deletedOrders: [ID]!): Data,
     deleteRoute(_id: ID!, selectedOrders: [ID]!): Data
 `;
 
@@ -85,6 +86,10 @@ const resolvers = {
                     ]
                 })
                 .populate({
+                    path: 'organization',
+                    select: 'name _id'
+                })
+                .populate({
                     path : 'client'
                 })
                 .populate({
@@ -98,16 +103,18 @@ const resolvers = {
                 .lean()
             let worksheet;
             let items = {}
-            let allCount = 0
-            let allPrice = 0
-            let allTonnage = 0
-            let allSize = 0
+            let allCount = {}
+            let allPrice = {}
+            let allTonnage = {}
+            let allSize = {}
             let consignation
             let consigmentOrder
             for(let i = 0; i<data.length;i++){
                 for(let i1 = 0; i1<data[i].orders.length;i1++) {
-                    if(!items[data[i].orders[i1].item._id])
-                        items[data[i].orders[i1].item._id] = {
+                    if(!items[`${data[i].organization._id}|||${data[i].organization.name}`])
+                        items[`${data[i].organization._id}|||${data[i].organization.name}`] = {}
+                    if(!items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].orders[i1].item._id])
+                        items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].orders[i1].item._id] = {
                             name: data[i].orders[i1].item.name,
                             count: 0,
                             allPrice: 0,
@@ -115,14 +122,20 @@ const resolvers = {
                             allTonnage: 0,
                             allSize: 0
                         }
-                    items[data[i].orders[i1].item._id].count += data[i].orders[i1].count
-                    items[data[i].orders[i1].item._id].allPrice += data[i].orders[i1].allPrice
-                    items[data[i].orders[i1].item._id].allTonnage += data[i].orders[i1].allTonnage
-                    items[data[i].orders[i1].item._id].allSize += data[i].orders[i1].allSize
-                    allCount += data[i].orders[i1].count
-                    allPrice += data[i].orders[i1].allPrice
-                    allTonnage += data[i].orders[i1].allTonnage
-                    allSize += data[i].orders[i1].allSize
+                    items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].orders[i1].item._id].count += data[i].orders[i1].count
+                    items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].orders[i1].item._id].allPrice += data[i].orders[i1].allPrice
+                    items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].orders[i1].item._id].allTonnage += data[i].orders[i1].allTonnage
+                    items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].orders[i1].item._id].allSize += data[i].orders[i1].allSize
+                    if(allCount[`${data[i].organization._id}|||${data[i].organization.name}`]===undefined){
+                        allCount[`${data[i].organization._id}|||${data[i].organization.name}`] = 0
+                        allPrice[`${data[i].organization._id}|||${data[i].organization.name}`] = 0
+                        allTonnage[`${data[i].organization._id}|||${data[i].organization.name}`] = 0
+                        allSize[`${data[i].organization._id}|||${data[i].organization.name}`] = 0 
+                    }
+                    allCount[`${data[i].organization._id}|||${data[i].organization.name}`] += data[i].orders[i1].count
+                    allPrice[`${data[i].organization._id}|||${data[i].organization.name}`] += data[i].orders[i1].allPrice
+                    allTonnage[`${data[i].organization._id}|||${data[i].organization.name}`] += data[i].orders[i1].allTonnage
+                    allSize[`${data[i].organization._id}|||${data[i].organization.name}`] += data[i].orders[i1].allSize
                 }
                 if(data[i].adss) {
                     for (let i1 = 0; i1 < data[i].adss.length; i1++) {
@@ -159,8 +172,10 @@ const resolvers = {
                                         count *= Math.min(...index)
                                 }
                             }
-                            if(!items[data[i].adss[i1].item._id])
-                                items[data[i].adss[i1].item._id] = {
+                            if(!items[`${data[i].organization._id}|||${data[i].organization.name}`])
+                                items[`${data[i].organization._id}|||${data[i].organization.name}`] = {}
+                            if(!items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].adss[i1].item._id])
+                                items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].adss[i1].item._id] = {
                                     name: data[i].adss[i1].item.name,
                                     count: 0,
                                     allPrice: 0,
@@ -168,9 +183,9 @@ const resolvers = {
                                     allTonnage: 0,
                                     allSize: 0
                                 }
-                            items[data[i].adss[i1].item._id].count += count
-                            items[data[i].adss[i1].item._id].allTonnage += data[i].adss[i1].item.weight*count
-                            items[data[i].adss[i1].item._id].allSize += data[i].adss[i1].item.size*count
+                            items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].adss[i1].item._id].count += count
+                            items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].adss[i1].item._id].allTonnage += data[i].adss[i1].item.weight*count
+                            items[`${data[i].organization._id}|||${data[i].organization.name}`][data[i].adss[i1].item._id].allSize += data[i].adss[i1].item.size*count
                             allCount += count
                             allTonnage += data[i].adss[i1].item.weight*count
                             allSize += data[i].adss[i1].item.size*count
@@ -178,96 +193,102 @@ const resolvers = {
                     }
                 }
             }
-            worksheet = await workbook.addWorksheet('Лист загрузки');
             let row = 1;
-            worksheet.getColumn(1).width = 25;
-            worksheet.getColumn(2).width = 15;
-            worksheet.getColumn(3).width = 15;
-            worksheet.getColumn(4).width = 15;
-            worksheet.getColumn(5).width = 15;
-            worksheet.getCell(`A${row}`).font = {bold: true};
-            worksheet.getCell(`A${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-            worksheet.getCell(`A${row}`).value = 'Товар:';
-            worksheet.getCell(`B${row}`).font = {bold: true};
-            worksheet.getCell(`B${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-            worksheet.getCell(`B${row}`).value = 'Количество:';
-            worksheet.getCell(`C${row}`).font = {bold: true};
-            worksheet.getCell(`C${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-            worksheet.getCell(`C${row}`).value = 'Упаковок:';
-            worksheet.getCell(`D${row}`).font = {bold: true};
-            worksheet.getCell(`D${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-            worksheet.getCell(`D${row}`).value = 'Сумма:';
-            if(allTonnage){
-                worksheet.getCell(`E${row}`).font = {bold: true};
-                worksheet.getCell(`E${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                worksheet.getCell(`E${row}`).value = 'Тоннаж:';
-            }
-            if(allSize){
-                worksheet.getCell(`${allTonnage?'F':'E'}${row}`).font = {bold: true};
-                worksheet.getCell(`${allTonnage?'F':'E'}${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                worksheet.getCell(`${allTonnage?'F':'E'}${row}`).value = 'Кубатура:';
-            }
-            const keys = Object.keys(items)
-            for(let i=0; i<keys.length; i++){
+
+            const keysOrganization = Object.keys(items)
+            for(let i=0; i<keysOrganization.length; i++){
+                worksheet = await workbook.addWorksheet(keysOrganization[i].split('|||')[1]);
+                row = 1;
+                worksheet.getColumn(1).width = 25;
+                worksheet.getColumn(2).width = 15;
+                worksheet.getColumn(3).width = 15;
+                worksheet.getColumn(4).width = 15;
+                worksheet.getColumn(5).width = 15;
+                worksheet.getCell(`A${row}`).font = {bold: true};
+                worksheet.getCell(`A${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                worksheet.getCell(`A${row}`).value = 'Товар:';
+                worksheet.getCell(`B${row}`).font = {bold: true};
+                worksheet.getCell(`B${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                worksheet.getCell(`B${row}`).value = 'Количество:';
+                worksheet.getCell(`C${row}`).font = {bold: true};
+                worksheet.getCell(`C${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                worksheet.getCell(`C${row}`).value = 'Упаковок:';
+                worksheet.getCell(`D${row}`).font = {bold: true};
+                worksheet.getCell(`D${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                worksheet.getCell(`D${row}`).value = 'Сумма:';
+                if(allTonnage[keysOrganization[i]]){
+                    worksheet.getCell(`E${row}`).font = {bold: true};
+                    worksheet.getCell(`E${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                    worksheet.getCell(`E${row}`).value = 'Тоннаж:';
+                }
+                if(allSize[keysOrganization[i]]){
+                    worksheet.getCell(`${allTonnage?'F':'E'}${row}`).font = {bold: true};
+                    worksheet.getCell(`${allTonnage?'F':'E'}${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                    worksheet.getCell(`${allTonnage?'F':'E'}${row}`).value = 'Кубатура:';
+                }
+                const keys = Object.keys(items[keysOrganization[i]])
+                for(let i1=0; i1<keys.length; i1++){
+                    row += 1;
+                    worksheet.getCell(`A${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                    worksheet.getCell(`A${row}`).alignment = { wrapText: true };
+                    worksheet.getCell(`A${row}`).value = items[keysOrganization[i]][keys[i1]].name;
+                    worksheet.getCell(`B${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                    worksheet.getCell(`B${row}`).value = `${items[keysOrganization[i]][keys[i1]].count} шт`;
+                    worksheet.getCell(`C${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                    worksheet.getCell(`C${row}`).value = `${Math.round(items[keysOrganization[i]][keys[i1]].count/(items[keysOrganization[i]][keys[i1]].packaging?items[keysOrganization[i]][keys[i1]].packaging:1))} уп`;
+                    worksheet.getCell(`D${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                    worksheet.getCell(`D${row}`).value = `${checkFloat(items[keysOrganization[i]][keys[i1]].allPrice)} сом`;
+                    if(allTonnage){
+                        worksheet.getCell(`E${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                        worksheet.getCell(`E${row}`).value = `${checkInt(items[keysOrganization[i]][keys[i1]].allTonnage)} кг`;
+                    }
+                    if(allSize){
+                        worksheet.getCell(`${allTonnage?'F':'E'}${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                        worksheet.getCell(`${allTonnage?'F':'E'}${row}`).value = `${checkInt(items[keysOrganization[i]][keys[i1]].allSize)} см³`
+                    }
+                }
                 row += 1;
                 worksheet.getCell(`A${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
                 worksheet.getCell(`A${row}`).alignment = { wrapText: true };
-                worksheet.getCell(`A${row}`).value = items[keys[i]].name;
+                worksheet.getCell(`A${row}`).font = {bold: true};
+                worksheet.getCell(`A${row}`).value = 'Итого';
                 worksheet.getCell(`B${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                worksheet.getCell(`B${row}`).value = `${items[keys[i]].count} шт`;
+                worksheet.getCell(`B${row}`).value = `${allCount[keysOrganization[i]]} шт`;
                 worksheet.getCell(`C${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                worksheet.getCell(`C${row}`).value = `${Math.round(items[keys[i]].count/(items[keys[i]].packaging?items[keys[i]].packaging:1))} уп`;
+                worksheet.getCell(`C${row}`).value = '';
                 worksheet.getCell(`D${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                worksheet.getCell(`D${row}`).value = `${items[keys[i]].allPrice} сом`;
+                worksheet.getCell(`D${row}`).value = `${checkFloat(allPrice[keysOrganization[i]])} сом`;
                 if(allTonnage){
                     worksheet.getCell(`E${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                    worksheet.getCell(`E${row}`).value = `${items[keys[i]].allTonnage} кг`;
+                    worksheet.getCell(`E${row}`).value = `${checkInt(allTonnage[keysOrganization[i]])} кг`;
                 }
                 if(allSize){
                     worksheet.getCell(`${allTonnage?'F':'E'}${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                    worksheet.getCell(`${allTonnage?'F':'E'}${row}`).value = `${items[keys[i]].allSize} см³`
+                    worksheet.getCell(`${allTonnage?'F':'E'}${row}`).value = `${checkInt(allSize[keysOrganization[i]])} см³`
                 }
             }
-            row += 1;
-            worksheet.getCell(`A${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-            worksheet.getCell(`A${row}`).alignment = { wrapText: true };
-            worksheet.getCell(`A${row}`).font = {bold: true};
-            worksheet.getCell(`A${row}`).value = 'Итого';
-            worksheet.getCell(`B${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-            worksheet.getCell(`B${row}`).value = `${allCount} шт`;
-            worksheet.getCell(`C${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-            worksheet.getCell(`C${row}`).value = '';
-            worksheet.getCell(`D${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-            worksheet.getCell(`D${row}`).value = `${allPrice} сом`;
-            if(allTonnage){
-                worksheet.getCell(`E${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                worksheet.getCell(`E${row}`).value = `${allTonnage} кг`;
-            }
-            if(allSize){
-                worksheet.getCell(`${allTonnage?'F':'E'}${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-                worksheet.getCell(`${allTonnage?'F':'E'}${row}`).value = `${allSize} см³`
-            }
 
-            worksheet = await workbook.addWorksheet('Лист магазинов');
-            row = 1;
-            worksheet.getColumn(1).width = 25;
-            worksheet.getColumn(2).width = 15;
-            worksheet.getColumn(3).width = 15;
-            worksheet.getColumn(4).width = 15;
-            worksheet.getColumn(5).width = 15;
-            worksheet.getCell(`A${row}`).font = {bold: true};
-            worksheet.getCell(`A${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-            worksheet.getCell(`A${row}`).value = 'Магазин:';
-            worksheet.getCell(`B${row}`).font = {bold: true};
-            worksheet.getCell(`B${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
-            worksheet.getCell(`B${row}`).value = 'Адрес:';
-            for(let i = 0; i<orders.length;i++) {
-                row+=1;
-                let index = data.findIndex(element=>element._id.toString()===orders[i].toString())
-                worksheet.getCell(`A${row}`).value = data[index].address[2];
-                worksheet.getCell(`B${row}`).value = data[index].address[0];
 
-            }
+                worksheet = await workbook.addWorksheet('Лист магазинов');
+                row = 1;
+                worksheet.getColumn(1).width = 25;
+                worksheet.getColumn(2).width = 15;
+                worksheet.getColumn(3).width = 15;
+                worksheet.getColumn(4).width = 15;
+                worksheet.getColumn(5).width = 15;
+                worksheet.getCell(`A${row}`).font = {bold: true};
+                worksheet.getCell(`A${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                worksheet.getCell(`A${row}`).value = 'Магазин:';
+                worksheet.getCell(`B${row}`).font = {bold: true};
+                worksheet.getCell(`B${row}`).border = {top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+                worksheet.getCell(`B${row}`).value = 'Адрес:';
+                for(let i = 0; i<orders.length;i++) {
+                    row+=1;
+                    let index = data.findIndex(element=>element._id.toString()===orders[i].toString())
+                    worksheet.getCell(`A${row}`).value = data[index].address[2];
+                    worksheet.getCell(`B${row}`).value = data[index].address[0];
+
+                }   
 
             for(let i = 0; i<data.length;i++){
                 worksheet = await workbook.addWorksheet(`Накладная ${data[i].number}`);
@@ -464,10 +485,15 @@ const resolvers = {
                     }
                 })
                 .populate({
+                    path: 'organization',
+                    select: 'name _id'
+                })
+                .populate({
                     path : 'adss',
                     populate: [
                         {
-                            path: 'item'
+                            path: 'item',
+                            select: 'name _id'
                         }
                     ]
                 })
@@ -476,7 +502,7 @@ const resolvers = {
             for(let i = 0; i<orders.length;i++){
                 for(let i1 = 0; i1<orders[i].orders.length;i1++) {
                     if(!list[orders[i].orders[i1].item._id])
-                        list[orders[i].orders[i1].item._id] = [orders[i].orders[i1].item.name, 0]
+                        list[orders[i].orders[i1].item._id] = [orders[i].orders[i1].item.name, 0, orders[i].organization.name]
                     list[orders[i].orders[i1].item._id][1] += orders[i].orders[i1].count
                 }
                 if(orders[i].adss) {
@@ -516,13 +542,17 @@ const resolvers = {
                                 }
                             }
                             if(!list[orders[i].adss[i1].item._id])
-                                list[orders[i].adss[i1].item._id] = [orders[i].adss[i1].item.name, 0]
+                                list[orders[i].adss[i1].item._id] = [orders[i].adss[i1].item.name, 0, orders[i].organization.name]
                             list[orders[i].adss[i1].item._id][1] += count
                         }
                     }
                 }
             }
-            return Object.values(list)
+            list = Object.values(list)
+            list = list.sort(function (a, b) {
+                return a - b
+            });
+            return list
         }
     },
     listUnload: async(parent, {orders}, {user}) => {
@@ -772,6 +802,34 @@ const resolversMutation = {
                 return delivery
             }
 
+        }
+        return {data: 'OK'};
+    },
+    setRoute: async(parent, {route, deletedOrders}, {user}) => {
+        if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
+            route = await RouteAzyk.findOne({_id: route, ...user.organization?{provider: user.organization}:{}})
+            if(route){
+                for (let i = 0; i < deletedOrders.length; i++) {
+                    for (let i1 = 0; i1 < route.selectedOrders.length; i1++) {
+                        if(route.selectedOrders[i1]==deletedOrders[i]){
+                            route.selectedOrders.splice(i1, 1);
+                            break;
+                        }
+                    }
+                    for (let i1 = 0; i1 < route.deliverys.length; i1++) {
+                        for (let i2 = 0; i2 < route.deliverys[i1].orders.length; i2++) {
+                            if(route.deliverys[i1].orders[i2]==deletedOrders[i]){
+                                route.deliverys[i1].orders.splice(i2, 1);
+                                route.deliverys[i1].legs.splice(i2, 1);
+                                break;
+                            }
+                        }
+                    }
+
+                }
+                await InvoiceAzyk.updateMany({_id: {$in: deletedOrders}}, {distributed: false})
+                await route.save()
+            }
         }
         return {data: 'OK'};
     },
