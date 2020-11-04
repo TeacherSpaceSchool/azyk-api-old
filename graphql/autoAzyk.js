@@ -123,7 +123,7 @@ const resolversMutation = {
             if(tonnage)object.tonnage = tonnage
             if(size)object.size = size
             if(employment)object.employment = employment
-            object.save();
+            await object.save();
         }
         return {data: 'OK'}
     },

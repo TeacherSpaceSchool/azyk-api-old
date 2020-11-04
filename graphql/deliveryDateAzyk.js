@@ -7,6 +7,7 @@ const type = `
     client: ID
     days: [Boolean]
     organization: ID
+    priority: Int
   }
 `;
 
@@ -16,7 +17,7 @@ const query = `
 `;
 
 const mutation = `
-    setDeliveryDates(clients: [ID]!, organization: ID!, days: [Boolean]!): Data
+    setDeliveryDates(clients: [ID]!, organization: ID!, days: [Boolean]!, priority: Int!): Data
 `;
 
 const resolvers = {
@@ -37,7 +38,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    setDeliveryDates: async(parent, {clients, organization, days}, {user}) => {
+    setDeliveryDates: async(parent, {clients, organization, days, priority}, {user}) => {
         if(['суперорганизация', 'организация', 'менеджер', 'агент', 'admin'].includes(user.role)){
             if(user.organization)
                 organization = user.organization
@@ -46,6 +47,7 @@ const resolversMutation = {
                 if(!deliveryDate){
                     let _object = new DeliveryDate({
                         days: days,
+                        priority: priority,
                         client: clients[i],
                         organization: organization==='super'?null:organization
                     });
@@ -53,6 +55,7 @@ const resolversMutation = {
                 }
                 else {
                     deliveryDate.days = days;
+                    deliveryDate.priority = priority;
                     await deliveryDate.save();
                 }
             }

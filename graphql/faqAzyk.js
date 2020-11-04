@@ -66,7 +66,7 @@ const resolversMutation = {
             if(title) object.title = title
             if(video) object.video = video
             if(typex) object.typex = typex
-            object.save();
+            await object.save();
         }
         return {data: 'OK'}
     },

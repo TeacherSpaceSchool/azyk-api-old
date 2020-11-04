@@ -66,7 +66,7 @@ const resolversMutation = {
                 object.email = email
                 object.address = address
                 object.social = social
-                object.save();
+                await object.save();
             }
         }
         return {data: 'OK'}

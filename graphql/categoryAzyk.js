@@ -119,7 +119,7 @@ const resolversMutation = {
                 object.image = urlMain + filename
             }
             if(name&&name!=='Не задано') object.name = name
-            object.save();
+            await object.save();
         }
         return {data: 'OK'}
     },
@@ -142,7 +142,7 @@ const resolversMutation = {
             let objects = await CategoryAzyk.find({_id: {$in: _id}})
             for(let i=0; i<objects.length; i++){
                 objects[i].status = objects[i].status==='active'?'deactive':'active'
-                objects[i].save()
+                await objects[i].save()
             }
         }
         return {data: 'OK'}

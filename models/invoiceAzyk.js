@@ -9,6 +9,10 @@ const InvoiceAzykSchema = mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'AdsAzyk'
         }],
+    priority: {
+        type: Number,
+        default: 0
+    },
     client: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ClientAzyk'

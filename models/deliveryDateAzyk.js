@@ -13,6 +13,10 @@ const DeliveryDateAzykSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'OrganizationAzyk'
     },
+    priority: {
+        type: Number,
+        default: 0
+    },
 }, {
     timestamps: true
 });

@@ -71,6 +71,7 @@ const type = `
     organization: Organization
     del: String
     adss: [Ads]
+    priority: Int
     track: Int
     forwarder: Employment
   }
@@ -126,7 +127,7 @@ const query = `
 `;
 
 const mutation = `
-    addOrders(dateDelivery: Date!, info: String, usedBonus: Boolean, inv: Boolean, unite: Boolean, paymentMethod: String, organization: ID!, client: ID!): Data
+    addOrders(priority: Int!, dateDelivery: Date!, info: String, usedBonus: Boolean, inv: Boolean, unite: Boolean, paymentMethod: String, organization: ID!, client: ID!): Data
     setOrder(orders: [OrderInput], invoice: ID): Invoice
     setInvoice(adss: [ID], taken: Boolean, invoice: ID!, confirmationClient: Boolean, confirmationForwarder: Boolean, cancelClient: Boolean, cancelForwarder: Boolean, paymentConsignation: Boolean): Data
     setInvoicesLogic(track: Int, forwarder: ID, invoices: [ID]!): Data
@@ -2325,7 +2326,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrders: async(parent, {dateDelivery, info, paymentMethod, organization, usedBonus, client, inv, unite}, {user}) => {
+    addOrders: async(parent, {priority, dateDelivery, info, paymentMethod, organization, usedBonus, client, inv, unite}, {user}) => {
         if(user.client)
             client = user.client
         client = await ClientAzyk.findOne({_id: client}).select('address id').lean()
@@ -2445,6 +2446,7 @@ const resolversMutation = {
                     orders[iii] = orders[iii]._id
                 }
                 objectInvoice = new InvoiceAzyk({
+                    priority: priority,
                     discount: discount,
                     orders: orders,
                     client: client._id,
@@ -3001,7 +3003,7 @@ const resolversMutation = {
                 invoices[i].orders = invoices[i].orders.map(element=>element._id)
                 await OrderAzyk.updateMany({_id: {$in: invoices[i].orders}}, {status: 'выполнен'})
             }
-            invoices[i].save();
+            await invoices[i].save();
         }
         route = await RouteAzyk.findById(route).populate({
             path: 'invoices',
@@ -3018,7 +3020,7 @@ const resolversMutation = {
                 route.status = 'выполнен';
             else
                 route.status = 'выполняется';
-            route.save();
+            await route.save();
         }
         return {data: 'OK'};
     }*/

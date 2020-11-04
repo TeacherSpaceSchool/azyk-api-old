@@ -9,6 +9,7 @@ const { reductionToOrganization } = require('../module/organizationAzyk');
 const { reductionToClient } = require('../module/clientAzyk');
 const { reductionToItem } = require('../module/itemAzyk');
 const { reductionInvoices } = require('../module/invoiceAzyk');
+const { reductionToDeliveryDate } = require('../module/deliveryDateAzyk');
 const { startClientRedis } = require('../module/redis');
 const { reductionToUser, createAdmin } = require('../module/user');
 const { Worker, isMainThread } = require('worker_threads');
@@ -82,6 +83,7 @@ let startReminderClient = async () => {
 
 let start = async () => {
     await createAdmin();
+    await reductionToDeliveryDate();
     //await reductionSingleOutXMLAzyk()
     //await startClientRedis()
     await startResetUnloading()

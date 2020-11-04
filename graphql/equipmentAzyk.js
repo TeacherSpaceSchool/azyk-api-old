@@ -92,7 +92,7 @@ const resolversMutation = {
             if(name)object.name = name
             if(client)object.client = client
             if(organization&&user.role==='admin')object.organization = organization
-            object.save();
+            await object.save();
         }
         return {data: 'OK'}
     },

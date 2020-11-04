@@ -8,6 +8,6 @@ module.exports.reductionInvoices = async() => {
     for (let i = 0; i < invoices.length; i++) {
         invoices[i].dateDelivery = new Date(invoices[i].createdAt)
         invoices[i].dateDelivery.setDate(invoices[i].dateDelivery.getDate() + 1)
-        invoices[i].save()
+        await invoices[i].save()
     }
 }

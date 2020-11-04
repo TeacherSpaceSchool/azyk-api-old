@@ -31,7 +31,7 @@ router.post('/register', async (req, res) => {
             if (user.role === 'client') {
                 let client = await ClientAzyk.findOne({user: user._id})
                 client.notification = true
-                client.save()
+                await client.save()
             }
             subscriptionModel.save((err) => {
                 if (err) {
@@ -64,11 +64,11 @@ router.post('/unregister', async (req, res) => {
             let client = await ClientAzyk.findOne({user: subscriptionModel.user._id})
             if(client) {
                 client.notification = false
-                client.save()
+                await client.save()
             }
         }
         subscriptionModel.user = null
-        subscriptionModel.save()
+        await subscriptionModel.save()
     } catch (err) {
         let _object = new ModelsErrorAzyk({
             err: err.message,
@@ -87,7 +87,7 @@ router.post('/delete', async (req, res) => {
         if(subscriptionModel.user&&subscriptionModel.user.role==='client'&&(await SubscriberAzyk.find({user: subscriptionModel.user._id})).length===1){
             let client = await ClientAzyk.findOne({user: subscriptionModel.user._id})
             client.notification = false
-            client.save()
+            await client.save()
         }
         await SubscriberAzyk.deleteMany({number: req.body.number})
     } catch (err) {

@@ -10,7 +10,7 @@ const type = `
     image: String
     url: String
     title: String
-    id: String
+    xid: String
     createdAt: Date
     del: String
     item: Item
@@ -43,8 +43,8 @@ const query = `
 `;
 
 const mutation = `
-    addAds(id: String, image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
-    setAds(id: String, _id: ID!, image: Upload, url: String, title: String, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
+    addAds(xid: String, image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
+    setAds(xid: String, _id: ID!, image: Upload, url: String, title: String, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
     restoreAds(_id: [ID]!): Data
     deleteAds(_id: [ID]!): Data
 `;
@@ -66,13 +66,13 @@ const checkAdss = async(invoice) => {
     for(let i=0; i<adss.length; i++) {
         if(adss[i].targetType==='Цена'&&adss[i].targetPrice&&adss[i].targetPrice>0){
             if((invoice.allPrice-invoice.returnedPrice)>=adss[i].targetPrice) {
-                if(adss[i].id&&adss[i].id.length>0){
-                    let added = !idAds[adss[i].id]||idAds[adss[i].id].target<adss[i].targetPrice
+                if(adss[i].xid&&adss[i].xid.length>0){
+                    let added = !idAds[adss[i].xid]||idAds[adss[i].xid].target<adss[i].targetPrice
                     if(added){
-                        if(idAds[adss[i].id]&&idAds[adss[i].id].target<adss[i].targetPrice){
-                            resAdss.splice(idAds[adss[i].id].index, 1)
+                        if(idAds[adss[i].xid]&&idAds[adss[i].xid].target<adss[i].targetPrice){
+                            resAdss.splice(idAds[adss[i].xid].index, 1)
                         }
-                        idAds[adss[i].id] = {index: resAdss.length, target: adss[i].targetPrice}
+                        idAds[adss[i].xid] = {index: resAdss.length, target: adss[i].targetPrice}
                         resAdss.push(adss[i]._id)
                     }
                 }
@@ -172,7 +172,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addAds: async(parent, {id, image, url, title, organization, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
+    addAds: async(parent, {xid, image, url, title, organization, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -185,7 +185,7 @@ const resolversMutation = {
                 targetItems: targetItems,
                 targetPrice: targetPrice,
                 multiplier: multiplier,
-                id: id,
+                xid: xid,
                 targetType: targetType
             });
             if(count)
@@ -195,7 +195,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setAds: async(parent, {id, _id, image, url, title, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
+    setAds: async(parent, {xid, _id, image, url, title, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let object = await AdsAzyk.findById(_id)
             object.item = item
@@ -205,7 +205,7 @@ const resolversMutation = {
                 filename = await saveImage(stream, filename)
                 object.image = urlMain + filename
             }
-            if(id) object.id = id
+            if(xid) object.xid = xid
             if(url) object.url = url
             if(title) object.title = title
             if(count!=undefined) object.count = count
@@ -213,7 +213,7 @@ const resolversMutation = {
             if(targetPrice!=undefined) object.targetPrice = targetPrice
             if(multiplier!=undefined) object.multiplier = multiplier
             if(targetType) object.targetType = targetType
-            object.save();
+            await object.save();
         }
         return {data: 'OK'}
     },

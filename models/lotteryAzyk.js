@@ -20,6 +20,8 @@ const LotteryAzykSchema = mongoose.Schema({
     }],
     tickets: [{
         status: String,
+        countWin:  Number,
+        coupons:  Number,
         number: String,
         client: {
             type: mongoose.Schema.Types.ObjectId,

@@ -4,7 +4,7 @@ const random = require('mongoose-random');
 const AdsAzykSchema = mongoose.Schema({
     image: String,
     url: String,
-    id: {
+    xid: {
         type: String,
         default: ''
     },

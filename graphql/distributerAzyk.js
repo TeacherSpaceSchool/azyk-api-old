@@ -83,7 +83,7 @@ const resolversMutation = {
         if(user.role==='admin') {
             if(sales)object.sales = sales
             if(provider)object.provider = provider
-            object.save();
+            await object.save();
         }
         return {data: 'OK'}
     },

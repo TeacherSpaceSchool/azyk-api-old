@@ -32,7 +32,7 @@ module.exports.reductionToUser = async() => {
     console.log(`reductionToUser: ${users.length}`)
     for(let i = 0; i<users.length;i++){
         users[i].login = users[i].phone
-        users[i].save();
+        await users[i].save();
     }
 }
 

@@ -109,7 +109,7 @@ const verifydeuserGQL = async (req, res) => {
                     user.category = client.category
                     user.city = client.city
                     client.lastActive = new Date()
-                    client.save()
+                    await client.save()
                     resolve(user)
 
                 }

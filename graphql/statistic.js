@@ -555,6 +555,7 @@ const resolvers = {
     },
     statisticClientActivity: async(parent, { online, organization } , {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
+            console.time('get BD')
             organization = user.organization?user.organization:organization
             let now = new Date()
             /*now.setDate(now.getDate() + 1)
@@ -681,6 +682,7 @@ const resolvers = {
                 },
                 ...data
             ]
+            console.timeEnd('get BD')
             return {
                 columns: ['клиент', 'активность', 'заказ'],
                 row: data
@@ -4029,7 +4031,7 @@ const resolversMutation = {
                         }
                     }
                 }
-                agentRoute.save()
+                await agentRoute.save()
             }
             await deleteFile(filename)
             return ({data: 'OK'})

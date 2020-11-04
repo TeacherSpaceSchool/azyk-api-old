@@ -23,10 +23,14 @@ const type = `
         number: String
         client: Client
         prize: String
+        countWin: Int
+        coupons: Int
   }
   input LotteryTicketInput {
         number: String
         client: ID
+        countWin: Int
+        coupons: Int
   }
   type LotteryPrize {
         _id: ID
@@ -55,7 +59,7 @@ const type = `
 const query = `
     lotterys: [Lottery]
     lottery(_id: ID!): Lottery
-    clientsForLottery(lottery: ID, search: String): [Client]
+    clientsForLottery(lottery: ID, search: String!): [Client]
 `;
 
 const mutation = `
@@ -69,7 +73,7 @@ const mutation = `
 `;
 
 const resolvers = {
-    clientsForLottery: async(parent, {lottery}, {user}) => {
+    clientsForLottery: async(parent, {lottery, search}, {user}) => {
         let dateEnd = new Date()
         dateEnd.setDate(dateEnd.getDate()+1)
         dateEnd.setHours(3, 0, 0, 0)
@@ -81,7 +85,7 @@ const resolvers = {
         })
             .select('tickets organization')
             .lean()
-        let data = {}
+        /*let data = {}
         let allowedClients = await InvoiceAzyk.find(
             {
                 $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
@@ -102,7 +106,7 @@ const resolvers = {
         allowedClients = []
         for(let i=0; i<keys.length; i++){
             if(data[keys[i]]>3) allowedClients.push(new mongoose.Types.ObjectId(keys[i]))
-        }
+        }*/
         let clients = lottery.tickets.map(element => element.client)
         clients = await ClientAzyk
             .aggregate(
@@ -110,7 +114,13 @@ const resolvers = {
                     {
                         $match: {
                             del: {$ne: 'deleted'},
-                            $and: [{_id: {$nin: clients}}, {_id: {$in: allowedClients}}]
+                            /*$and: [{*/_id: {$nin: clients}/*}, {_id: {$in: allowedClients}}]*/,
+                            $or: [
+                                {name: {'$regex': search, '$options': 'i'}},
+                                //{device: {'$regex': search, '$options': 'i'}},
+                                {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
+                                //{phone: {'$regex': search, '$options': 'i'}}
+                            ]
                         }
                     },
                     {
@@ -136,11 +146,11 @@ const resolvers = {
                         }
                     },
                 ])
-        for(let i=0; i<clients.length; i++){
+        /*for(let i=0; i<clients.length; i++){
             for(let i1=0; i1<clients[i].address.length; i1++) {
                 clients[i].name+=` | ${clients[i].address[i1][2]?`${clients[i].address[i1][2]}, `:''}${clients[i].address[i1][0]}`
             }
-        }
+        }*/
         return clients
     },
     lotterys: async(parent, ctx, {user}) => {
@@ -216,9 +226,7 @@ const resolversMutation = {
             if(tickets) {
                 let _tickets = []
                 for (let i = 0; i < tickets.length; i++) {
-                    _tickets.push({
-                        status: 'розыгрыш', number: tickets[i].number, client: tickets[i].client, prize: undefined
-                    })
+                    _tickets.push({status: 'розыгрыш', number: tickets[i].number, client: tickets[i].client, prize: undefined, countWin:  tickets[i].countWin, coupons:  tickets[i].coupons})
                 }
                 object.tickets = _tickets
             }
@@ -266,7 +274,7 @@ const resolversMutation = {
                 }
             }
             object.photoReports = _photoReports
-            object.save();
+            await object.save();
         }
         return {data: 'OK'}
     },
@@ -274,28 +282,65 @@ const resolversMutation = {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let object = await LotteryAzyk.findById(_id)
             if(object.status==='розыгрыш'){
-                let tickets = [...object.tickets]
+                let tickets = []
+                let shuffleTickets = []
                 let winners = []
                 let index = 0
-                let min = Math.ceil(0);
-                let max = Math.floor(tickets.length);
-                if(tickets.length) {
+                if(object.tickets.length) {
+                    for (let i = 0; i < object.tickets.length; i++) {
+                        for (let i1 = 0; i1 < object.tickets[i].coupons; i1++) {
+                            tickets.push(object.tickets[i])
+                        }
+                    }
+                    while(tickets.length){
+                        index = Math.floor(Math.random() * (Math.floor(tickets.length) - Math.ceil(0))) + Math.ceil(0)
+                        shuffleTickets.push(tickets[index])
+                        tickets.splice(index, 1)
+                    }
                     for (let i = 0; i < object.prizes.length; i++) {
-                        for (let i1 = 0; i1 < object.prizes[i].count; i1++) {
-                            if(tickets.length) {
-                                index = Math.floor(Math.random() * (max - min)) + min
-                                tickets[index].prize = object.prizes[i].name
-                                tickets[index].status = 'победитель'
-                                winners = [...winners, {...tickets[index]._doc}]
-                                tickets.splice(index)
+                         for (let i1 = 0; i1 < object.prizes[i].count; i1++) {
+                            if(shuffleTickets.length) {
+                                index = Math.floor(Math.random() * (Math.floor(shuffleTickets.length) - Math.ceil(0))) + Math.ceil(0)
+                                for (let i2 = 0; i2 < object.tickets.length; i2++) {
+                                    if(object.tickets[i2]._id.toString()===shuffleTickets[index]._id.toString()){
+                                        object.tickets[i2].countWin--
+                                        object.tickets[i2].status = 'победитель'
+                                        if(!object.tickets[i2].prize)
+                                            object.tickets[i2].prize = object.prizes[i].name
+                                        else
+                                            object.tickets[i2].prize = `${object.tickets[i2].prize}, ${object.prizes[i].name}`
+                                        if(!object.tickets[i2].countWin) {
+                                            for (let i3 = 0; i3 < shuffleTickets.length; i3++) {
+                                                if(object.tickets[i2]._id.toString()===shuffleTickets[i3]._id.toString()) {
+                                                    shuffleTickets.splice(i3, 1)
+                                                    i3--
+                                                    break
+                                                }
+                                            }
+                                        }
+                                        else {
+                                            shuffleTickets.splice(index, 1)
+                                        }
+                                        break
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                tickets.map(ticket=>{ticket.status = 'проигравший'; return ticket})
-                object.tickets = [...winners, ...tickets]
+                for (let i = 0; i < object.tickets.length; i++) {
+                    if(object.tickets[i].status === 'победитель'){
+                        winners.push(object.tickets[i])
+                        object.tickets.splice(i, 1)
+                        i--
+                    }
+                    else {
+                        object.tickets[i].status = 'проигравший'
+                    }
+                }
+                object.tickets = [...winners, ...object.tickets]
                 object.status = 'разыграна'
-                object.save();
+                await object.save();
             }
         }
         return {data: 'OK'}
