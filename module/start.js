@@ -83,7 +83,7 @@ let startReminderClient = async () => {
 
 let start = async () => {
     await createAdmin();
-    await reductionToDeliveryDate();
+    //await reductionToDeliveryDate();
     //await reductionSingleOutXMLAzyk()
     //await startClientRedis()
     await startResetUnloading()
