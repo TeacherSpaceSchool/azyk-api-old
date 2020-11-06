@@ -1685,7 +1685,6 @@ const resolvers = {
     },
     invoice: async(parent, {_id}, {user}) => {
         if(mongoose.Types.ObjectId.isValid(_id)) {
-            console.log((await InvoiceAzyk.findOne({_id: _id})).orders)
             let invoice = await InvoiceAzyk.findOne({_id: _id})
                 .populate({
                     path: 'orders',
