@@ -1685,6 +1685,7 @@ const resolvers = {
     },
     invoice: async(parent, {_id}, {user}) => {
         if(mongoose.Types.ObjectId.isValid(_id)) {
+            console.log((await InvoiceAzyk.findOne({_id: _id})).orders)
             let invoice = await InvoiceAzyk.findOne({_id: _id})
                 .populate({
                     path: 'orders',
@@ -1717,7 +1718,6 @@ const resolvers = {
                     path: 'adss',
                 })
                 .lean()
-            console.log(invoice)
             if(['суперагент', 'admin', 'суперэкспедитор'].includes(user.role))
                 return invoice
             else if(user.client&&user.client.toString()===invoice.client._id.toString())
