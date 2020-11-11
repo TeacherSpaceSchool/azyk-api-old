@@ -497,6 +497,7 @@ const resolvers = {
                         }
                     ]
                 })
+                .sort('organization')
                 .lean()
             let list = {}
             for(let i = 0; i<orders.length;i++){
@@ -549,9 +550,6 @@ const resolvers = {
                 }
             }
             list = Object.values(list)
-            list = list.sort(function (a, b) {
-                return a[2] - b[2]
-            });
             return list
         }
     },
