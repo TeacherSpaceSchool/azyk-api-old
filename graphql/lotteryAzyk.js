@@ -176,7 +176,7 @@ const resolvers = {
             })
             .populate({
                 path: 'tickets.client',
-                select: 'name _id'
+                select: 'name _id address'
             })
             .lean()
         return res
