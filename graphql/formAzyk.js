@@ -266,6 +266,10 @@ const resolvers = {
                     path: 'client',
                     select: 'name _id address'
                 })
+                .populate({
+                    path: 'agent',
+                    select: 'name _id'
+                })
                 .sort('-createdAt')
                 .skip(skip != undefined ? skip : 0)
                 .limit(skip != undefined ? 15 : 10000000000)
@@ -278,14 +282,18 @@ const resolvers = {
                     path: 'client',
                     select: 'name _id address'
                 })
+                .populate({
+                    path: 'agent',
+                    select: 'name _id'
+                })
                 .sort('-createdAt')
                 .skip(skip != undefined ? skip : 0)
                 .limit(skip != undefined ? 15 : 10000000000)
                 .lean()
-            forms = forms.filter(form => (form.client&&form.client.name.includes(search)))
             return forms
         }
         else if('агент'===user.role){
+            let forms = []
             let clients = await DistrictAzyk
                 .find({agent: user.employment})
                 .distinct('client')
@@ -300,16 +308,28 @@ const resolvers = {
                     $and: [{_id: {$in: clients}}, {_id: {$in: _clients}}]
                 }).distinct('_id').lean()
             }
-            let forms = await FormAzyk.find({client: {$in: clients}, editorEmployment: true, templateForm: templateForm, organization: user.organization})
-                .populate({
-                    path: 'client',
-                    select: 'name _id address'
-                })
-                .sort('-createdAt')
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+            templateForm = await TemplateFormAzyk.findOne({_id: templateForm, organization: user.organization, editorEmployment: true})
+                .select('_id')
                 .lean()
-            forms = forms.filter(form => (form.client&&form.client.name.includes(search)))
+            if(templateForm) {
+                forms = await FormAzyk.find({
+                    client: {$in: clients},
+                    templateForm: templateForm._id,
+                    organization: user.organization
+                })
+                    .populate({
+                        path: 'client',
+                        select: 'name _id address'
+                    })
+                    .populate({
+                        path: 'agent',
+                        select: 'name _id'
+                    })
+                    .sort('-createdAt')
+                    .skip(skip != undefined ? skip : 0)
+                    .limit(skip != undefined ? 15 : 10000000000)
+                    .lean()
+            }
             return forms
         }
     },
@@ -324,7 +344,7 @@ const resolvers = {
             return form
         }
         else if(user.role==='агент'){
-            let form = await FormAzyk.findOne({_id: _id, ...user.organization?{organization: user.organization}:{}, editorEmployment: true})
+            let form = await FormAzyk.findOne({_id: _id, organization: user.organization})
                 .populate({
                     path: 'client',
                     select: 'name _id address'
