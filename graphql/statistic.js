@@ -3035,7 +3035,12 @@ const resolvers = {
                     ]
                 })
                 .populate({
-                    path : 'client'
+                    path : 'client',
+                    select: 'name _id'
+                })
+                .populate({
+                    path : 'agent',
+                    select: 'name _id'
                 })
                 .populate({
                     path : 'adss'
@@ -3054,6 +3059,12 @@ const resolvers = {
                 }
                 worksheet.getCell(`A${row}`).font = {bold: true, size: 14};
                 worksheet.getCell(`A${row}`).value = `Заказ${i+1}`;
+                if(data[i].agent) {
+                    row += 1;
+                    worksheet.getCell(`A${row}`).font = {bold: true};
+                    worksheet.getCell(`A${row}`).value = 'Агент:';
+                    worksheet.getCell(`B${row}`).value = data[i].agent.name
+                }
                 row += 1;
                 worksheet.getCell(`A${row}`).font = {bold: true};
                 worksheet.getCell(`A${row}`).value = 'Дата доставки:';
