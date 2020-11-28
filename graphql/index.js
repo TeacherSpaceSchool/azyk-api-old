@@ -20,6 +20,7 @@ const ClientAzyk = require('./clientAzyk');
 const EmploymentAzyk = require('./employmentAzyk');
 const AutoAzyk = require('./autoAzyk');
 const ItemAzyk = require('./itemAzyk');
+const FormAzyk = require('./formAzyk');
 const BasketAzyk = require('./basketAzyk');
 const OrderAzyk = require('./orderAzyk');
 const BonusAzyk = require('./bonusAzyk');
@@ -89,6 +90,7 @@ const typeDefs = gql`
     ${ReturnedAzyk.type}
     ${EmploymentAzyk.type}
     ${ItemAzyk.type}
+    ${FormAzyk.type}
     ${ContactAzyk.type}
     ${BasketAzyk.type}
     ${OrderAzyk.type}
@@ -126,6 +128,7 @@ const typeDefs = gql`
         ${PassportAzyk.mutation}
         ${EmploymentAzyk.mutation}
         ${ItemAzyk.mutation}
+        ${FormAzyk.mutation}
         ${ContactAzyk.mutation}
         ${BasketAzyk.mutation}
         ${OrderAzyk.mutation}
@@ -164,6 +167,7 @@ const typeDefs = gql`
         ${PassportAzyk.query}
         ${EmploymentAzyk.query}
         ${ItemAzyk.query}
+        ${FormAzyk.query}
         ${ContactAzyk.query}
         ${BasketAzyk.query}
         ${OrderAzyk.query}
@@ -225,6 +229,7 @@ const resolvers = {
         ...SubCategoryAzyk.resolvers,
         ...ReturnedAzyk.resolvers,
         ...ItemAzyk.resolvers,
+        ...FormAzyk.resolvers,
         ...ContactAzyk.resolvers,
         ...BasketAzyk.resolvers,
         ...OrderAzyk.resolvers,
@@ -263,6 +268,7 @@ const resolvers = {
         ...EmploymentAzyk.resolversMutation,
         ...PassportAzyk.resolversMutation,
         ...ItemAzyk.resolversMutation,
+        ...FormAzyk.resolversMutation,
         ...ContactAzyk.resolversMutation,
         ...BasketAzyk.resolversMutation,
         ...OrderAzyk.resolversMutation,

@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const FormAzykSchema = mongoose.Schema({
+    organization: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'OrganizationAzyk'
+    },
     templateForm: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'TemplateFormAzyk'
@@ -9,14 +13,14 @@ const FormAzykSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ClientAzyk'
     },
-    organization: {
+    agent: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'OrganizationAzyk'
+        ref: 'EmploymentAzyk'
     },
-    editor: [[String]],
     questions: [{
-        type: String,
+        formType: String,
         question: String,
+        answer: [String],
         answers: [String]
     }]
 }, {

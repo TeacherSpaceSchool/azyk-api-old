@@ -8,9 +8,9 @@ const TemplateFormAzykSchema = mongoose.Schema({
     },
     editorEmployment: Boolean,
     editorClient: Boolean,
-    editClient: Boolean,
+    edit: Boolean,
     questions: [{
-        type: String,
+        formType: String,
         question: String,
         answers: [String]
     }]
