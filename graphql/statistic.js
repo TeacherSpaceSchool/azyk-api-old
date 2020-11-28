@@ -3036,7 +3036,7 @@ const resolvers = {
                 })
                 .populate({
                     path : 'client',
-                    select: 'name _id'
+                    select: 'name _id phone'
                 })
                 .populate({
                     path : 'agent',
