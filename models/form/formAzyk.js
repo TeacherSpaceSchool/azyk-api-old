@@ -21,7 +21,8 @@ const FormAzykSchema = mongoose.Schema({
         formType: String,
         question: String,
         answer: [String],
-        answers: [String]
+        answers: [String],
+        obligatory: Boolean
     }]
 }, {
     timestamps: true

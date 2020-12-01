@@ -12,7 +12,8 @@ const TemplateFormAzykSchema = mongoose.Schema({
     questions: [{
         formType: String,
         question: String,
-        answers: [String]
+        answers: [String],
+        obligatory: Boolean
     }]
 }, {
     timestamps: true

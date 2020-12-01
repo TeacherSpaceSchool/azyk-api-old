@@ -47,6 +47,7 @@ const type = `
     question: String
     answers: [String]
     answer: [String]
+    obligatory: Boolean
   }
   input QuestionFormInput {
     answers: [String]
@@ -54,6 +55,7 @@ const type = `
     question: String
     answer: [String]
     file: Upload
+    obligatory: Boolean
   }
 `;
 
