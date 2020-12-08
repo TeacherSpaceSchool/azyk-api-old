@@ -110,6 +110,7 @@ const InvoiceAzykSchema = mongoose.Schema({
 InvoiceAzykSchema.index({createdAt: 1})
 InvoiceAzykSchema.index({adss: 1})
 InvoiceAzykSchema.index({client: 1})
+InvoiceAzykSchema.index({taken: 1})
 InvoiceAzykSchema.index({number: 1})
 InvoiceAzykSchema.index({info: 1})
 InvoiceAzykSchema.index({address: 1})

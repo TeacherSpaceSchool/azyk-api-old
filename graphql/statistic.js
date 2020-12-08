@@ -22,6 +22,7 @@ const { urlMain, saveFile, deleteFile, weekDay, pdDDMMYYHHMM, pdHHMM, checkFloat
 const readXlsxFile = require('read-excel-file/node');
 const AgentHistoryGeoAzyk = require('../models/agentHistoryGeoAzyk');
 const AutoAzyk = require('../models/autoAzyk');
+const mongoose = require('mongoose');
 
 const type = `
     type Statistic {
@@ -555,7 +556,7 @@ const resolvers = {
     },
     statisticClientActivity: async(parent, { online, organization } , {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
-            console.time('get BD')
+            //console.time('get BD')
             organization = user.organization?user.organization:organization
             let now = new Date()
             /*now.setDate(now.getDate() + 1)
@@ -586,22 +587,32 @@ const resolvers = {
             let statistic = {}
             let orderClient = []
             let orderByClient = {}
-            let data = await InvoiceAzyk.find(
-                {
-                    agent: {$nin: excludedAgents},
-                    taken: true,
-                    del: {$ne: 'deleted'},
-                    ...(organization?{organization: organization}:{})
-                }
-            )
-                .select('client createdAt _id')
-                .sort('-createdAt')
-                .lean()
+            let data =  await InvoiceAzyk.aggregate(
+                [
+                    {
+                        $match:{
+                            agent: {$nin: excludedAgents},
+                            taken: true,
+                            del: {$ne: 'deleted'},
+                            ...(organization?{organization: organization}:{})
+                        }
+                    },
+                    { $project : { createdAt : 1, client: 1 }},
+                    { $sort : {client: 1, createdAt: 1} },
+                    {
+                        $group:
+                            {
+                                _id: '$client',
+                                createdAt: { $last: '$createdAt' }
+                            }
+                    }
+                ])
+
             for(let i=0; i<data.length; i++) {
-                if(!orderClient.includes(data[i].client.toString()))
-                    orderClient.push(data[i].client.toString())
-                if(!orderByClient[data[i].client.toString()])
-                    orderByClient[data[i].client.toString()] = data[i]
+                if(!orderClient.includes(data[i]._id.toString()))
+                    orderClient.push(data[i]._id.toString())
+                if(!orderByClient[data[i]._id.toString()])
+                    orderByClient[data[i]._id.toString()] = data[i]
             }
             data = await ClientAzyk.find(
                 {
@@ -682,7 +693,7 @@ const resolvers = {
                 },
                 ...data
             ]
-            console.timeEnd('get BD')
+            //console.timeEnd('get BD')
             return {
                 columns: ['клиент', 'активность', 'заказ'],
                 row: data
@@ -2905,100 +2916,126 @@ const resolvers = {
     statisticClientGeo: async(parent, { search, organization, item }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             organization = user.organization?user.organization:organization
-            let clients =
-                await ClientAzyk.find({
-                    del: {$ne: 'deleted'},
-                    ...search&&search.length?{$or: [
-                        {name: {'$regex': search, '$options': 'i'}},
-                        {email: {'$regex': search, '$options': 'i'}},
-                        {city: {'$regex': search, '$options': 'i'}},
-                        {info: {'$regex': search, '$options': 'i'}},
-                        {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
-                    ]}:{}
-                })
-                    .select('address name _id notification lastActive')
-                    .lean()
+            let clients = await UserAzyk.find({role: 'client', status: 'active'}).distinct('_id').lean()
+            clients = await ClientAzyk.find({
+                user: {$in: clients},
+                del: {$ne: 'deleted'},
+                ...search&&search.length?{$or: [
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {email: {'$regex': search, '$options': 'i'}},
+                    {city: {'$regex': search, '$options': 'i'}},
+                    {info: {'$regex': search, '$options': 'i'}},
+                    {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
+                ]}:{}
+            })
+                .select('address name _id notification lastActive')
+                .lean()
             let address = []
             let good = 0
             let excellent = 0
             let bad = 0
+            let goodClients = []
+            let status
+            let invoice
+            let now = new Date()
+            now.setDate(now.getDate() + 1)
+            now.setHours(3, 0, 0, 0)
+            let differenceDates;
             for(let x=0; x<clients.length;x++) {
-                for(let i=0; i<clients[x].address.length;i++){
-                    if(clients[x].address[i][1]&&clients[x].address[i][1].length>0&&!(clients[x].name.toLowerCase()).includes('агент')&&!(clients[x].name.toLowerCase()).includes('agent')) {
-                        let status
-                        let now = new Date()
-                        now.setDate(now.getDate() + 1)
-                        now.setHours(3, 0, 0, 0)
-                        let differenceDates = clients[x].lastActive?(now - new Date(clients[x].lastActive)) / (1000 * 60 * 60 * 24):999
-                        if (differenceDates > 7&&!item&&!organization) {
-                            status = 'red'
-                            bad+=1
-                        }
-                        else {
-                            let invoice
-                            if(item){
-                                invoice = await OrderAzyk.findOne({
-                                    client: clients[x]._id,
-                                    status: {$ne: 'отмена'},
-                                    item: item
-                                })
-                                    .select('createdAt')
-                                    .sort('-createdAt')
-                                    .lean()
-                            }
-                            else if(organization){
-                                invoice = await InvoiceAzyk.findOne({
-                                    organization: organization,
-                                    client: clients[x]._id,
-                                    del: {$ne: 'deleted'},
-                                    taken: true
-                                })
-                                    .select('createdAt')
-                                    .sort('-createdAt')
-                                    .lean()
-
-                            }
-                            else {
-                                invoice = await InvoiceAzyk.findOne({
-                                    client: clients[x]._id,
-                                    del: {$ne: 'deleted'},
-                                    taken: true
-                                })
-                                    .select('createdAt')
-                                    .sort('-createdAt')
-                                    .lean()
-
-                            }
-                            if(invoice) {
-                                differenceDates = (now - new Date(invoice.createdAt)) / (1000 * 60 * 60 * 24)
-                                if (differenceDates > 7) {
-                                    status = 'yellow'
-                                    good+=1
-                                }
-                                else {
-                                    status = 'green'
-                                    excellent+=1
-                                }
-                            }
-                            else {
-                                if(organization||item) {
-                                    status = 'red'
-                                    bad+=1
-                                }
-                                else {
-                                    status = 'yellow'
-                                    good+=1
-                                }
-                            }
-                        }
+                if(clients[x].address[0][1]&&clients[x].address[0][1].length>0&&!(clients[x].name.toLowerCase()).includes('агент')&&!(clients[x].name.toLowerCase()).includes('agent')) {
+                    differenceDates = clients[x].lastActive?(now - new Date(clients[x].lastActive)) / (1000 * 60 * 60 * 24):999
+                    if (differenceDates > 7&&!item&&!organization) {
+                        status = 'red'
+                        bad+=1
                         address.push({
                             client: clients[x]._id,
-                            address: clients[x].address[i],
-                            data: [JSON.stringify(clients[x].notification), status, `${x}${i}`]
+                            address: clients[x].address[0],
+                            data: [JSON.stringify(clients[x].notification), status, `${x}0`]
                         })
+                    }
+                    else {
+                        goodClients.push(clients[x])
                     }
                 }
             }
+            let invoices, sortInvoices = {}
+            if(item){
+                invoices =  await OrderAzyk.aggregate(
+                    [
+                        {
+                            $match:{
+                                client: {$in: goodClients.map(client=>client._id)},
+                                status: {$ne: 'отмена'},
+                                item: item
+                            }
+                        },
+                        { $sort : {createdAt: -1, client: 1} },
+                        {
+                            $group:
+                                {
+                                    _id: '$client',
+                                    createdAt: { $last: '$createdAt' }
+                                }
+                        },
+                        { $project : { createdAt : 1 }}
+                    ])
+            }
+            else{
+                invoices =  await InvoiceAzyk.aggregate(
+                    [
+                        {
+                            $match:{
+                                ...organization?{organization: new mongoose.Types.ObjectId(organization)}:{},
+                                client: {$in: goodClients.map(client=>client._id)},
+                                del: {$ne: 'deleted'},
+                                taken: true
+                            }
+                        },
+                        { $project : { createdAt : 1, client: 1 }},
+                        { $sort : {client: 1, createdAt: 1} },
+                        {
+                            $group:
+                                {
+                                    _id: '$client',
+                                    createdAt: { $last: '$createdAt' }
+                                }
+                        }
+                    ])
+            }
+            for(let x=0; x<invoices.length;x++) {
+                sortInvoices[invoices[x]._id.toString()] = invoices[x]
+            }
+            for(let x=0; x<goodClients.length;x++) {
+                invoice = sortInvoices[goodClients[x]._id.toString()]
+                if(invoice) {
+                    differenceDates = (now - new Date(invoice.createdAt)) / (1000 * 60 * 60 * 24)
+                    if (differenceDates > 7) {
+                        status = 'yellow'
+                        good+=1
+                    }
+                    else {
+                        status = 'green'
+                        excellent+=1
+                    }
+                }
+                else {
+                    if(organization||item) {
+                        status = 'red'
+                        bad+=1
+                    }
+                    else {
+                        status = 'yellow'
+                        good+=1
+                    }
+                }
+                address.push({
+                    client: goodClients[x]._id,
+                    address: goodClients[x].address[0],
+                    data: [JSON.stringify(goodClients[x].notification), status, `${x}0`]
+                })
+            }
+
+
             address = [
                 {
                     client: null,
