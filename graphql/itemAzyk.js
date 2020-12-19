@@ -47,7 +47,7 @@ const query = `
     items(subCategory: ID!, search: String!, sort: String!, filter: String!): [Item]
     popularItems: [Item]
     itemsTrash(search: String!): [Item]
-    brands(organization: ID!, search: String!, sort: String!): [Item]
+    brands(organization: ID!, search: String!, sort: String!, city: String): [Item]
     item(_id: ID!): Item
     sortItem: [Sort]
     filterItem: [Filter]
@@ -259,13 +259,14 @@ const resolvers = {
         });
         return itemsRes
     },
-    brands: async(parent, {organization, search, sort}, {user}) => {
+    brands: async(parent, {organization, search, sort, city}, {user}) => {
         if(mongoose.Types.ObjectId.isValid(organization)) {
 
             let items = await ItemAzyk.find({
                 ...user.role==='admin'?{}:{status: 'active'},
                 organization: organization,
                 del: {$ne: 'deleted'},
+                ...city?{city: city}:{},
                 ...user.role==='client'?{categorys: user.category, city: user.city}:{}
             })
                 .populate('subCategory')

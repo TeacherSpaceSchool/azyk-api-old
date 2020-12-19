@@ -8,6 +8,7 @@ const type = `
     organization: ID
     client: ID
     employment: ID
+    addedClient: Boolean
     _id: ID
   }
 `;
@@ -25,6 +26,7 @@ const resolvers = {
             status: user.status,
             login: user.login,
             organization: user.organization,
+            addedClient: user.addedClient,
             _id: user._id
         }
     },

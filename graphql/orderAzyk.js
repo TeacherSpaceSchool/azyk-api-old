@@ -70,6 +70,7 @@ const type = `
     sale: Organization
     organization: Organization
     del: String
+    city: String
     adss: [Ads]
     priority: Int
     track: Int
@@ -113,9 +114,9 @@ const type = `
 `;
 
 const query = `
-    invoices(search: String!, sort: String!, filter: String!, date: String!, skip: Int, organization: ID): [Invoice]
+    invoices(search: String!, sort: String!, filter: String!, date: String!, skip: Int, organization: ID, city: String): [Invoice]
     invoicesFromDistrict(organization: ID!, district: ID!, date: String!): [Invoice]
-   invoicesSimpleStatistic(search: String!, filter: String!, date: String, organization: ID): [String]
+   invoicesSimpleStatistic(search: String!, filter: String!, date: String, organization: ID, city: String): [String]
     invoicesTrash(search: String!, skip: Int): [Invoice]
    invoicesTrashSimpleStatistic(search: String!): [String]
     orderHistorys(invoice: ID!): [HistoryOrder]
@@ -182,7 +183,7 @@ const resolvers = {
         }
         return [invoices.length.toString()]
     },
-    invoicesSimpleStatistic: async(parent, {search, filter, date, organization}, {user}) => {
+    invoicesSimpleStatistic: async(parent, {search, filter, date, organization, city}, {user}) => {
         let dateStart;
         let dateEnd;
         if(date!==''){
@@ -255,6 +256,7 @@ const resolvers = {
                         ...(filter === 'консигнации' ? {consignmentPrice: {$gt: 0}} : {}),
                         ...(filter === 'акция' ? {adss: {$ne: []}} : {}),
                         ...organization?{organization: new mongoose.Types.ObjectId(organization)}:{},
+                        ...city?{city: city}:{},
                         ...(search.length>0?{
                                 $or: [
                                     {number: {'$regex': search, '$options': 'i'}},
@@ -487,7 +489,7 @@ const resolvers = {
         }
         return [lengthList.toString(), checkFloat(price).toString(), checkFloat(consignment).toString(), checkFloat(consignmentPayment).toString(), checkFloat(tonnage).toString(), checkFloat(size).toString()]
     },
-    invoices: async(parent, {search, sort, filter, date, skip, organization}, {user}) =>  {
+    invoices: async(parent, {search, sort, filter, date, skip, organization, city}, {user}) =>  {
         let dateStart;
         let dateEnd;
         if(date!==''){
@@ -519,6 +521,7 @@ const resolvers = {
                     {
                         $match:{
                             del: {$ne: 'deleted'},
+                            ...city?{city: city}:{},
                             ...organization?{organization: new mongoose.Types.ObjectId(organization)}:{},
                         }
                     },
@@ -2329,7 +2332,7 @@ const resolversMutation = {
     addOrders: async(parent, {priority, dateDelivery, info, paymentMethod, organization, usedBonus, client, inv, unite}, {user}) => {
         if(user.client)
             client = user.client
-        client = await ClientAzyk.findOne({_id: client}).select('address id').lean()
+        client = await ClientAzyk.findOne({_id: client}).select('address id city').lean()
         let baskets = await BasketAzyk.find(
             user.client?
                 {client: user.client}:
@@ -2446,6 +2449,7 @@ const resolversMutation = {
                     orders[iii] = orders[iii]._id
                 }
                 objectInvoice = new InvoiceAzyk({
+                    city: client.city,
                     priority: priority,
                     discount: discount,
                     orders: orders,

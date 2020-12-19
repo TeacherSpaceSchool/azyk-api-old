@@ -46,6 +46,7 @@ const type = `
     organization: Organization
     agent: Employment 
     del: String
+    city: String
     district: String
     track: Int
     forwarder: Employment
@@ -80,8 +81,8 @@ const type = `
 
 const query = `
     returnedsFromDistrict(organization: ID!, district: ID!, date: String!): [Returned]
-    returneds(search: String!, sort: String!, date: String!, skip: Int): [Returned]
-    returnedsSimpleStatistic(search: String!, date: String): [String]
+    returneds(search: String!, sort: String!, date: String!, skip: Int, city: String): [Returned]
+    returnedsSimpleStatistic(search: String!, date: String, city: String): [String]
     returnedsTrash(search: String!, skip: Int): [Returned]
     returnedsTrashSimpleStatistic(search: String!): [String]
     returnedHistorys(returned: ID!): [HistoryReturned]
@@ -269,7 +270,7 @@ const resolvers = {
             return returneds
         }
     },
-    returnedsSimpleStatistic: async(parent, {search, date,}, {user}) => {
+    returnedsSimpleStatistic: async(parent, {search, date, city}, {user}) => {
         let dateStart;
         let dateEnd;
         if(date!==''){
@@ -386,6 +387,7 @@ const resolvers = {
                 del: {$ne: 'deleted'},
                 ...(date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}),
                 confirmationForwarder: true,
+                ...city?{city: city}:{},
                 ...(search.length>0?{
                         $or: [
                             {number: {'$regex': search, '$options': 'i'}},
@@ -941,7 +943,7 @@ const resolvers = {
             return historyReturneds
         }
     },
-    returneds: async(parent, {search, sort, date, skip}, {user}) => {
+    returneds: async(parent, {search, sort, date, skip, city}, {user}) => {
         let dateStart;
         let dateEnd;
         if(date!==''){
@@ -968,6 +970,7 @@ const resolvers = {
                     {
                         $match:{
                             del: {$ne: 'deleted'},
+                            ...city?{city: city}:{},
                             ...(date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}),
                             ...(search.length>0?{
                                     $or: [
@@ -1695,6 +1698,7 @@ const resolversMutation = {
         }).lean()
         let districtSales = null;
         let districtProvider = null;
+        let city = (await ClientAzyk.findById(client).select('city').lean()).city
         if(distributers.length>0){
             for(let i=0; i<distributers.length; i++){
                 let findDistrict = await DistrictAzyk.findOne({
@@ -1751,7 +1755,8 @@ const resolversMutation = {
                 track: 1,
                 forwarder: districtProvider?districtProvider.ecspeditor:null,
                 sale: districtSales&&districtSales.organization.toString()!==organization.toString()?districtSales.organization:null,
-                provider: districtProvider?districtProvider.organization:null
+                provider: districtProvider?districtProvider.organization:null,
+                city: city
             });
             if(user.employment)
                 objectReturned.agent = user.employment

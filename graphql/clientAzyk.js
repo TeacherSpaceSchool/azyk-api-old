@@ -35,8 +35,8 @@ const type = `
 `;
 
 const query = `
-    clientsSimpleStatistic(search: String!, filter: String!, date: String): [String]
-    clients(search: String!, sort: String!, filter: String!, date: String, skip: Int): [Client]
+    clientsSimpleStatistic(search: String!, filter: String!, date: String, city: String): [String]
+    clients(search: String!, sort: String!, filter: String!, date: String, skip: Int, city: String): [Client]
     clientsSync(search: String!, organization: ID!, skip: Int!): [Client]
     clientsSyncStatistic(search: String!, organization: ID!): String
     clientsTrashSimpleStatistic(search: String!): [String]
@@ -83,7 +83,7 @@ const resolvers = {
             return [clients[0]?clients[0].clientCount.toString():'0']
         }
     },
-    clientsSimpleStatistic: async(parent, {search, date, filter}, {user}) => {
+    clientsSimpleStatistic: async(parent, {search, date, filter, city}, {user}) => {
         let dateStart;
         let dateEnd;
         if(date&&date!==''){
@@ -98,6 +98,7 @@ const resolvers = {
                     [
                         {
                             $match:{
+                                ...city?{city: city}:{},
                                 ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                 ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                 ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
@@ -106,7 +107,6 @@ const resolvers = {
                                 $or: [
                                     {name: {'$regex': search, '$options': 'i'}},
                                     {email: {'$regex': search, '$options': 'i'}},
-                                    {city: {'$regex': search, '$options': 'i'}},
                                     {info: {'$regex': search, '$options': 'i'}},
                                     //{device: {'$regex': search, '$options': 'i'}},
                                     {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
@@ -282,28 +282,111 @@ const resolvers = {
                             }
                         },
                         ...(filter==='Без геолокации'?[
-                                { $lookup:
+                                    { $lookup:
+                                        {
+                                            from: UserAzyk.collection.collectionName,
+                                            let: { user: '$user' },
+                                            pipeline: [
+                                                { $match: {$expr:{$eq:['$$user', '$_id']}} },
+                                            ],
+                                            as: 'user'
+                                        }
+                                    },
                                     {
-                                        from: UserAzyk.collection.collectionName,
-                                        let: { user: '$user' },
-                                        pipeline: [
-                                            { $match: {$expr:{$eq:['$$user', '$_id']}} },
-                                        ],
-                                        as: 'user'
+                                        $unwind:{
+                                            preserveNullAndEmptyArrays : true, // this remove the object which is null
+                                            path : '$user'
+                                        }
+                                    },
+                                    {
+                                        $match:{
+                                            'user.status': 'active'
+                                        }
                                     }
-                                },
-                                {
-                                    $unwind:{
-                                        preserveNullAndEmptyArrays : true, // this remove the object which is null
-                                        path : '$user'
+                                ] :
+                                filter==='Выключенные'?
+                                    [
+                                        { $lookup:
+                                            {
+                                                from: UserAzyk.collection.collectionName,
+                                                let: { user: '$user' },
+                                                pipeline: [
+                                                    { $match: {$expr:{$eq:['$$user', '$_id']}} },
+                                                ],
+                                                as: 'user'
+                                            }
+                                        },
+                                        {
+                                            $unwind:{
+                                                preserveNullAndEmptyArrays : true, // this remove the object which is null
+                                                path : '$user'
+                                            }
+                                        },
+                                        {
+                                            $match:{
+                                                'user.status': 'deactive'
+                                            }
+                                        }
+                                    ]
+                                    :[]
+                        ),
+                    ])
+            return [(clients.length).toString()]
+        }
+        else if('экспедитор'===user.role) {
+            let clients = await DistrictAzyk
+                .find({ecspeditor: user.employment})
+                .distinct('client')
+            if(user.onlyIntegrate){
+                clients = await Integrate1CAzyk
+                    .find({client: {$in: clients}, organization: user.organization})
+                    .distinct('client')
+            }
+            clients = await ClientAzyk
+                .aggregate(
+                    [
+                        {
+                            $match:{
+                                ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
+                                ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
+                                ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
+                                ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
+                                del: {$ne: 'deleted'},
+                                _id: {$in: clients},
+                                $or: [
+                                    {name: {'$regex': search, '$options': 'i'}},
+                                    {email: {'$regex': search, '$options': 'i'}},
+                                    {city: {'$regex': search, '$options': 'i'}},
+                                    {info: {'$regex': search, '$options': 'i'}},
+                                    //{device: {'$regex': search, '$options': 'i'}},
+                                    {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
+                                    //{phone: {'$regex': search, '$options': 'i'}}
+                                ]
+                            }
+                        },
+                        ...(filter==='Без геолокации'?[
+                                    { $lookup:
+                                        {
+                                            from: UserAzyk.collection.collectionName,
+                                            let: { user: '$user' },
+                                            pipeline: [
+                                                { $match: {$expr:{$eq:['$$user', '$_id']}} },
+                                            ],
+                                            as: 'user'
+                                        }
+                                    },
+                                    {
+                                        $unwind:{
+                                            preserveNullAndEmptyArrays : true, // this remove the object which is null
+                                            path : '$user'
+                                        }
+                                    },
+                                    {
+                                        $match:{
+                                            'user.status': 'active'
+                                        }
                                     }
-                                },
-                                {
-                                    $match:{
-                                        'user.status': 'active'
-                                    }
-                                }
-                            ] :
+                                ] :
                                 filter==='Выключенные'?
                                     [
                                         { $lookup:
@@ -610,7 +693,7 @@ const resolvers = {
             return clients
         }
     },
-    clients: async(parent, {search, sort, date, skip, filter}, {user}) => {
+    clients: async(parent, {search, sort, date, skip, filter, city}, {user}) => {
         let dateStart;
         let dateEnd;
         if(date&&date!==''){
@@ -631,6 +714,7 @@ const resolvers = {
                                 ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                 ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                 ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
+                                ...city?{city: city}:{},
                                 del: {$ne: 'deleted'},
                                 $or: [
                                     {name: {'$regex': search, '$options': 'i'}},
@@ -934,9 +1018,86 @@ const resolvers = {
                                             { $limit : skip!=undefined?15:10000000000 },
                                         ]
                                         :
+                                        [
+                                            { $skip : skip!=undefined?skip:0 },
+                                            { $limit : skip!=undefined?15:10000000000 },
+                                            { $lookup:
+                                                {
+                                                    from: UserAzyk.collection.collectionName,
+                                                    let: { user: '$user' },
+                                                    pipeline: [
+                                                        { $match: {$expr:{$eq:['$$user', '$_id']}} },
+                                                    ],
+                                                    as: 'user'
+                                                }
+                                            },
+                                            {
+                                                $unwind:{
+                                                    preserveNullAndEmptyArrays : true, // this remove the object which is null
+                                                    path : '$user'
+                                                }
+                                            }
+                                        ]
+                            )
+                        ])
+                return clients
+            }
+            else return []
+        }
+        else if('экспедитор'===user.role) {
+            let clients = await DistrictAzyk
+                .find({ecspeditor: user.employment})
+                .distinct('client')
+                .lean()
+            if((clients.length&&skip != undefined)||search.length>2) {
+                let organization = await OrganizationAzyk.findOne({_id: user.organization}).select('accessToClient').lean()
+                if(clients.length) {
+                    if (user.onlyIntegrate) {
+                        clients = await Integrate1CAzyk
+                            .find({client: {$in: clients}, organization: user.organization})
+                            .distinct('client')
+                            .lean()
+                    }
+                }
+                else {
+                    if(!organization.accessToClient) {
+                        clients = await OrderAzyk.find({organization: user.organization}).distinct('client').lean()
+                    }
+                    if (user.onlyIntegrate) {
+                        clients = await Integrate1CAzyk
+                            .find({
+                                ...clients.length?{client: {$in: clients}}:{client: {$ne: null}},
+                                organization: user.organization
+                            })
+                            .distinct('client')
+                            .lean()
+                    }
+                }
+                clients = await ClientAzyk
+                    .aggregate(
+                        [
+                            {
+                                $match:{
+                                    ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
+                                    ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
+                                    ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
+                                    ...(!date||date===''?{}:{ $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}]}),
+                                    del: {$ne: 'deleted'},
+                                    ...clients.length?{_id: {$in: clients}}:{},
+                                    $or: [
+                                        {name: {'$regex': search, '$options': 'i'}},
+                                        {email: {'$regex': search, '$options': 'i'}},
+                                        {city: {'$regex': search, '$options': 'i'}},
+                                        {info: {'$regex': search, '$options': 'i'}},
+                                        //{device: {'$regex': search, '$options': 'i'}},
+                                        {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}},
+                                        //{phone: {'$regex': search, '$options': 'i'}}
+                                    ]
+                                }
+                            },
+                            { $sort : _sort },
+                            ...(filter==='Без геолокации'?
                                     [
-                                        { $skip : skip!=undefined?skip:0 },
-                                        { $limit : skip!=undefined?15:10000000000 },
                                         { $lookup:
                                             {
                                                 from: UserAzyk.collection.collectionName,
@@ -952,8 +1113,63 @@ const resolvers = {
                                                 preserveNullAndEmptyArrays : true, // this remove the object which is null
                                                 path : '$user'
                                             }
-                                        }
+                                        },
+                                        {
+                                            $match:{
+                                                'user.status': 'active'
+                                            }
+                                        },
+                                        { $skip : skip!=undefined?skip:0 },
+                                        { $limit : skip!=undefined?15:10000000000 },
                                     ]
+                                    :
+                                    filter==='Выключенные'?
+                                        [
+                                            { $lookup:
+                                                {
+                                                    from: UserAzyk.collection.collectionName,
+                                                    let: { user: '$user' },
+                                                    pipeline: [
+                                                        { $match: {$expr:{$eq:['$$user', '$_id']}} },
+                                                    ],
+                                                    as: 'user'
+                                                }
+                                            },
+                                            {
+                                                $unwind:{
+                                                    preserveNullAndEmptyArrays : true, // this remove the object which is null
+                                                    path : '$user'
+                                                }
+                                            },
+                                            {
+                                                $match:{
+                                                    'user.status': 'deactive'
+                                                }
+                                            },
+                                            { $skip : skip!=undefined?skip:0 },
+                                            { $limit : skip!=undefined?15:10000000000 },
+                                        ]
+                                        :
+                                        [
+                                            { $skip : skip!=undefined?skip:0 },
+                                            { $limit : skip!=undefined?15:10000000000 },
+                                            { $lookup:
+                                                {
+                                                    from: UserAzyk.collection.collectionName,
+                                                    let: { user: '$user' },
+                                                    pipeline: [
+                                                        { $match: {$expr:{$eq:['$$user', '$_id']}} },
+                                                    ],
+                                                    as: 'user'
+                                                }
+                                            },
+                                            {
+                                                $unwind:{
+                                                    preserveNullAndEmptyArrays : true, // this remove the object which is null
+                                                    path : '$user'
+                                                }
+                                            }
+                                        ]
                             )
                         ])
                 return clients
@@ -1299,7 +1515,7 @@ const resolvers = {
 
 const resolversMutation = {
     addClient: async(parent, {image, name, email, city, address, phone, info, login, password, category}, {user}) => {
-        if(['admin'].includes(user.role)) {
+        if(user.role==='admin'||(user.addedClient&&['суперорганизация', 'организация', 'агент'].includes(user.role))) {
             let newUser = new UserAzyk({
                 login: login.trim(),
                 role: 'client',
@@ -1329,7 +1545,7 @@ const resolversMutation = {
     setClient: async(parent, {_id, image, name, email, address, info, newPass, phone, login, city, device, category}, {user, res}) => {
         let object = await ClientAzyk.findOne({_id: _id})
         if(
-            ['суперорганизация', 'организация', 'агент', 'admin', 'суперагент'].includes(user.role)/*||
+            ['суперорганизация', 'организация', 'агент', 'admin', 'суперагент', 'экспедитор'].includes(user.role)/*||
             object.user&&object.user.toString()===user._id.toString()*/
         ) {
             if (image) {

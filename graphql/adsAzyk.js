@@ -161,6 +161,7 @@ const resolvers = {
             organizations = await OrganizationAzyk.find({
                 _id: {$in: organizations},
                 status: 'active',
+                ...user.city?{city: user.city}:{},
                 del: {$ne: 'deleted'}}).sort('name')
             return organizations
         }

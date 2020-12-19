@@ -37,6 +37,10 @@ const OrganizationAzykSchema = mongoose.Schema({
         type: Boolean,
         default: false
     },
+    addedClient: {
+        type: Boolean,
+        default: false
+    },
     unite: {
         type: Boolean,
         default: true

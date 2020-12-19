@@ -57,28 +57,28 @@ const query = `
     unloadingAgentRoutes(organization: ID!): Data
     checkAgentRoute(agentRoute: ID!): Statistic
     unloadingAdsOrders(organization: ID!, dateStart: Date!): Data
-    statisticClients(company: String, dateStart: Date, dateType: String, online: Boolean): Statistic
-    statisticClientActivity(organization: ID, online: Boolean): Statistic
-    statisticItemActivity(organization: ID, online: Boolean): Statistic
-    statisticOrganizationActivity(organization: ID, online: Boolean): Statistic
-    statisticItem(company: String, dateStart: Date, dateType: String, online: Boolean): Statistic
-    statisticAdss(company: String, dateStart: Date, dateType: String, online: Boolean): Statistic
-    statisticOrder(company: String, dateStart: Date, dateType: String, online: Boolean): Statistic
-    statisticAzykStoreOrder(company: ID, filter: String, dateStart: Date, dateType: String): Statistic
-    statisticAzykStoreAgents(company: ID, dateStart: Date, dateType: String, filter: String): Statistic
+    statisticClients(company: String, dateStart: Date, dateType: String, online: Boolean, city: String): Statistic
+    statisticClientActivity(organization: ID, online: Boolean, city: String): Statistic
+    statisticItemActivity(organization: ID, online: Boolean, city: String): Statistic
+    statisticOrganizationActivity(organization: ID, online: Boolean, city: String): Statistic
+    statisticItem(company: String, dateStart: Date, dateType: String, online: Boolean, city: String): Statistic
+    statisticAdss(company: String, dateStart: Date, dateType: String, online: Boolean, city: String): Statistic
+    statisticOrder(company: String, dateStart: Date, dateType: String, online: Boolean, city: String): Statistic
+    statisticAzykStoreOrder(company: ID, filter: String, dateStart: Date, dateType: String, city: String): Statistic
+    statisticAzykStoreAgents(company: ID, dateStart: Date, dateType: String, filter: String, city: String): Statistic
     statisticAzykStoreAgent(agent: ID!, dateStart: Date, dateType: String): Statistic
     statisticClient(client: ID!, dateStart: Date, dateType: String, online: Boolean): Statistic
-    statisticGeoOrder(organization: ID!, dateStart: Date): [[String]]
-    statisticDistributer(distributer: ID!, organization: ID, dateStart: Date, dateType: String, type: String): Statistic
-    statisticReturned(company: String, dateStart: Date, dateType: String): Statistic
-    statisticAgents(company: String, dateStart: Date, dateType: String): Statistic
+    statisticGeoOrder(organization: ID!, dateStart: Date, city: String): [[String]]
+    statisticDistributer(distributer: ID!, organization: ID, dateStart: Date, dateType: String, type: String, city: String): Statistic
+    statisticReturned(company: String, dateStart: Date, dateType: String, city: String): Statistic
+    statisticAgents(company: String, dateStart: Date, dateType: String, city: String): Statistic
     statisticAgentsWorkTime(organization: String, date: Date): Statistic
-    checkOrder(company: String, today: Date!): Statistic
-    statisticOrderChart(company: String, dateStart: Date, dateType: String, type: String, online: Boolean): ChartStatisticAll
+    checkOrder(company: String, today: Date!, city: String): Statistic
+    statisticOrderChart(company: String, dateStart: Date, dateType: String, type: String, online: Boolean, city: String): ChartStatisticAll
     activeItem(organization: ID!): [Item]
-    activeOrganization: [Organization]
-    superagentOrganization: [Organization]
-    statisticClientGeo(search: String, organization: ID, item: ID): [GeoStatistic]
+    activeOrganization(city: String): [Organization]
+    superagentOrganization(city: String): [Organization]
+    statisticClientGeo(search: String, organization: ID, item: ID, city: String): [GeoStatistic]
     statisticDevice: Statistic
     statisticStorageSize: Statistic
     checkIntegrateClient(organization: ID, type: String, document: Upload): Statistic
@@ -263,7 +263,7 @@ const resolvers = {
             };
         }
     },
-    checkOrder: async(parent, { company, today }, {user}) => {
+    checkOrder: async(parent, { company, today, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             company = user.organization?user.organization:company
             let tomorrow = new Date(today)
@@ -283,6 +283,7 @@ const resolvers = {
                         {createdAt: {$lt: tomorrow}}
                     ],
                     ...(company?{organization: company}:{}),
+                    ...(city?{city: city}:{}),
                     taken: true,
                     del: {$ne: 'deleted'}
                 }
@@ -329,7 +330,7 @@ const resolvers = {
             };
         }
     },
-    statisticOrderChart: async(parent, { company, dateStart, dateType, type, online }, {user}) => {
+    statisticOrderChart: async(parent, { company, dateStart, dateType, type, online, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             company = user.organization?user.organization:company
             let result = []
@@ -345,7 +346,7 @@ const resolvers = {
             if(dateStart){
                 let organizations
                 if(!company){
-                    organizations = await OrganizationAzyk.find()
+                    organizations = await OrganizationAzyk.find({...city?{cities: city}:{}})
                         .select('_id name')
                         .lean()
                 }
@@ -375,7 +376,8 @@ const resolvers = {
                                     del: {$ne: 'deleted'},
                                     taken: true,
                                     organization: organizations[i]._id,
-                                    agent: {$nin: excludedAgents}
+                                    agent: {$nin: excludedAgents},
+                                    ...city?{city: city}:{}
                                 }
                             )
                                 .select('allPrice returnedPrice client')
@@ -433,7 +435,8 @@ const resolvers = {
                                     del: {$ne: 'deleted'},
                                     taken: true,
                                     organization: organizations[i]._id,
-                                    agent: {$nin: excludedAgents}
+                                    agent: {$nin: excludedAgents},
+                                    ...city?{city: city}:{}
                                 }
                             )
                                 .select('allPrice returnedPrice client')
@@ -481,7 +484,8 @@ const resolvers = {
                                     del: {$ne: 'deleted'},
                                     taken: true,
                                     organization: organizations[i1]._id,
-                                    agent: {$nin: excludedAgents}
+                                    agent: {$nin: excludedAgents},
+                                    ...city?{city: city}:{}
                                 }
                             )
                                 .select('allPrice returnedPrice client')
@@ -529,7 +533,8 @@ const resolvers = {
                                     del: {$ne: 'deleted'},
                                     taken: true,
                                     organization: organizations[i1]._id,
-                                    agent: {$nin: excludedAgents}
+                                    agent: {$nin: excludedAgents},
+                                    ...city?{city: city}:{}
                                 }
                             )
                                 .select('allPrice returnedPrice')
@@ -554,7 +559,7 @@ const resolvers = {
             };
         }
     },
-    statisticClientActivity: async(parent, { online, organization } , {user}) => {
+    statisticClientActivity: async(parent, { online, organization, city } , {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             //console.time('get BD')
             organization = user.organization?user.organization:organization
@@ -591,6 +596,7 @@ const resolvers = {
                 [
                     {
                         $match:{
+                            ...(city?{city: city}:{}),
                             agent: {$nin: excludedAgents},
                             taken: true,
                             del: {$ne: 'deleted'},
@@ -616,6 +622,7 @@ const resolvers = {
             }
             data = await ClientAzyk.find(
                 {
+                    ...(city?{city: city}:{}),
                     del: {$ne: 'deleted'},
                     $or: [
                         {lastActive: {$ne: null}},
@@ -700,7 +707,7 @@ const resolvers = {
             };
         }
     },
-    statisticItemActivity: async(parent, { online, organization } , {user}) => {
+    statisticItemActivity: async(parent, { online, organization, city } , {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             organization = user.organization?user.organization:organization
             let dateEnd = new Date()
@@ -723,6 +730,7 @@ const resolvers = {
             }
             let data = await InvoiceAzyk.find(
                 {
+                    ...city?{city: city}:{},
                     $and: [
                         dateStart?{createdAt: {$gte: dateStart}}:{},
                         dateEnd?{createdAt: {$lt: dateEnd}}:{}
@@ -897,7 +905,7 @@ const resolvers = {
             };
         }
     },
-    statisticOrganizationActivity: async(parent, { online, organization } , {user}) => {
+    statisticOrganizationActivity: async(parent, { online, organization, city } , {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             organization = user.organization?user.organization:organization
             let dateEnd = new Date()
@@ -924,6 +932,7 @@ const resolvers = {
             if(!organization){
                 data = await InvoiceAzyk.find(
                     {
+                        ...city?{city: city}:{},
                         $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
                         agent: {$nin: excludedAgents},
                         del: {$ne: 'deleted'},
@@ -978,6 +987,7 @@ const resolvers = {
                 }
                 data = await InvoiceAzyk.find(
                     {
+                        ...city?{city: city}:{},
                         $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
                         organization: organization,
                         agent: {$nin: excludedAgents},
@@ -1064,7 +1074,7 @@ const resolvers = {
             return data;
         }
     },
-    statisticClients: async(parent, { company, dateStart, dateType, online  }, {user}) => {
+    statisticClients: async(parent, { company, dateStart, dateType, online, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             company = user.organization?user.organization:company
             let dateEnd
@@ -1100,6 +1110,7 @@ const resolvers = {
                     del: {$ne: 'deleted'},
                     taken: true,
                     ...(company==='all'?{}:{ organization: company }),
+                    ...city?{city: city}:{},
                     agent: {$nin: excludedAgents}
                 }
             )
@@ -1172,7 +1183,7 @@ const resolvers = {
             };
         }
     },
-    statisticAdss: async(parent, { company, dateStart, dateType, online }, {user}) => {
+    statisticAdss: async(parent, { company, dateStart, dateType, online, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             company = user.organization?user.organization:company
             let dateEnd
@@ -1213,6 +1224,7 @@ const resolvers = {
                     del: {$ne: 'deleted'},
                     taken: true,
                     agent: {$nin: excludedAgents},
+                    ...city?{city: city}:{},
                 }
             )
                 .select('adss allPrice _id returnedPrice consignmentPrice paymentConsignation')
@@ -1288,7 +1300,7 @@ const resolvers = {
             };
         }
     },
-    statisticItem: async(parent, { company, dateStart, dateType, online }, {user}) => {
+    statisticItem: async(parent, { company, dateStart, dateType, online, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             //console.time('get BD')
             company = user.organization?user.organization:company
@@ -1329,6 +1341,7 @@ const resolvers = {
                     del: {$ne: 'deleted'},
                     taken: true,
                     agent: {$nin: excludedAgents},
+                    ...city?{city: city}:{},
                 }
             )
                 .select('orders item _id paymentConsignation')
@@ -1412,7 +1425,7 @@ const resolvers = {
             };
         }
     },
-    statisticDistributer: async(parent, { distributer, organization, dateStart, dateType, type }, {user}) => {
+    statisticDistributer: async(parent, { distributer, organization, dateStart, dateType, type, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             distributer = user.organization?user.organization:distributer
             let dateEnd
@@ -1461,6 +1474,7 @@ const resolvers = {
                                 taken: true,
                                 del: {$ne: 'deleted'},
                                 organization: {$in: organizations.map(element=>element._id)},
+                                ...city?{city: city}:{},
                                 client: {$in: clients}
                             }
                         )
@@ -1520,6 +1534,7 @@ const resolvers = {
                                     taken: true,
                                     del: {$ne: 'deleted'},
                                     organization: {$in: organizations.map(element=>element._id)},
+                                    ...city?{city: city}:{},
                                     client: {$in: districts[i].client}
                                 }
                             )
@@ -1569,6 +1584,7 @@ const resolvers = {
                                 taken: true,
                                 del: {$ne: 'deleted'},
                                 organization: {$in: organizations.map(element=>element._id)},
+                                ...city?{city: city}:{},
                                 client: {$in: clients},
                             }
                         )
@@ -1655,7 +1671,7 @@ const resolvers = {
             };
         }
     },
-    statisticOrder: async(parent, { company, dateStart, dateType, online }, {user}) => {
+    statisticOrder: async(parent, { company, dateStart, dateType, online, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             company = user.organization?user.organization:company
             let dateEnd
@@ -1694,6 +1710,7 @@ const resolvers = {
                         ],
                         taken: true,
                         del: {$ne: 'deleted'},
+                        ...city?{city: city}:{},
                         agent: {$nin: excludedAgents}
                     }
                 )
@@ -1754,6 +1771,7 @@ const resolvers = {
                         taken: true,
                         ...(company!=='super'?{organization: company}:{...online?{organization: {$in: superOrganizations}}:{}}),
                         agent: {$nin: excludedAgents},
+                        ...city?{city: city}:{},
                     }
                 )
                     .select('_id returnedPrice allPrice paymentConsignation consignmentPrice client')
@@ -1833,7 +1851,7 @@ const resolvers = {
             };
         }
     },
-    statisticAzykStoreOrder: async(parent, { company, dateStart, dateType, filter }, {user}) => {
+    statisticAzykStoreOrder: async(parent, { company, dateStart, dateType, filter, city }, {user}) => {
         if(['admin'].includes(user.role)){
             let dateEnd
             let statistic = {}, data = []
@@ -1867,10 +1885,10 @@ const resolvers = {
             agents = agents.filter(agent => agent.user.role === 'суперагент')
             agents = agents.map(agent=>agent._id)
             if(!company){
-                organizations = await OrganizationAzyk.find({superagent: true}).distinct('_id')
+                organizations = await OrganizationAzyk.find({superagent: true, ...city?{cities: city}:{}}).distinct('_id')
             }
             else {
-                organizations = await OrganizationAzyk.find({_id: company, superagent: true}).distinct('_id')
+                organizations = await OrganizationAzyk.find({_id: company, superagent: true, ...city?{cities: city}:{}}).distinct('_id')
             }
             data = await InvoiceAzyk.find(
                 {
@@ -1881,6 +1899,7 @@ const resolvers = {
                     del: {$ne: 'deleted'},
                     taken: true,
                     organization: {$in: organizations},
+                    ...city?{city: city}:{},
                     $or: [{agent: {$in: agents}}, {agent: null}]
                 }
             )
@@ -2026,7 +2045,7 @@ const resolvers = {
             };
         }
     },
-    statisticGeoOrder: async(parent, { organization, dateStart }, {user}) => {
+    statisticGeoOrder: async(parent, { organization, dateStart, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             dateStart= new Date(dateStart)
             dateStart.setHours(3, 0, 0, 0)
@@ -2037,14 +2056,15 @@ const resolvers = {
                     $and: [{dateDelivery: {$gte: dateStart}}, {dateDelivery: {$lt: dateEnd}}],
                     taken: true,
                     del: {$ne: 'deleted'},
-                    organization: organization
+                    organization: organization,
+                    ...city?{city: city}:{}
                 }
             ).select('address').lean()
             data = data.map(element=>element.address)
             return data
         }
     },
-    statisticReturned: async(parent, { company, dateStart, dateType }, {user}) => {
+    statisticReturned: async(parent, { company, dateStart, dateType, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             company = user.organization?user.organization:company
             let dateEnd
@@ -2075,6 +2095,7 @@ const resolvers = {
                             dateEnd ? {createdAt: {$lt: dateEnd}} : {}
                         ],
                         confirmationForwarder: true,
+                        ...city?{city: city}:{},
                         del: {$ne: 'deleted'}
                     }
                 )
@@ -2119,6 +2140,7 @@ const resolvers = {
                         del: {$ne: 'deleted'},
                         confirmationForwarder: true,
                         organization: company,
+                        ...city?{city: city}:{},
                     }
                 )
                     .select('allPrice client')
@@ -2176,7 +2198,7 @@ const resolvers = {
             };
         }
     },
-    statisticAgents: async(parent, { company, dateStart, dateType }, {user}) => {
+    statisticAgents: async(parent, { company, dateStart, dateType, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             company = user.organization?user.organization:company
             let dateEnd
@@ -2209,6 +2231,7 @@ const resolvers = {
                             dateEnd ? {createdAt: {$lt: dateEnd}} : {}
                         ],
                         taken: true,
+                        ...city?{city: city}:{},
                         del: {$ne: 'deleted'}
                     }
                 )
@@ -2259,6 +2282,7 @@ const resolvers = {
                         ],
                         del: {$ne: 'deleted'},
                         taken: true,
+                        ...city?{city: city}:{},
                         organization: company
                     }
                 )
@@ -2340,7 +2364,7 @@ const resolvers = {
             };
         }
     },
-    statisticAzykStoreAgents: async(parent, { company, dateStart, dateType, filter }, {user}) => {
+    statisticAzykStoreAgents: async(parent, { company, dateStart, dateType, filter, city }, {user}) => {
         if('admin'===user.role){
             let dateEnd
             if(dateStart){
@@ -2377,10 +2401,10 @@ const resolvers = {
             agents = agents.filter(agent => agent.user.role === 'суперагент')
             agents = agents.map(agent=>agent._id)
             if(!company){
-                organizations = await OrganizationAzyk.find({superagent: true}).distinct('_id')
+                organizations = await OrganizationAzyk.find({superagent: true, ...city?{cities: city}:{}}).distinct('_id')
             }
             else {
-                organizations = await OrganizationAzyk.find({_id: company, superagent: true}).distinct('_id')
+                organizations = await OrganizationAzyk.find({_id: company, superagent: true, ...city?{cities: city}:{}}).distinct('_id')
             }
             data = await InvoiceAzyk.find(
                 {
@@ -2391,7 +2415,8 @@ const resolvers = {
                     taken: true,
                     del: {$ne: 'deleted'},
                     organization: {$in: organizations},
-                    $or: [{agent: {$in: agents}}, {agent: null}]
+                    $or: [{agent: {$in: agents}}, {agent: null}],
+                    ...city?{city: city}:{},
                 }
             )
                 .select('organization agent returnedPrice allPrice _id consignmentPrice paymentConsignation')
@@ -2857,10 +2882,11 @@ const resolvers = {
             return data;
         }
     },
-    activeOrganization: async(parent, ctx, {user}) => {
+    activeOrganization: async(parent, {city}, {user}) => {
         if('admin'===user.role){
             let data = await OrganizationAzyk.find(
                 {
+                    ...city?{cities: city}:{},
                     /*_id: {$in: data}*/
                 }
             )
@@ -2883,6 +2909,7 @@ const resolvers = {
         else if('client'===user.role){
             let data = await OrganizationAzyk.find(
                 {
+                    ...city?{cities: user.city}:{},
                     status: 'active',
                     del: {$ne: 'deleted'}
                 }
@@ -2901,10 +2928,11 @@ const resolvers = {
             return data;
         }
     },
-    superagentOrganization: async(parent, ctx, {user}) => {
+    superagentOrganization: async(parent, {city}, {user}) => {
         if(['admin', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
             let data = await OrganizationAzyk.find(
                 {
+                    ...city?{cities: city}:{},
                     superagent: true
                 }
             )
@@ -2913,13 +2941,14 @@ const resolvers = {
             return data;
         }
     },
-    statisticClientGeo: async(parent, { search, organization, item }, {user}) => {
+    statisticClientGeo: async(parent, { search, organization, item, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             organization = user.organization?user.organization:organization
             let clients = await UserAzyk.find({role: 'client', status: 'active'}).distinct('_id').lean()
             clients = await ClientAzyk.find({
                 user: {$in: clients},
                 del: {$ne: 'deleted'},
+                ...city?{city: city}:{},
                 ...search&&search.length?{$or: [
                     {name: {'$regex': search, '$options': 'i'}},
                     {email: {'$regex': search, '$options': 'i'}},
@@ -2988,6 +3017,7 @@ const resolvers = {
                                 ...organization?{organization: new mongoose.Types.ObjectId(organization)}:{},
                                 client: {$in: goodClients.map(client=>client._id)},
                                 del: {$ne: 'deleted'},
+                                ...city?{city: city}:{},
                                 taken: true
                             }
                         },
@@ -3621,9 +3651,13 @@ const resolvers = {
     unloadingClients: async(parent, { organization }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             organization = user.organization?user.organization:organization
+            let cities = []
+            if(organization!=='super')
+                cities = (await OrganizationAzyk.findById(organization).select('cities').lean()).cities
             let workbook = new ExcelJS.Workbook();
             let data = await ClientAzyk.find(
                 {
+                    ...cities.length?{city: {$in: cities}}:{},
                     ...{del: {$ne: 'deleted'}}
                 }
             ).lean()

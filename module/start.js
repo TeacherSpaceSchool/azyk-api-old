@@ -9,6 +9,7 @@ const { reductionToOrganization } = require('../module/organizationAzyk');
 const { reductionToClient } = require('../module/clientAzyk');
 const { reductionToItem } = require('../module/itemAzyk');
 const { reductionInvoices } = require('../module/invoiceAzyk');
+const { reductionReturneds } = require('../module/returnedAzyk');
 const { reductionToDeliveryDate } = require('../module/deliveryDateAzyk');
 const { startClientRedis } = require('../module/redis');
 const { reductionToUser, createAdmin } = require('../module/user');
@@ -90,7 +91,8 @@ let start = async () => {
     await startReminderClient();
     //await startResetBonusesClient()
     await startOutXMLShoroAzyk();
-    //await reductionInvoices()
+    await reductionInvoices()
+    await reductionReturneds()
     //await reductionCategoryAzyk()
     //await reductionSubCategoryAzyk()
     //await reductionToRoute()

@@ -34,6 +34,7 @@ const type = `
     minimumOrder: Int
     accessToClient: Boolean
     unite: Boolean
+    addedClient: Boolean
     superagent: Boolean
     consignation: Boolean
     onlyDistrict: Boolean
@@ -47,8 +48,8 @@ const type = `
 `;
 
 const query = `
-    brandOrganizations(search: String!, sort: String!, filter: String!): [Organization]
-    organizations(search: String!, sort: String!, filter: String!): [Organization]
+    brandOrganizations(search: String!, sort: String!, filter: String!, city: String): [Organization]
+    organizations(search: String!, sort: String!, filter: String!, city: String): [Organization]
     organizationsTrash(search: String!): [Organization]
     organization(_id: ID!): Organization
     sortOrganization: [Sort]
@@ -56,15 +57,15 @@ const query = `
 `;
 
 const mutation = `
-    addOrganization(cities: [String]!, pass: String, warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, unite: Boolean!, superagent: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!, autoAccept: Boolean!): Data
-    setOrganization(cities: [String], pass: String, warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, unite: Boolean, superagent: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean, autoAccept: Boolean): Data
+    addOrganization(cities: [String]!, pass: String, warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, addedClient: Boolean!, unite: Boolean!, superagent: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!, autoAccept: Boolean!): Data
+    setOrganization(cities: [String], pass: String, warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, addedClient: Boolean, unite: Boolean, superagent: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean, autoAccept: Boolean): Data
     restoreOrganization(_id: [ID]!): Data
     deleteOrganization(_id: [ID]!): Data
     onoffOrganization(_id: [ID]!): Data
 `;
 
 const resolvers = {
-    brandOrganizations: async(parent, {search, sort, filter}, {user}) => {
+    brandOrganizations: async(parent, {search, sort, filter, city}, {user}) => {
         let brandOrganizations = await ItemAzyk.find({
             ...user.role==='admin'?{}:{status: 'active'},
             del: {$ne: 'deleted'}
@@ -74,6 +75,7 @@ const resolvers = {
                 _id: {$in: brandOrganizations},
                 name: {'$regex': search, '$options': 'i'},
                 status: filter.length===0?{'$regex': filter, '$options': 'i'}:filter,
+                ...city?{cities: city}:{},
                 del: {$ne: 'deleted'}
             })
                 .sort('-priotiry')
@@ -141,11 +143,12 @@ const resolvers = {
             return organizationsRes
         }
     },
-    organizations: async(parent, {search, sort, filter}, {user}) => {
+    organizations: async(parent, {search, sort, filter, city}, {user}) => {
         if(user.role==='admin'){
             return await OrganizationAzyk.find({
                 name: {'$regex': search, '$options': 'i'},
                 status: filter.length===0?{'$regex': filter, '$options': 'i'}:filter,
+                ...city?{cities: city}:{},
                 del: {$ne: 'deleted'}
             })
                 .sort('-priotiry')
@@ -214,7 +217,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrganization: async(parent, {cities, autoAccept, pass, warehouse, superagent, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    addOrganization: async(parent, {cities, addedClient, autoAccept, pass, warehouse, superagent, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -238,7 +241,8 @@ const resolversMutation = {
                 miniInfo: miniInfo,
                 warehouse: warehouse,
                 cities: cities,
-                autoAccept: autoAccept
+                autoAccept: autoAccept,
+                addedClient: addedClient
             });
             if(pass)
                 objectOrganization.pass = pass
@@ -252,7 +256,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setOrganization: async(parent, {cities, autoAccept, pass, warehouse, miniInfo, superagent, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    setOrganization: async(parent, {cities, addedClient, autoAccept, pass, warehouse, miniInfo, superagent, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===_id.toString())) {
             let object = await OrganizationAzyk.findById(_id)
             if (image) {
@@ -279,6 +283,7 @@ const resolversMutation = {
             if(accessToClient!=undefined) object.accessToClient = accessToClient
             if(minimumOrder!=undefined) object.minimumOrder = minimumOrder
             if(miniInfo!=undefined) object.miniInfo = miniInfo
+            if(addedClient!=undefined) object.addedClient = addedClient
             await object.save();
         }
         return {data: 'OK'}

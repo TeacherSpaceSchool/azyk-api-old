@@ -28,9 +28,9 @@ const mutation = `
 
 const resolvers = {
     equipments: async(parent, {organization, search, sort}, {user}) => {
-        if(user.organization) organization = user.organization()
+        if(user.organization) organization = user.organization
         let equipments =  await EquipmentAzyk.find({
-            organization: organization
+            ...organization==='super'?{organization: null}:{organization: organization}
         })
             .populate({
                 path: 'client',
