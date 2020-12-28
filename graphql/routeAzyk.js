@@ -66,10 +66,10 @@ const resolvers = {
     unloadingInvoicesFromRouting: async(parent, { orders, organization }, {user}) => {
         if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             if(organization!=='super') {
-                organization = await OrganizationAzyk.findOne({_id: organization})
+                organization = await OrganizationAzyk.findOne({_id: organization}).select('name address phone').lean()
             }
             else {
-                organization = await ContactAzyk.findOne()
+                organization = await ContactAzyk.findOne().select('name address phone').lean()
             }
             let workbook = new ExcelJS.Workbook();
             let data = await InvoiceAzyk.find(
@@ -578,54 +578,28 @@ const resolvers = {
         }
     },
     routes: async(parent, {organization, search, sort, filter, date, skip}, {user}) => {
-        let dateStart;
-        let dateEnd;
-        let _employments;
-        if(search.length>0){
-            _employments = await EmploymentAzyk.find({
-                name: {'$regex': search, '$options': 'i'}
-            }).distinct('_id').lean()
-        }
-        if(user.organization)
-            organization=user.organization
-        if(['экспедитор', 'суперэкспедитор'].includes(user.role)){
+        if(['суперорганизация', 'организация', 'менеджер', 'агент', 'admin', 'экспедитор', 'суперэкспедитор'].includes(user.role)) {
+            let dateStart;
+            let dateEnd;
+            let _employments;
+            let district
+            if(search.length>0){
+                _employments = await EmploymentAzyk.find({
+                    name: {'$regex': search, '$options': 'i'}
+                }).distinct('_id').lean()
+            }
+            if(['менеджер', 'агент'].includes(user.role)) {
+                district = await DistrictAzyk.find({
+                    agent: user.employment
+                }).distinct('_id').lean()
+            }
             return await RouteAzyk.find({
+                provider: user.organization?user.organization:organization==='super'?null:organization,
                 status: {'$regex': filter, '$options': 'i'},
-                ...date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]},
-                selectEcspeditor: user.employment
-            })
-                .populate({
-                    path: 'selectEcspeditor',
-                    select: 'name'
-                })
-                .sort(sort)
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .lean()
-        }
-        else if(user.role==='admin') {
-            let res = await RouteAzyk.find({
-                provider: organization==='super'?null:organization,
-                status: {'$regex': filter, '$options': 'i'},
-                ...date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]},
                 ...(search.length > 0 ? {selectEcspeditor: {$in: _employments}} : {}),
-            })
-                .populate({
-                    path: 'selectEcspeditor',
-                    select: 'name'
-                })
-                .sort(sort)
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .lean()
-            return res
-        }
-        else if(['суперорганизация', 'организация', 'менеджер'].includes(user.role)) {
-            return await RouteAzyk.find({
-                provider: organization,
-                status: {'$regex': filter, '$options': 'i'},
                 ...date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]},
-                ...(search.length > 0 ? {selectEcspeditor: {$in: _employments}} : {}),
+                ...'агент'===user.role?{selectDistricts: {$in: district}}:{},
+                ...['экспедитор', 'суперэкспедитор'].includes(user.role)?{selectEcspeditor: user.employment}:{}
             })
                 .populate({
                     path: 'selectEcspeditor',
@@ -635,49 +609,35 @@ const resolvers = {
                 .skip(skip != undefined ? skip : 0)
                 .limit(skip != undefined ? 15 : 10000000000)
                 .lean()
-        }
-        else if('агент'===user.role) {
-            let district = await DistrictAzyk.findOne({
-                agent: user.employment
-            }).select('_id').lean()
-            return await RouteAzyk.find({
-                provider: organization,
-                selectDistricts: district._id,
-                status: {'$regex': filter, '$options': 'i'},
-                ...date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]},
-                ...(search.length > 0 ? {selectEcspeditor: {$in: _employments}} : {}),
-            })
-                .populate({
-                    path: 'selectEcspeditor',
-                    select: 'name'
-                })
-                .sort(sort)
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .lean()
+
         }
     },
     route: async(parent, {_id}, {user}) => {
         if(mongoose.Types.ObjectId.isValid(_id)) {
             let route = await RouteAzyk.findOne({_id: _id})
                 .populate({
-                    path: 'selectEcspeditor'
+                    path: 'selectEcspeditor',
+                    select: 'name _id'
                 })
                 .populate({
-                    path: 'selectAuto'
+                    path: 'selectAuto',
+                    select: 'number _id'
                 })
                 .populate({
-                    path: 'provider'
+                    path: 'provider',
+                    select: 'name _id'
                 })
                 .populate({
-                    path: 'selectProdusers'
+                    path: 'selectProdusers',
+                    select: 'name _id'
                 })
                 .populate({
-                    path: 'selectDistricts'
+                    path: 'selectDistricts',
+                    select: 'name _id'
                 })
                 .populate({
                     path: 'selectedOrders',
-                    select: '_id agent createdAt updatedAt allTonnage allSize client allPrice consignmentPrice returnedPrice address adss editor number confirmationForwarder confirmationClient cancelClient district track forwarder  sale provider organization cancelForwarder paymentConsignation taken sync dateDelivery usedBonus',
+                    select: '_id agent createdAt updatedAt allTonnage allSize client allPrice consignmentPrice returnedPrice address adss editor number confirmationForwarder confirmationClient cancelClient district track forwarder  sale provider organization cancelForwarder paymentConsignation taken sync dateDelivery',
                     populate:  [
                         {path: 'client', select: '_id name'},
                         {path: 'agent', select: '_id name'},
@@ -688,7 +648,8 @@ const resolvers = {
                         {path: 'organization', select: '_id name'}
                     ]
 
-        })
+                })
+                .lean()
             if (route &&
                 (
                     ['admin', 'суперэкспедитор'].includes(user.role) ||
@@ -752,9 +713,9 @@ const resolversMutation = {
     buildRoute: async(parent, {provider, autoTonnage, orders, length}, {user}) => {
         if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             if(provider!=='super')
-                provider = (await OrganizationAzyk.findOne({_id: provider})).warehouse.replace(', ', ',');
+                provider = (await OrganizationAzyk.findOne({_id: provider}).select('warehouse').lean()).warehouse.replace(', ', ',');
             else
-                provider = (await ContactAzyk.findOne()).warehouse.replace(', ', ',');
+                provider = (await ContactAzyk.findOne().select('warehouse').lean()).warehouse.replace(', ', ',');
             if(provider&&provider.length>0){
                 let invoices = await InvoiceAzyk.find({_id: {$in: orders}}).lean();
                 length = !length||invoices.length<=length?0:invoices.length-length;
@@ -904,7 +865,7 @@ const resolversMutation = {
     addRoute: async(parent, {deliverys, provider, selectProdusers, selectDistricts, selectEcspeditor, selectAuto, selectedOrders, dateDelivery, allTonnage}, {user}) => {
         if(['admin', 'агент', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             let number = await randomstring.generate({length: 12, charset: 'numeric'});
-            while (await RouteAzyk.findOne({number: number}))
+            while (await RouteAzyk.findOne({number: number}).select('_id').lean())
                 number = await randomstring.generate({length: 12, charset: 'numeric'});
             let _object = new RouteAzyk({
                 deliverys: deliverys,

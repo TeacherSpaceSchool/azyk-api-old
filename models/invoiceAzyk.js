@@ -34,7 +34,6 @@ const InvoiceAzykSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
-    usedBonus: Number,
     inv: {
         type: Number,
         default: 0
@@ -115,6 +114,8 @@ InvoiceAzykSchema.index({createdAt: 1})
 InvoiceAzykSchema.index({adss: 1})
 InvoiceAzykSchema.index({client: 1})
 InvoiceAzykSchema.index({taken: 1})
+InvoiceAzykSchema.index({cancelClient: 1})
+InvoiceAzykSchema.index({cancelForwarder: 1})
 InvoiceAzykSchema.index({number: 1})
 InvoiceAzykSchema.index({info: 1})
 InvoiceAzykSchema.index({address: 1})

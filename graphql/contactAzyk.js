@@ -24,8 +24,16 @@ const mutation = `
 
 const resolvers = {
     contact: async() => {
-        let contact = await ContactAzyk.findOne()
-        return !contact?{name: '', image: '', address: [], email: [], phone: [], info: '', social: ['','','','']}:contact
+        let contact = await ContactAzyk.findOne().lean()
+        return !contact ? {
+            name: '',
+            image: '',
+            address: [],
+            email: [],
+            phone: [],
+            info: '',
+            social: ['', '', '', '']
+        } : contact
     }
 };
 

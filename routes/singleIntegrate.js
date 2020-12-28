@@ -13,7 +13,7 @@ const randomstring = require('randomstring');
 router.post('/:pass/put/client', async (req, res, next) => {
     let startDate = new Date()
     let organization = await OrganizationAzyk
-        .findOne({pass: req.params.pass})
+        .findOne({pass: req.params.pass}).select('_id').lean()
     res.set('Content+Type', 'application/xml');
     try{
         let agent
@@ -23,11 +23,11 @@ router.post('/:pass/put/client', async (req, res, next) => {
             integrate1CAzyk = await Integrate1CAzyk.findOne({
                 organization: organization._id,
                 guid: req.body.elements[0].elements[i].attributes.guid
-            })
+            }).select('_id').lean()
             agent = await Integrate1CAzyk.findOne({
                 organization: organization,
                 guid: req.body.elements[0].elements[i].attributes.agent
-            })
+            }).select('agent').lean()
             if(agent&&!integrate1CAzyk) {
                 _object = new ReceivedDataAzyk({
                     status: integrate1CAzyk ? 'изменить' : 'добавить',
@@ -58,8 +58,7 @@ router.post('/:pass/put/client', async (req, res, next) => {
 });
 
 router.post('/:pass/put/employment', async (req, res, next) => {
-    let organization = await OrganizationAzyk
-        .findOne({pass: req.params.pass})
+    let organization = await OrganizationAzyk.findOne({pass: req.params.pass}).select('_id').lean()
     res.set('Content+Type', 'application/xml');
     try{
         let position = ''
@@ -72,7 +71,7 @@ router.post('/:pass/put/employment', async (req, res, next) => {
             _object = await Integrate1CAzyk.findOne({
                 organization: organization._id,
                 guid: req.body.elements[0].elements[i].attributes.guid
-            }).lean()
+            }).select('_id').lean()
             if(_object){
                 _object = await EmploymentAzyk.findOne({$or: [{_id: _object.agent}, {_id: _object.ecspeditor}]})
                 _object.name = req.body.elements[0].elements[i].attributes.name
@@ -211,7 +210,6 @@ router.post('/:pass/put/client/confirm', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
         for(let i=0;i<req.body.elements[0].elements.length;i++) {
-
             await checkSingleOutXMLClientAzyk(req.params.pass, req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
         }
         await res.status(200);

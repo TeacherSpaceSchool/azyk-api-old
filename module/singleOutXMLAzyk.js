@@ -22,7 +22,7 @@ module.exports.setSingleOutXMLReturnedAzyk = async(returned) => {
         outXMLReturnedAzyk.data = []
         for (let i = 0; i < returned.items.length; i++) {
             let guidItem = await Integrate1CAzyk
-                .findOne({$and: [{item: returned.items[i]._id}, {item: {$ne: null}}]})
+                .findOne({$and: [{item: returned.items[i]._id}, {item: {$ne: null}}]}).select('guid').lean()
             if(guidItem)
                 outXMLReturnedAzyk.data.push({
                     guid: guidItem.guid,
@@ -36,15 +36,15 @@ module.exports.setSingleOutXMLReturnedAzyk = async(returned) => {
     }
     else {
         let guidClient = await Integrate1CAzyk
-            .findOne({$and: [{client: returned.client._id}, {client: {$ne: null}}], organization: returned.organization._id})
+            .findOne({$and: [{client: returned.client._id}, {client: {$ne: null}}], organization: returned.organization._id}).select('guid').lean()
         if(guidClient){
             let district = await DistrictAzyk
-                .findOne({client: returned.client._id, organization: returned.organization._id})
+                .findOne({client: returned.client._id, organization: returned.organization._id}).select('agent ecspeditor').lean()
             if(district) {
                 let guidAgent = await Integrate1CAzyk
-                    .findOne({$and: [{agent: district.agent}, {agent: {$ne: null}}], organization: returned.organization._id})
+                    .findOne({$and: [{agent: district.agent}, {agent: {$ne: null}}], organization: returned.organization._id}).select('guid').lean()
                 let guidEcspeditor = await Integrate1CAzyk
-                    .findOne({$and: [{ecspeditor: district.ecspeditor}, {ecspeditor: {$ne: null}}], organization: returned.organization._id})
+                    .findOne({$and: [{ecspeditor: district.ecspeditor}, {ecspeditor: {$ne: null}}], organization: returned.organization._id}).select('guid').lean()
                 if (guidAgent && guidEcspeditor) {
                     let date = new Date(returned.createdAt)
                     if(date.getHours()>=3)
@@ -66,7 +66,7 @@ module.exports.setSingleOutXMLReturnedAzyk = async(returned) => {
                     });
                     for (let i = 0; i < returned.items.length; i++) {
                         let guidItem = await Integrate1CAzyk
-                            .findOne({$and: [{item: returned.items[i]._id}, {item: {$ne: null}}]})
+                            .findOne({$and: [{item: returned.items[i]._id}, {item: {$ne: null}}]}).select('guid').lean()
                         if (guidItem)
                             newOutXMLReturnedAzyk.data.push({
                                 guid: guidItem.guid,
@@ -94,7 +94,7 @@ module.exports.setSingleOutXMLAzyk = async(invoice) => {
         outXMLAzyk.data = []
         for (let i = 0; i < invoice.orders.length; i++) {
             let guidItem = await Integrate1CAzyk
-                .findOne({$and: [{item: invoice.orders[i].item._id}, {item: {$ne: null}}]})
+                .findOne({$and: [{item: invoice.orders[i].item._id}, {item: {$ne: null}}]}).select('guid').lean()
             if(guidItem) {
                 count = invoice.orders[i].count-invoice.orders[i].returned
                 price = checkFloat(invoice.orders[i].allPrice/invoice.orders[i].count)
@@ -114,15 +114,15 @@ module.exports.setSingleOutXMLAzyk = async(invoice) => {
     }
     else {
         let guidClient = await Integrate1CAzyk
-            .findOne({$and: [{client: invoice.client._id}, {client: {$ne: null}}], organization: invoice.organization._id})
+            .findOne({$and: [{client: invoice.client._id}, {client: {$ne: null}}], organization: invoice.organization._id}).select('guid').lean()
         if(guidClient){
             let district = await DistrictAzyk
-                .findOne({client: invoice.client._id, organization: invoice.organization._id})
+                .findOne({client: invoice.client._id, organization: invoice.organization._id}).select('agent ecspeditor').lean()
             if(district) {
                 let guidAgent = await Integrate1CAzyk
-                    .findOne({$and: [{agent: district.agent}, {agent: {$ne: null}}], organization: invoice.organization._id})
+                    .findOne({$and: [{agent: district.agent}, {agent: {$ne: null}}], organization: invoice.organization._id}).select('guid').lean()
                 let guidEcspeditor = await Integrate1CAzyk
-                    .findOne({$and: [{ecspeditor: district.ecspeditor}, {ecspeditor: {$ne: null}}], organization: invoice.organization._id})
+                    .findOne({$and: [{ecspeditor: district.ecspeditor}, {ecspeditor: {$ne: null}}], organization: invoice.organization._id}).select('guid').lean()
                 if(guidAgent&&guidEcspeditor){
                     guidAgent = guidAgent.guid
                     guidEcspeditor = guidEcspeditor.guid
@@ -144,7 +144,7 @@ module.exports.setSingleOutXMLAzyk = async(invoice) => {
                     });
                     for (let i = 0; i < invoice.orders.length; i++) {
                         let guidItem = await Integrate1CAzyk
-                            .findOne({$and: [{item: invoice.orders[i].item._id}, {item: {$ne: null}}]})
+                            .findOne({$and: [{item: invoice.orders[i].item._id}, {item: {$ne: null}}]}).select('guid').lean()
                         if (guidItem) {
                             count = invoice.orders[i].count-invoice.orders[i].returned
                             price = checkFloat(invoice.orders[i].allPrice/invoice.orders[i].count)
@@ -173,7 +173,7 @@ module.exports.setSingleOutXMLAzykLogic = async(invoices, forwarder, track) => {
         let guidEcspeditor
         if(forwarder){
             guidEcspeditor = await Integrate1CAzyk
-                .findOne({$and: [{ecspeditor: forwarder}, {ecspeditor: {$ne: null}}]})
+                .findOne({$and: [{ecspeditor: forwarder}, {ecspeditor: {$ne: null}}]}).select('guid').lean()
         }
         await SingleOutXMLAzyk.updateMany(
             {invoice: {$in: invoices}},
@@ -195,7 +195,7 @@ module.exports.setSingleOutXMLReturnedAzykLogic = async(returneds, forwarder, tr
         let guidEcspeditor
         if(forwarder){
             guidEcspeditor = await Integrate1CAzyk
-                .findOne({$and: [{ecspeditor: forwarder}, {ecspeditor: {$ne: null}}]})
+                .findOne({$and: [{ecspeditor: forwarder}, {ecspeditor: {$ne: null}}]}).select('guid').lean()
         }
         await SingleOutXMLReturnedAzyk.updateMany(
             {returned: {$in: returneds}},
@@ -256,23 +256,15 @@ module.exports.checkSingleOutXMLReturnedAzyk = async(pass, guid, exc) => {
 
 module.exports.checkSingleOutXMLClientAzyk = async(pass, guid, exc) => {
     let organization = await OrganizationAzyk
-        .findOne({pass: pass})
+        .findOne({pass: pass}).select('_id').lean()
     let guidClient = await Integrate1CAzyk
-        .findOne({guid: guid, organization: organization._id})
+        .findOne({guid: guid, organization: organization._id}).select('client').lean()
     if (guidClient&&!exc) {
         let client = await ClientAzyk
             .findOne({_id: guidClient.client})
         client.sync.push(organization._id.toString())
         await client.save()
     }
-    /*else if (guidClient&&exc) {
-        let object = new SingleOutXMLClientAzyk({
-            guid: guidClient.guid,
-            client: guidClient.client,
-            exc: exc
-        });
-        await SingleOutXMLClientAzyk.create(object);
-    }*/
 }
 
 module.exports.getSingleOutXMLAzyk = async(pass) => {
@@ -283,9 +275,9 @@ module.exports.getSingleOutXMLAzyk = async(pass) => {
     date.setHours(3, 0, 0, 0)
     let outXMLs = await SingleOutXMLAzyk
         .find({pass: pass, date: {$lte: date}, $and: [{status: {$ne: 'check'}}, {status: {$ne: 'error'}}]})
-        .populate({path: 'invoice'})
+        .populate({path: 'invoice', select: 'info address'})
         .sort('date')
-        //.limit(20)
+        .lean()
     if(outXMLs.length) {
         for (let i = 0; i < outXMLs.length; i++) {
             let item = result
@@ -328,7 +320,7 @@ module.exports.getSingleOutXMLAzyk = async(pass) => {
 module.exports.getSingleOutXMLClientAzyk = async(pass) => {
     let result = builder.create('root').att('mode', 'client');
     let organization = await OrganizationAzyk
-        .findOne({pass: pass})
+        .findOne({pass: pass}).select('_id').lean()
     let integrate1Cs =  await Integrate1CAzyk
         .find({
             client: {$ne: null},
@@ -372,14 +364,14 @@ module.exports.getSingleOutXMLClientAzyk = async(pass) => {
     if(outXMLs.length) {
         for(let i=0;i<outXMLs.length;i++){
         let guidClient = await Integrate1CAzyk
-            .findOne({$and: [{client: outXMLs[i]._id}, {client: {$ne: null}}], organization: organization._id}).lean()
+            .findOne({$and: [{client: outXMLs[i]._id}, {client: {$ne: null}}], organization: organization._id}).select('guid').lean()
         if(guidClient){
             let district = await DistrictAzyk
-                .findOne({client: outXMLs[i]._id, organization: organization._id}).lean()
+                .findOne({client: outXMLs[i]._id, organization: organization._id}).select('agent').lean()
             let agent;
             if(district&&district.agent){
                 agent= await Integrate1CAzyk
-                    .findOne({$and: [{agent: district.agent}, {agent: {$ne: null}}], organization: organization._id}).lean()
+                    .findOne({$and: [{agent: district.agent}, {agent: {$ne: null}}], organization: organization._id}).select('guid').lean()
             }
             let item = result
                 .ele('item')
@@ -403,7 +395,7 @@ module.exports.getSingleOutXMLReturnedAzyk = async(pass) => {
         .find({pass: pass, $and: [{status: {$ne: 'check'}}, {status: {$ne: 'error'}}]})
         .populate({path: 'returned'})
         .sort('date')
-        //.limit(20)
+        .lean()
     if(outXMLReturneds.length) {
         for(let i=0;i<outXMLReturneds.length;i++){
         let item = result
@@ -441,17 +433,17 @@ module.exports.reductionOutAdsXMLAzyk = async(pass) => {
     dateXml.setHours(3, 0, 0, 0)
     let guidItems = {}
     let organization = await OrganizationAzyk
-        .findOne({pass: pass})
+        .findOne({pass: pass}).select('_id pass').lean()
     let districts = await DistrictAzyk.find({
         organization: organization._id
-    })
+    }).select('_id agent ecspeditor client name').lean()
     for(let i=0;i<districts.length;i++) {
-        let outXMLAdsAzyk = await SingleOutXMLAdsAzyk.findOne({district: districts[i]._id})
+        let outXMLAdsAzyk = await SingleOutXMLAdsAzyk.findOne({district: districts[i]._id}).select('guid').lean()
         if(outXMLAdsAzyk) {
             let guidAgent = await Integrate1CAzyk
-                .findOne({$and: [{agent: {$ne: null}}, {agent: districts[i].agent}], organization: organization._id})
+                .findOne({$and: [{agent: {$ne: null}}, {agent: districts[i].agent}], organization: organization._id}).select('guid').lean()
             let guidEcspeditor = await Integrate1CAzyk
-                .findOne({$and: [{ecspeditor: {$ne: null}}, {ecspeditor: districts[i].ecspeditor}], organization: organization._id})
+                .findOne({$and: [{ecspeditor: {$ne: null}}, {ecspeditor: districts[i].ecspeditor}], organization: organization._id}).select('guid').lean()
             if (guidAgent && guidEcspeditor) {
                 let orders = await InvoiceAzyk.find(
                     {
@@ -463,9 +455,11 @@ module.exports.reductionOutAdsXMLAzyk = async(pass) => {
                         client: {$in: districts[i].client}
                     }
                 )
+                    .select('adss')
                     .populate({
                         path: 'adss'
                     })
+                    .lean()
                 if (orders.length>0) {
                     let newOutXMLAzyk = new SingleOutXMLAzyk({
                         data: [],

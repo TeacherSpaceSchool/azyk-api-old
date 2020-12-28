@@ -20,7 +20,7 @@ const query = `
 `;
 
 const mutation = `
-    addCategory(image: Upload!, name: String!): Data
+    addCategory(image: Upload!, name: String!): Category
     setCategory(_id: ID!, image: Upload, name: String): Data
     deleteCategory(_id: [ID]!): Data
     onoffCategory(_id: [ID]!): Data
@@ -28,32 +28,25 @@ const mutation = `
 
 const resolvers = {
     categorys: async(parent, {search, sort, filter}, {user}) => {
-        if(user.role==='admin'){
-            let categoryUndefined = await CategoryAzyk.findOne({name: 'Не задано'})
-            return [
-                categoryUndefined,
-                ...(await CategoryAzyk.find({
-                        $and: [
-                            {name: {$ne: 'Не задано'}},
-                            {name: {'$regex': search, '$options': 'i'}}
-                        ],
-                        status: filter.length===0?{'$regex': filter, '$options': 'i'}:filter
-                    }).sort(sort)
-                )]
-        } else
-            return await CategoryAzyk.find({
-                $and: [
-                    {name: {'$regex': search, '$options': 'i'}},
-                    {name: {$ne: 'Не задано'},}
-                ],
-                status: 'active'
-            }).sort(sort)
+        return [
+            ...user.role==='admin'?[await CategoryAzyk.findOne({name: 'Не задано'}).lean()]:[],
+            ...(await CategoryAzyk.find({
+                    $and: [
+                        {name: {$ne: 'Не задано'}},
+                        {name: {'$regex': search, '$options': 'i'}}
+                    ],
+                    status: user.role==='admin'?filter.length===0?{'$regex': filter, '$options': 'i'}:filter:'active'
+                })
+                    .sort(sort)
+                    .lean()
+            )]
     },
     category: async(parent, {_id}) => {
         if(_id!=='all')
             return await CategoryAzyk.findOne({
                 _id: _id
             })
+                .lean()
         else return null
     },
     sortCategory: async(parent, ctx, {user}) => {
@@ -105,9 +98,9 @@ const resolversMutation = {
                 name: name,
                 status: 'active'
             });
-            await CategoryAzyk.create(_object)
+            _object = await CategoryAzyk.create(_object)
+            return _object
         }
-        return {data: 'OK'};
     },
     setCategory: async(parent, {_id, image, name}, {user}) => {
         if(user.role==='admin'&&name!=='Не задано') {
@@ -125,15 +118,15 @@ const resolversMutation = {
     },
     deleteCategory: async(parent, { _id }, {user}) => {
         if(user.role==='admin'){
-            let objects = await CategoryAzyk.find({_id: {$in: _id}})
+            let objects = await CategoryAzyk.find({_id: {$in: _id}, name: {$ne: 'Не задано'}}).select('image').lean()
             for(let i=0; i<objects.length; i++){
                 await deleteFile(objects[i].image)
             }
 
-            let categoryUndefined = await CategoryAzyk.findOne({name: 'Не задано'});
+            let categoryUndefined = await CategoryAzyk.findOne({name: 'Не задано'}).select('_id').lean()
             await SubCategoryAzyk.updateMany({category: {$in: _id}}, {category: categoryUndefined._id})
 
-            await CategoryAzyk.deleteMany({_id: {$in: _id}})
+            await CategoryAzyk.deleteMany({_id: {$in: _id}, name: {$ne: 'Не задано'}})
         }
         return {data: 'OK'}
     },

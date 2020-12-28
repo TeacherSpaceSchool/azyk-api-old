@@ -40,230 +40,147 @@ const mutation = `
 const resolvers = {
     employmentsTrash: async(parent, {search}, {user}) => {
         if(user.role==='admin') {
-            let employments = await EmploymentAzyk.find({
-                del: 'deleted'
+            return await EmploymentAzyk.find({
+                del: 'deleted',
+                name: {'$regex': search, '$options': 'i'}
             })
-                .populate({path: 'user'})
-                .populate({path: 'organization'})
+                .populate({
+                    path: 'user',
+                    select: '_id role status login'
+                })
+                .populate({
+                    path: 'organization',
+                    select: 'name _id'
+                })
                 .sort('-createdAt')
-            employments = employments.filter(
-                employment => {
-                    return (
-                        employment.user &&
-                        (((employment.phone.filter(phone => phone.toLowerCase().includes(search.toLowerCase()))).length > 0) ||
-                            (employment.name.toLowerCase()).includes(search.toLowerCase()) ||
-                            (employment.email.toLowerCase()).includes(search.toLowerCase()) ||
-                            (employment.user.role.toLowerCase()).includes(search.toLowerCase()))
-                    )
-                }
-            )
-            return employments
+                .lean()
         }
         else return []
     },
     employments: async(parent, {organization, search, sort, filter}, {user}) => {
-        if(user.role==='admin'){
-            if(organization==='super'){
-                let employments = await UserAzyk.find({$or: [{role: 'суперменеджер'}, {role: 'суперагент'}, {role: 'суперэкспедитор'}]})
-                    .distinct('_id')
-                employments = await EmploymentAzyk.find({
-                    user: {$in: employments},
-                    organization: null,
-                    del: {$ne: 'deleted'}})
-                    .populate({ path: 'user' })
-                    .populate({ path: 'organization'})
-                    .sort(sort)
-                employments = employments.filter(
-                    employment => {
-                        return (
-                            employment.user&&
-                            (((employment.phone.filter(phone => phone.toLowerCase().includes(search.toLowerCase()))).length > 0) ||
-                                (employment.name.toLowerCase()).includes(search.toLowerCase())||
-                                (employment.email.toLowerCase()).includes(search.toLowerCase())||
-                                (employment.user.role.toLowerCase()).includes(search.toLowerCase()))
-                        )
-                    }
-                )
-                return employments
+        if(['суперорганизация', 'организация', 'менеджер', 'admin'].includes(user.role)){
+            let users
+            if(filter&&filter.length){
+                users = await UserAzyk.find({
+                    role: {'$regex': filter, '$options': 'i'}
+                }).distinct('_id').lean()
             }
-            else if(mongoose.Types.ObjectId.isValid(organization)){
-                let employments = await EmploymentAzyk.find({organization: organization,
-                    del: {$ne: 'deleted'}})
-                    .populate({ path: 'user', match: {role: filter.length===0?{'$regex': '', '$options': 'i'}:filter } })
-                    .populate({ path: 'organization'})
-                    .sort(sort)
-                employments = employments.filter(
-                    employment => {
-                        return (
-                            employment.user&&
-                            (((employment.phone.filter(phone => phone.toLowerCase().includes(search.toLowerCase()))).length > 0) ||
-                                (employment.name.toLowerCase()).includes(search.toLowerCase())||
-                                (employment.email.toLowerCase()).includes(search.toLowerCase())||
-                                (employment.user.role.toLowerCase()).includes(search.toLowerCase()))
-                        )
-                    }
-                )
-                return employments
-            }
-        }
-        else if(['суперорганизация', 'организация'].includes(user.role)){
-            let employments = await EmploymentAzyk.find({
-                organization: user.organization,
-                del: {$ne: 'deleted'}
+            return await EmploymentAzyk.find({
+                organization: user.organization ? user.organization : organization === 'super' ? null : organization,
+                del: {$ne: 'deleted'},
+                ...filter && filter.length ? {user: {$in: users}} : {},
+                name: {'$regex': search, '$options': 'i'}
             })
-                .populate({ path: 'user', match: {role: filter.length===0?{'$regex': '', '$options': 'i'}:filter } })
-                .populate({ path: 'organization' })
+                .populate({
+                    path: 'user',
+                    select: '_id role status login'
+                })
+                .populate({
+                    path: 'organization',
+                    select: 'name _id'
+                })
                 .sort(sort)
-            employments = employments.filter(
-                employment => (
-                    employment.user&&
-                    (((employment.phone.filter(phone => phone.toLowerCase().includes(search.toLowerCase()))).length > 0) ||
-                        (employment.name.toLowerCase()).includes(search.toLowerCase())||
-                        (employment.email.toLowerCase()).includes(search.toLowerCase())||
-                        (employment.user.role.toLowerCase()).includes(search.toLowerCase()))
-                ))
-            return employments
-        }
-        else if(user.role==='менеджер'){
-            let employments = await DistrictAzyk
-                .find({manager: user.employment})
-                .distinct('agent')
-            employments = await EmploymentAzyk.find({
-                _id: {$in: employments},
-                del: {$ne: 'deleted'}
-            })
-                .populate({ path: 'user'})
-                .populate({ path: 'organization' })
-                .sort(sort)
-            employments = employments.filter(
-                employment => (
-                    employment.user&&
-                    (((employment.phone.filter(phone => phone.toLowerCase().includes(search.toLowerCase()))).length > 0) ||
-                        (employment.name.toLowerCase()).includes(search.toLowerCase())||
-                        (employment.email.toLowerCase()).includes(search.toLowerCase())||
-                        (employment.user.role.toLowerCase()).includes(search.toLowerCase()))
-                ))
-            return employments
+                .lean()
         }
     },
     ecspeditors: async(parent, {_id}, {user}) => {
-        if (user.role === 'admin') {
-            if(_id==='super') {
-                let employments = await EmploymentAzyk.find({organization: null,
-                    del: {$ne: 'deleted'}})
-                    .populate({path: 'user', match: {role: 'суперэкспедитор', status: 'active'}})
-                    .populate({path: 'organization'})
-                    .sort('name')
-                employments = employments.filter(employment => (employment.user))
-                return employments
-            }
-            else if(mongoose.Types.ObjectId.isValid(_id)) {
-                let employments = await EmploymentAzyk.find({organization: _id,
-                    del: {$ne: 'deleted'}})
-                    .populate({path: 'user', match: {role: 'экспедитор', status: 'active'}})
-                    .populate({path: 'organization'})
-                    .sort('name')
-                employments = employments.filter(employment => (employment.user))
-                return employments
-            }
-            else return []
-        }
-        else if (['суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)) {
-            let employments = await EmploymentAzyk.find({
-                organization: user.organization,
+        if (['суперорганизация', 'организация', 'менеджер', 'агент', 'admin'].includes(user.role)) {
+            let users = await UserAzyk.find({
+                role: _id==='super'?'суперэкспедитор':'экспедитор', status: 'active'
+            }).distinct('_id').lean()
+            return await EmploymentAzyk.find({
+                user: {$in: users},
+                organization: user.organization?user.organization:_id==='super'?null:_id,
                 del: {$ne: 'deleted'}
             })
-                .populate({path: 'user', match: {role: 'экспедитор', status: 'active'}})
-                .populate({path: 'organization'})
+                .populate({
+                    path: 'user',
+                    select: '_id role status login'
+                })
+                .populate({
+                    path: 'organization',
+                    select: 'name _id'
+                })
                 .sort('name')
-            employments = employments.filter(employment => (employment.user))
-            return employments
+                .lean()
         }
     },
     managers: async(parent, {_id}, {user}) => {
-        if (user.role === 'admin') {
-            if(mongoose.Types.ObjectId.isValid(_id)) {
-                let employments = await EmploymentAzyk.find({
-                    organization: _id,
-                    del: {$ne: 'deleted'}})
-                    .populate({path: 'user', match: {role: 'менеджер', status: 'active'}})
-                    .populate({path: 'organization'})
-                    .sort('name')
-                employments = employments.filter(employment => (employment.user))
-                return employments
-            }
-            else if(_id === 'super'){
-                let employments = await UserAzyk.find({role: 'суперменеджер', status: 'active'})
-                    .distinct('_id')
-                employments = await EmploymentAzyk.find({user: {$in: employments},
-                    del: {$ne: 'deleted'}})
-                    .populate({ path: 'user' })
-                    .populate({ path: 'organization'})
-                    .sort('name')
-                return employments
-            }
-            else return []
-        }
-        else if (['суперорганизация', 'организация', 'менеджер'].includes(user.role)) {
-            let employments = await EmploymentAzyk.find({
-                organization: user.organization,
+        if (['суперорганизация', 'организация', 'менеджер', 'admin'].includes(user.role)) {
+            let users = await UserAzyk.find({
+                role: _id==='super'?'суперменеджер':'менеджер', status: 'active'
+            }).distinct('_id').lean()
+            return await EmploymentAzyk.find({
+                user: {$in: users},
+                organization: user.organization?user.organization:_id==='super'?null:_id,
                 del: {$ne: 'deleted'}
             })
-                .populate({path: 'user', match: {role: 'менеджер', status: 'active'}})
-                .populate({path: 'organization'})
+                .populate({
+                    path: 'user',
+                    select: '_id role status login'
+                })
+                .populate({
+                    path: 'organization',
+                    select: 'name _id'
+                })
                 .sort('name')
-            employments = employments.filter(employment => (employment.user))
-            return employments
+                .lean()
         }
     },
     agents: async(parent, {_id}, {user}) => {
-        if (user.role === 'admin') {
-            if(mongoose.Types.ObjectId.isValid(_id)) {
-                let employments = await EmploymentAzyk.find({organization: _id,
-                    del: {$ne: 'deleted'}})
-                    .populate({path: 'user', match: {role: 'агент', status: 'active'}})
-                    .populate({path: 'organization'})
-                    .sort('name')
-                employments = employments.filter(employment => (employment.user))
-                return employments
-            }
-            else if(_id === 'super'){
-                let employments = await UserAzyk.find({role: 'суперагент', status: 'active'})
-                    .distinct('_id')
-                employments = await EmploymentAzyk.find({user: {$in: employments},
-                    del: {$ne: 'deleted'}})
-                    .populate({ path: 'user' })
-                    .populate({ path: 'organization'})
-                    .sort('name')
-                return employments
-            }
-            else return []
-        }
-        else if (['суперорганизация', 'организация', 'менеджер'].includes(user.role)) {
-            let employments = await EmploymentAzyk.find({
-                organization: user.organization,
+        if (['суперорганизация', 'организация', 'менеджер', 'admin'].includes(user.role)) {
+            let users = await UserAzyk.find({
+                role: _id==='super'?'суперагент':'агент', status: 'active'
+            }).distinct('_id').lean()
+            return await EmploymentAzyk.find({
+                user: {$in: users},
+                organization: user.organization?user.organization:_id==='super'?null:_id,
                 del: {$ne: 'deleted'}
             })
-                .populate({path: 'user', match: {role: 'агент', status: 'active'}})
-                .populate({path: 'organization'})
+                .populate({
+                    path: 'user',
+                    select: '_id role status login'
+                })
+                .populate({
+                    path: 'organization',
+                    select: 'name _id'
+                })
                 .sort('name')
-            employments = employments.filter(employment => (employment.user))
-            return employments
+                .lean()
         }
     },
     employment: async(parent, {_id}, {user}) => {
-        if(user.role&&user.role!=='client'&&mongoose.Types.ObjectId.isValid(_id)) {
+        if(user.role&&user.role!=='client') {
             let result = await EmploymentAzyk.findOne({
                 $or: [
                     {_id: _id},
                     {user: _id}
-                ]
-            }).populate({ path: 'user'}).populate({ path: 'organization' })
+                ],
+                ...user.organization?{organization: user.organization}:{},
+            })
+                .populate({
+                    path: 'user',
+                    select: '_id role status login'
+                })
+                .populate({
+                    path: 'organization',
+                    select: 'name _id'
+                })
+                .lean()
             if(result === null||!['admin', 'суперорганизация', 'организация'].includes(user.role))
-                return await EmploymentAzyk.findOne({user: user._id}).populate({ path: 'user'}).populate({ path: 'organization' })
+                return await EmploymentAzyk.findOne({user: user._id})
+                    .populate({
+                        path: 'user',
+                        select: '_id role status login'
+                    })
+                    .populate({
+                        path: 'organization',
+                        select: 'name _id'
+                    })
+                    .lean()
             if(user.role==='admin')
                 return result
-            else if(result&&['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===result.organization._id.toString())
+            else if(result&&['суперорганизация', 'организация'].includes(user.role))
                 return result
             else
                 return null
@@ -288,7 +205,7 @@ const resolvers = {
         return sort
     },
     filterEmployment: async(parent, ctx, {user}) => {
-        if(['суперорганизация', 'организация', 'менеджер'].includes(user.role)||user.role.includes('организация'))
+        if(['суперорганизация', 'организация', 'менеджер', 'admin'].includes(user.role))
             return [
                 {
                     name: 'Все',
@@ -337,11 +254,8 @@ const resolversMutation = {
         return {data: 'OK'}
     },
     setEmployment: async(parent, {_id, name, email, newPass, role, login, phone}, {user, res}) => {
-        let object = await EmploymentAzyk.findById(_id)
-        if(
-            user.role==='admin'||
-            (['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===object.organization.toString())
-        ) {
+        if(['admin', 'суперорганизация', 'организация'].includes(user.role)) {
+            let object = await EmploymentAzyk.findOne({_id: _id, ...user.organization?{organization: user.organization}:{}})
             if(role==='суперорганизация'&&user.role!=='admin')
                 role = 'организация'
             if (role || newPass || login) {
@@ -397,7 +311,7 @@ const resolversMutation = {
         return {data: 'OK'}
     },
     restoreEmployment: async(parent, { _id }, {user}) => {
-        let objects = await EmploymentAzyk.find({_id: {$in: _id}})
+        let objects = await EmploymentAzyk.find({_id: {$in: _id}}).lean()
         for(let i=0; i<objects.length; i++){
             if(user.role==='admin'){
                 await EmploymentAzyk.update({_id: objects[i]._id}, {del: null})
@@ -407,7 +321,7 @@ const resolversMutation = {
         return {data: 'OK'}
     },
     onoffEmployment: async(parent, { _id }, {user}) => {
-        let objects = await EmploymentAzyk.find({_id: {$in: _id}})
+        let objects = await EmploymentAzyk.find({_id: {$in: _id}}).lean()
         for(let i=0; i<objects.length; i++){
             if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===objects[i].organization.toString())) {
                 let object = await UserAzyk.findOne({_id: objects[i].user})

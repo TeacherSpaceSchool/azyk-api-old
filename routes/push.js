@@ -7,7 +7,7 @@ const ModelsErrorAzyk = require('../models/errorAzyk');
 
 router.get('/admin', async (req, res) => {
     try{
-        let user = await UserAzyk.findOne({role: 'admin'})
+        let user = await UserAzyk.findOne({role: 'admin'}).select('_id').lean()
         if(user){
             sendWebPush({title: 'AZYK.STORE', message: 'Не забудьте сделать свой заказ', user: user._id})
             res.json('Push triggered');

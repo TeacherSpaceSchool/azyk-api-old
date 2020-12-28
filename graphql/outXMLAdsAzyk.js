@@ -19,7 +19,7 @@ const query = `
 `;
 
 const mutation = `
-    addOutXMLAdsShoro(organization: ID!, district: ID!, guid: String!): Data
+    addOutXMLAdsShoro(organization: ID!, district: ID!, guid: String!): OutXMLAdsShoro
     setOutXMLAdsShoro(_id: ID!, district: ID, guid: String): Data
     deleteOutXMLAdsShoro(_id: [ID]!): Data
 `;
@@ -27,12 +27,12 @@ const mutation = `
 const resolvers = {
     districtsOutXMLAdsShoros: async(parent, {organization}, {user}) => {
         if (user.role === 'admin') {
-            let districts = await SingleOutXMLAdsAzyk.find({})
-                .distinct('district')
+            let districts = await SingleOutXMLAdsAzyk.find({}).distinct('district').lean()
             districts = await DistrictAzyk.find({
                 organization: organization,
                 _id: {$nin: districts}
             })
+                .lean()
             return districts
         }
     },
@@ -43,12 +43,14 @@ const resolvers = {
                 _districts = await DistrictAzyk.find({
                     name: {'$regex': search, '$options': 'i'}
                 }).distinct('_id')
+                    .lean()
             }
             return await SingleOutXMLAdsAzyk.find({
                 organization: organization, ...(search.length > 0?{district: {'$in': _districts}}:{})
             })
                 .populate('district')
                 .sort('-name')
+                .lean()
         }
     }
 };
@@ -63,9 +65,9 @@ const resolversMutation = {
                 pass: organization.pass,
                 district: district
             });
-            await SingleOutXMLAdsAzyk.create(_object)
+            _object = await SingleOutXMLAdsAzyk.create(_object)
+            return _object
         }
-        return {data: 'OK'};
     },
     setOutXMLAdsShoro: async(parent, {_id, district, guid}, {user}) => {
         if(user.role==='admin') {

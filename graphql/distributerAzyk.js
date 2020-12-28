@@ -15,7 +15,6 @@ const type = `
 const query = `
     distributers(sort: String!, search: String!): [Distributer]
     distributer(_id: ID!): Distributer
-    organizationsWithoutDistributer(distributer: ID!): [Organization]
 `;
 
 const mutation = `
@@ -27,40 +26,49 @@ const mutation = `
 const resolvers = {
     distributers: async(parent, {search, sort}, {user}) => {
         if(user.role==='admin'){
-            let distributers = await DistributerAzyk.find()
-                .populate('distributer')
-                .populate('sales')
+            let _organizations;
+            if(search.length>0){
+                _organizations = await OrganizationAzyk.find({
+                    name: {'$regex': search, '$options': 'i'}
+                }).distinct('_id').lean()
+            }
+            let distributers = await DistributerAzyk.find({
+                distributer: {$in: _organizations}
+            })
+                .populate({
+                    path: 'distributer',
+                    select: 'name _id'
+                })
+                .populate({
+                    path: 'sales',
+                    select: 'name _id'
+                })
                 .sort(sort)
-            distributers = distributers.filter(distributer => (distributer.distributer && distributer.distributer.name.toLowerCase().includes(search.toLowerCase())))
+                .lean()
             return distributers
-        }
-    },
-    organizationsWithoutDistributer: async(parent, { distributer }, {user}) => {
-        if('admin'===user.role){
-            let organizations = await DistributerAzyk
-                .findOne({distributer: distributer!=='super'?distributer:null})
-                .distinct('sales')
-            if(distributer!=='super')
-                organizations = [distributer, ...organizations]
-            organizations = await OrganizationAzyk
-                .find({_id: { $nin: organizations}, del: {$ne: 'deleted'}})
-                .sort('-name')
-            return organizations
-
         }
     },
     distributer: async(parent, {_id}, {user}) => {
         if((mongoose.Types.ObjectId.isValid(_id)||_id==='super')){
-            if(!['admin', 'суперагент'].includes(user.role)) _id = user.organization
             return await DistributerAzyk.findOne(
                 _id!=='super'?
-                    {$or:[{_id: _id}, {distributer: _id}]}
+                    {$or:[{_id: user.organization?user.organization:_id}, {distributer: user.organization?user.organization:_id}]}
                     :
                     {distributer: null}
             )
-                .populate('distributer')
-                .populate('sales')
-                .populate('provider')
+                .populate({
+                    path: 'distributer',
+                    select: 'name _id'
+                })
+                .populate({
+                    path: 'sales',
+                    select: 'name _id'
+                })
+                .populate({
+                    path: 'provider',
+                    select: 'name _id'
+                })
+                .lean()
         }
         else return null
     },

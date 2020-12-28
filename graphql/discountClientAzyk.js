@@ -22,16 +22,12 @@ const mutation = `
 const resolvers = {
     discountClients: async(parent, {clients, organization}, {user}) => {
         if(['суперорганизация', 'организация', 'менеджер', 'агент', 'admin'].includes(user.role)) {
-            if(user.organization)
-                organization = user.organization
-            return await DiscountClient.find({client: {$in: clients}, organization: organization==='super'?null:organization}).lean()
+            return await DiscountClient.find({client: {$in: clients}, organization: user.organization?user.organization:organization==='super'?null:organization}).lean()
         }
     },
     discountClient: async(parent, {client, organization}, {user}) => {
         if(['суперорганизация', 'организация', 'менеджер', 'агент', 'admin', 'client'].includes(user.role)) {
-            if(user.organization)
-                organization = user.organization
-            return await DiscountClient.findOne({client: client, organization: organization==='super'?null:organization}).lean()
+            return await DiscountClient.findOne({client: client, organization: user.organization?user.organization:organization==='super'?null:organization}).lean()
         }
     }
 };
@@ -39,10 +35,8 @@ const resolvers = {
 const resolversMutation = {
     setDiscountClients: async(parent, {clients, organization, discount}, {user}) => {
         if(['суперорганизация', 'организация', 'менеджер', 'агент', 'admin'].includes(user.role)){
-            if(user.organization)
-                organization = user.organization
             for(let i=0; i<clients.length; i++){
-                let discountClient = await DiscountClient.findOne({client: clients[i], organization: organization==='super'?null:organization});
+                let discountClient = await DiscountClient.findOne({client: clients[i], organization: user.organization?user.organization:organization==='super'?null:organization});
                 if(!discountClient){
                     let _object = new DiscountClient({
                         discount: discount,

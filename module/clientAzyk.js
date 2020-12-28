@@ -1,5 +1,4 @@
 const ClientAzyk = require('../models/clientAzyk');
-const SubscriberAzyk = require('../models/subscriberAzyk');
 
 module.exports.reductionToClient = async() => {
     let clients = await ClientAzyk.find({city: {$ne: 'Бишкек'}})

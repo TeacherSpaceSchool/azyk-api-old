@@ -96,6 +96,7 @@ const resolvers = {
         if('admin'===user.role){
             let outXMLReturnedShoroAzyk = await OutXMLReturnedShoroAzyk
                 .find({organization: organization})
+                .select('status')
                 .lean()
             let procces = 0;
             let error = 0;

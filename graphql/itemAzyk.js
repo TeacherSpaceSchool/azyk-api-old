@@ -1,7 +1,6 @@
 const ItemAzyk = require('../models/itemAzyk');
-const OrganizationAzyk = require('../models/organizationAzyk');
+const AdsAzyk = require('../models/adsAzyk');
 const DistributerAzyk = require('../models/distributerAzyk');
-const SubCategoryAzyk = require('../models/subCategoryAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
 const BasketAzyk = require('../models/basketAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
@@ -11,9 +10,6 @@ const { saveImage, deleteFile, urlMain } = require('../module/const');
 const type = `
   type Item {
     _id: ID
-    favorite: [ID]
-    basket: [ID]
-    deliveryDays: [String]
     unit: String
     createdAt: Date
     stock: Float
@@ -44,157 +40,74 @@ const type = `
 `;
 
 const query = `
-    items(subCategory: ID!, search: String!, sort: String!, filter: String!): [Item]
+    items(subCategory: ID!, search: String!, sort: String!): [Item]
     popularItems: [Item]
     itemsTrash(search: String!): [Item]
     brands(organization: ID!, search: String!, sort: String!, city: String): [Item]
     item(_id: ID!): Item
     sortItem: [Sort]
-    filterItem: [Filter]
-    favorites(search: String!): [Item]
 `;
 
 const mutation = `
-    addItem( categorys: [String]!, city: String!, costPrice: Float, unit: String, priotiry: Int, apiece: Boolean, packaging: Int!, stock: Float!, weight: Float!, size: Float!, name: String!, deliveryDays: [String], info: String!, image: Upload, price: Float!, subCategory: ID!, organization: ID!, hit: Boolean!, latest: Boolean!): Data
-    setItem(_id: ID!, unit: String, city: String, costPrice: Float, categorys: [String], priotiry: Int, apiece: Boolean, packaging: Int, stock: Float, weight: Float, size: Float, name: String, info: String, deliveryDays: [String], image: Upload, price: Float, subCategory: ID, organization: ID, hit: Boolean, latest: Boolean): Data
+    addItem( categorys: [String]!, city: String!, costPrice: Float, unit: String, priotiry: Int, apiece: Boolean, packaging: Int!, stock: Float!, weight: Float!, size: Float!, name: String!, info: String!, image: Upload, price: Float!, subCategory: ID!, organization: ID!, hit: Boolean!, latest: Boolean!): Data
+    setItem(_id: ID!, unit: String, city: String, costPrice: Float, categorys: [String], priotiry: Int, apiece: Boolean, packaging: Int, stock: Float, weight: Float, size: Float, name: String, info: String, image: Upload, price: Float, subCategory: ID, organization: ID, hit: Boolean, latest: Boolean): Data
     setItemsCostPrice(itemsCostPrice: [InputItemCostPrice]!): Data
     deleteItem(_id: [ID]!): Data
     restoreItem(_id: [ID]!): Data
     onoffItem(_id: [ID]!): Data
-    favoriteItem(_id: [ID]!): Data
     addFavoriteItem(_id: [ID]!): Data
 `;
 
 const resolvers = {
     itemsTrash: async(parent, {search}, {user}) => {
         if('admin'===user.role){
-            let items =  await ItemAzyk.find({
-                del: 'deleted'
-            })
-                .populate('subCategory')
-                .populate({ path: 'organization',
-                    match: {del: {$ne: 'deleted'}} })
-                .sort('-priotiry')
-                items = items.filter(
-                    item => (
-                            (item.name.toLowerCase()).includes(search.toLowerCase()) ||
-                            (item.info.toLowerCase()).includes(search.toLowerCase())
-                        )
-                        && item.organization)
-                return items
+            return await ItemAzyk.find({
+                    del: 'deleted',
+                    $or: [
+                        {name: {'$regex': search, '$options': 'i'}},
+                        {info: {'$regex': search, '$options': 'i'}}
+                    ]
+                })
+                    .populate({
+                        path: 'subCategory',
+                        select: '_id name'
+                    })
+                    .populate({
+                        path: 'organization',
+                        select: '_id name consignation'
+                    })
+                    .sort('-priotiry')
+                    .lean()
         }
     },
-    items: async(parent, {subCategory, search, sort, filter}, {user}) => {
-        if(['admin', 'суперагент'].includes(user.role)){
-            if(subCategory!=='all'&&mongoose.Types.ObjectId.isValid(subCategory)){
-                let items =  await ItemAzyk.find({
-                    subCategory: subCategory,
-                    del: {$ne: 'deleted'}
+    items: async(parent, {subCategory, search, sort}, {user}) => {
+        if(['admin', 'суперагент', 'экспедитор', 'суперорганизация', 'организация', 'менеджер', 'агент', 'client'].includes(user.role)){
+            let organizations
+            if(user.organization)
+                organizations = [user.organization, ...(await DistributerAzyk.findOne({
+                    distributer: user.organization
                 })
-                    .populate('subCategory')
-                    .populate({ path: 'organization',
-                        match: {name: filter.length===0?{'$regex': '', '$options': 'i'}:filter} })
-                    .sort('-priotiry')
-                    .sort(sort)
-                items = items.filter(
-                    item => (
-                            (item.name.toLowerCase()).includes(search.toLowerCase()) ||
-                            (item.info.toLowerCase()).includes(search.toLowerCase())
-                        )
-                        && item.organization)
-                return items
-            }
-            else {
-                let items =  await ItemAzyk.find({
-                    del: {$ne: 'deleted'}
-                })
-                    .populate('subCategory')
-                    .populate({ path: 'organization', match: {name: filter.length===0?{'$regex': '', '$options': 'i'}:filter} })
-                    .sort('-priotiry')
-                    .sort(sort)
-                items = items.filter(
-                    item => (
-                            (item.name.toLowerCase()).includes(search.toLowerCase()) ||
-                            (item.info.toLowerCase()).includes(search.toLowerCase())
-                        )
-                        && item.organization)
-                return items
-            }
-        }
-        else if(['экспедитор', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
-            let organizations = await DistributerAzyk.findOne({
-                distributer: user.organization
+                    .distinct('sales')
+                    .lean())]
+            return await ItemAzyk.find({
+                del: {$ne: 'deleted'},
+                $or: [
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {info: {'$regex': search, '$options': 'i'}}
+                ],
+                ...subCategory!=='all'?{subCategory: subCategory}:{},
+                ...user.organization?{organization: {$in: organizations}}:{},
+                ...user.city ? {city: user.city} : {},
+                ...user.role==='client'?{status: 'active', categorys: user.category}:{}
             })
-                .distinct('sales')
-            let items =  [
-                ...(await ItemAzyk.find({
-                    ...(filter.length===0?{}:{subCategory: filter}),
-                    organization: user.organization,
-                    del: {$ne: 'deleted'}
+                .set('hit latest apiece image info name stock price status del _id organization')
+                .populate({
+                    path: 'organization',
+                    select: '_id'
                 })
-                    .populate('subCategory')
-                    .populate('organization')
-                    .sort('-priotiry')
-                    .sort(sort)),
-                ...(await ItemAzyk.find({
-                    ...(filter.length===0?{}:{subCategory: filter}),
-                    organization: {$in: organizations},
-                    del: {$ne: 'deleted'}
-                })
-                    .populate('subCategory')
-                    .populate('organization')
-                    .sort('-priotiry')
-                    .sort(sort))
-            ]
-            items = items.filter(
-                item => (
-                    (item.name.toLowerCase()).includes(search.toLowerCase()) ||
-                    (item.info.toLowerCase()).includes(search.toLowerCase())
-                )
-            )
-            return items
-        }
-        else  if(user.role==='client'){
-            if(subCategory!=='all'&&mongoose.Types.ObjectId.isValid(subCategory)){
-                let items =  await ItemAzyk.find({
-                    status: 'active',
-                    subCategory: subCategory,
-                    del: {$ne: 'deleted'},
-                    categorys: user.category,
-                })
-                    .populate('subCategory')
-                    .populate({ path: 'organization',
-                        match: {name: filter.length===0?{'$regex': '', '$options': 'i'}:filter,
-                            status: 'active'} })
-                    .sort('-priotiry')
-                    .sort(sort)
-                items = items.filter(
-                    item => (
-                            (item.name.toLowerCase()).includes(search.toLowerCase()) ||
-                            (item.info.toLowerCase()).includes(search.toLowerCase())
-                        )
-                        && item.organization)
-                return items
-            }
-            else {
-                let items =  await ItemAzyk.find({
-                    status: 'active',
-                    del: {$ne: 'deleted'}
-                })
-                    .populate('subCategory')
-                    .populate({ path: 'organization', match: {status: 'active',
-                        name: filter.length===0?{'$regex': '', '$options': 'i'}:filter} })
-                    .sort('-priotiry')
-                    .sort(sort)
-                items = items.filter(
-                    item => (
-                            (item.name.toLowerCase()).includes(search.toLowerCase()) ||
-                            (item.info.toLowerCase()).includes(search.toLowerCase())
-                        )
-                        && item.organization)
-                return items
-            }
-
+                .sort('-priotiry')
+                .sort(sort)
+                .lean()
         }
     },
     popularItems: async(parent, ctx, {user}) => {
@@ -210,49 +123,45 @@ const resolvers = {
             ],
             ...user.role==='client'?{categorys: user.category}:{}
         })
-            .populate('subCategory')
+            .select('_id name image organization hit latest')
             .populate({
                 path: 'organization',
-                match: {
-                    status: 'active',
-                    cities: user.city
-                }
+                select: '_id onlyIntegrate onlyDistrict'
             })
             .sort('-priotiry')
             .sort('-updatedAt')
+            .lean()
         for(let i=0; i<items.length; i++){
-            if(items[i].organization) {
-                if (!approveOrganizations[items[i].organization._id]) {
-                    if (items[i].organization.onlyIntegrate && items[i].organization.onlyDistrict) {
-                        let district = await DistrictAzyk.findOne({
-                            client: user.client,
-                            organization: items[i].organization._id
-                        }).select('_id').lean()
-                        let integrate = await Integrate1CAzyk.findOne({
-                            client: user.client,
-                            organization: items[i].organization._id
-                        }).select('_id').lean()
-                        approveOrganizations[items[i].organization._id] = integrate && district;
-                    }
-                    else if (items[i].organization.onlyDistrict) {
-                        let district = await DistrictAzyk.findOne({
-                            client: user.client,
-                            organization: items[i].organization._id
-                        }).select('_id').lean()
-                        approveOrganizations[items[i].organization._id] = district
-                    }
-                    else if (items[i].organization.onlyIntegrate) {
-                        let integrate = await Integrate1CAzyk.findOne({
-                            client: user.client,
-                            organization: items[i].organization._id
-                        }).select('_id').lean()
-                        approveOrganizations[items[i].organization._id] = integrate
-                    }
-                    else approveOrganizations[items[i].organization._id] = true
+            if (!approveOrganizations[items[i].organization._id]) {
+                if (items[i].organization.onlyIntegrate && items[i].organization.onlyDistrict) {
+                    let district = await DistrictAzyk.findOne({
+                        client: user.client,
+                        organization: items[i].organization._id
+                    }).select('_id').lean()
+                    let integrate = await Integrate1CAzyk.findOne({
+                        client: user.client,
+                        organization: items[i].organization._id
+                    }).select('_id').lean()
+                    approveOrganizations[items[i].organization._id] = integrate && district;
                 }
-                if(approveOrganizations[items[i].organization._id])
-                    itemsRes.push(items[i])
+                else if (items[i].organization.onlyDistrict) {
+                    let district = await DistrictAzyk.findOne({
+                        client: user.client,
+                        organization: items[i].organization._id
+                    }).select('_id').lean()
+                    approveOrganizations[items[i].organization._id] = district
+                }
+                else if (items[i].organization.onlyIntegrate) {
+                    let integrate = await Integrate1CAzyk.findOne({
+                        client: user.client,
+                        organization: items[i].organization._id
+                    }).select('_id').lean()
+                    approveOrganizations[items[i].organization._id] = integrate
+                }
+                else approveOrganizations[items[i].organization._id] = true
             }
+            if(approveOrganizations[items[i].organization._id])
+                itemsRes.push(items[i])
         }
         itemsRes = itemsRes.sort( () => {
             return Math.random() - 0.5;
@@ -261,57 +170,51 @@ const resolvers = {
     },
     brands: async(parent, {organization, search, sort, city}, {user}) => {
         if(mongoose.Types.ObjectId.isValid(organization)) {
-
-            let items = await ItemAzyk.find({
-                ...user.role==='admin'?{}:{status: 'active'},
+            return await ItemAzyk.find({
+                ...user.role === 'admin' ? {} : {status: 'active'},
                 organization: organization,
                 del: {$ne: 'deleted'},
-                ...city?{city: city}:{},
-                ...user.role==='client'?{categorys: user.category, city: user.city}:{}
+                ...city ? {city: city} : {},
+                ...user.city ? {city: user.city} : {},
+                ...user.role === 'client' ? {categorys: user.category, city: user.city} : {},
+                $or: [
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {info: {'$regex': search, '$options': 'i'}}
+                ]
             })
-                .populate('subCategory')
+                .populate({
+                    path: 'subCategory',
+                    select: '_id name'
+                })
                 .populate({
                     path: 'organization',
-                    match: {...user.role==='admin'?{}:{status: 'active'}}
+                    select: '_id name consignation'
                 })
                 .sort('-priotiry')
                 .sort(sort)
-            items = items.filter(
-                item => (
-                        (item.name.toLowerCase()).includes(search.toLowerCase()) ||
-                        (item.info.toLowerCase()).includes(search.toLowerCase())
-                    )
-                    && item.organization)
-
-            return items
+                .lean()
         }
         else return []
 
-    },
-    favorites: async(parent, {search}, {user}) => {
-       let items =  await ItemAzyk.find({
-           status: 'active',
-           favorite: user._id,
-           del: {$ne: 'deleted'}
-       })
-           .populate('subCategory')
-           .populate({ path: 'organization', match: { match: {status: 'active'}} })
-           .sort('-createdAt')
-        items = items.filter(item => (
-                (item.name.toLowerCase()).includes(search.toLowerCase()) ||
-                (item.info.toLowerCase()).includes(search.toLowerCase()) ||
-                (item.organization.toLowerCase()).includes(search.toLowerCase())
-            )
-            && item.organization)
-        return items
     },
     item: async(parent, {_id}) => {
         if(mongoose.Types.ObjectId.isValid(_id)) {
             return await ItemAzyk.findOne({
                 _id: _id,
             })
-                .populate({path: 'subCategory', populate: [{path: 'category'}]})
-                .populate('organization')
+                .populate({
+                    path: 'subCategory',
+                    select: '_id name',
+                    populate: {
+                        path: 'category',
+                        select: 'name _id'
+                    }
+                })
+                .populate({
+                    path: 'organization',
+                    select: '_id name minimumOrder consignation'
+                })
+                .lean()
         } else return null
     },
     sortItem: async(parent, ctx, {user}) => {
@@ -335,59 +238,11 @@ const resolvers = {
             ]
         }
         return sort
-    },
-    filterItem: async(parent, ctx, {user}) => {
-        let filter = []
-        if(!['экспедитор', 'суперорганизация', 'организация'].includes(user.role)){
-            filter = [
-                {
-                    name: 'Все',
-                    value: ''
-                }
-            ]
-            let organizations = await OrganizationAzyk.find({
-                status: 'active',
-                del: {$ne: 'deleted'}
-            }).sort('name')
-            for(let i = 0; i<organizations.length; i++){
-                filter = [
-                    ... filter,
-                    {
-                        name: organizations[i].name,
-                        value: organizations[i]._id
-                    }
-                ]
-            }
-        }
-        else {
-            filter = [
-                {
-                    name: 'Все',
-                    value: ''
-                }
-            ]
-            let subcategorys = await ItemAzyk.find({
-                organization: user.organization,
-                status: 'active',
-                del: {$ne: 'deleted'}
-            }).distinct('subCategory')
-            subcategorys = await SubCategoryAzyk.find({_id: {$in: subcategorys}})
-            for(let i = 0; i<subcategorys.length; i++){
-                filter = [
-                    ... filter,
-                    {
-                        name: subcategorys[i].name,
-                        value: subcategorys[i]._id
-                    }
-                ]
-            }
-        }
-        return filter
-    },
+    }
 };
 
 const resolversMutation = {
-    addItem: async(parent, {categorys, city, unit, apiece, costPrice, priotiry, stock, name, image, info, price, subCategory, organization, hit, latest, deliveryDays, packaging, weight, size}, {user}) => {
+    addItem: async(parent, {categorys, city, unit, apiece, costPrice, priotiry, stock, name, image, info, price, subCategory, organization, hit, latest, packaging, weight, size}, {user}) => {
         if(['admin', 'суперорганизация', 'организация'].includes(user.role)){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -399,13 +254,12 @@ const resolversMutation = {
                 price: price,
                 reiting: 0,
                 subCategory: subCategory,
-                organization: organization,
+                organization: user.organization?user.organization:organization,
                 hit: hit,
                 categorys: categorys,
                 packaging: packaging,
                 latest: latest,
                 status: 'active',
-                deliveryDays: deliveryDays,
                 weight: weight,
                 size: size,
                 priotiry: priotiry,
@@ -413,15 +267,17 @@ const resolversMutation = {
                 city: city,
                 costPrice: costPrice?costPrice:0
             });
-            if(['суперорганизация', 'организация'].includes(user.role)) _object.organization = user.organization
             if(apiece!=undefined) _object.apiece = apiece
-            _object = await ItemAzyk.create(_object)
+            await ItemAzyk.create(_object)
         }
         return {data: 'OK'};
     },
-    setItem: async(parent, {city, unit, categorys, apiece, costPrice, _id, priotiry, weight, size, stock, name, image, info, price, subCategory, organization, packaging, hit, latest, deliveryDays}, {user}) => {
-        let object = await ItemAzyk.findById(_id)
-        if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===object.organization.toString())) {
+    setItem: async(parent, {city, unit, categorys, apiece, costPrice, _id, priotiry, weight, size, stock, name, image, info, price, subCategory, organization, packaging, hit, latest}, {user}) => {
+         if(['admin', 'суперорганизация', 'организация'].includes(user.role)) {
+            let object = await ItemAzyk.findOne({
+                _id: _id,
+                ...user.organization?{organization: user.organization}:{},
+            })
             if (image) {
                 let {stream, filename} = await image;
                 await deleteFile(object.image)
@@ -440,13 +296,12 @@ const resolversMutation = {
             if(latest!=undefined)object.latest = latest
             if(subCategory)object.subCategory = subCategory
             if(unit)object.unit = unit
-            if(deliveryDays)object.deliveryDays = deliveryDays
             if(packaging)object.packaging = packaging
             if(apiece!=undefined) object.apiece = apiece
             if(priotiry!=undefined) object.priotiry = priotiry
             if(categorys!=undefined) object.categorys = categorys
-            if(user.role==='admin'){
-                object.organization = organization === undefined ? object.organization : organization;
+            if(user.role==='admin'&&organization){
+                object.organization = organization;
             }
             await object.save();
         }
@@ -475,43 +330,31 @@ const resolversMutation = {
         return {data: 'OK'}
     },
     deleteItem: async(parent, { _id }, {user}) => {
-        let objects = await ItemAzyk.find({_id: {$in: _id}})
-        for(let i=0; i<objects.length; i++){
-            if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===objects[i].organization.toString())) {
+        if(['admin', 'суперорганизация', 'организация'].includes(user.role)) {
+            await ItemAzyk.updateMany({_id: {$in: _id}}, {
+                del: 'deleted',
+                status: 'deactive'
+            })
+            let objects = await ItemAzyk.find({_id: {$in: _id}, ...user.organization?{organization: user.organization}:{}})
+            for(let i=0; i<objects.length; i++){
+                await deleteFile(objects[i].image)
                 objects[i].del = 'deleted'
                 objects[i].status = 'deactive'
                 await objects[i].save()
-                await BasketAzyk.deleteMany({item: {$in: objects[i]._id}})
-                await Integrate1CAzyk.deleteMany({organization: objects[i].organization, item: objects[i]._id})
             }
+            objects = await AdsAzyk.find({item: {$in: _id}}).select('image').lean()
+            for (let i = 0; i < objects.length; i++) {
+                await deleteFile(objects[i].image)
+            }
+            await AdsAzyk.updateMany({_id: {$in: _id}}, {del: 'deleted'})
+            await BasketAzyk.deleteMany({item: {$in: _id}})
+            await Integrate1CAzyk.deleteMany({item: {$in: _id}})
         }
         return {data: 'OK'}
     },
     restoreItem: async(parent, { _id }, {user}) => {
         if(user.role==='admin') {
             await ItemAzyk.updateMany({_id: {$in: _id}}, {del: null, status: 'active'})
-        }
-        return {data: 'OK'}
-    },
-    favoriteItem: async(parent, { _id }, {user}) => {
-        let objects = await ItemAzyk.find({_id: {$in: _id}})
-        for(let i=0; i<objects.length; i++){
-            let index = objects[i].favorite.indexOf(user._id)
-            if(index===-1)
-                objects[i].favorite.push(user._id)
-            else
-                objects[i].favorite.splice(index, 1)
-            await objects[i].save()
-        }
-        return {data: 'OK'}
-    },
-    addFavoriteItem: async(parent, { _id }, {user}) => {
-        let objects = await ItemAzyk.find({_id: {$in: _id}})
-        for(let i=0; i<objects.length; i++){
-            let index = objects[i].favorite.indexOf(user._id)
-            if(index===-1)
-                objects[i].favorite.push(user._id)
-            await objects[i].save()
         }
         return {data: 'OK'}
     }

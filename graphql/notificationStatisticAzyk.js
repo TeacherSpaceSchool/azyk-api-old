@@ -35,7 +35,9 @@ const resolvers = {
                     {tag: {'$regex': search, '$options': 'i'}},
                     {url: {'$regex': search, '$options': 'i'}}
                 ]
-            }).sort('-createdAt')
+            })
+                .sort('-createdAt')
+                .lean()
         else
             return []
     }

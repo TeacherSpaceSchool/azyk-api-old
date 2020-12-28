@@ -844,8 +844,6 @@ const resolvers = {
                 {name: 'Транспорт', collection: '../models/autoAzyk'},
                 {name: 'Корзина', collection: '../models/basketAzyk'},
                 {name: 'Блог', collection: '../models/blogAzyk'},
-                {name: 'Бонус', collection: '../models/bonusAzyk'},
-                {name: 'Бонус клиента', collection: '../models/bonusClientAzyk'},
                 {name: 'Категории', collection: '../models/categoryAzyk'},
                 {name: 'Клиенты', collection: '../models/clientAzyk'},
                 {name: 'Контакты', collection: '../models/contactAzyk'},
@@ -915,7 +913,7 @@ const resolvers = {
             dateStart.setDate(dateStart.getDate() - 7)
             let excludedAgents = []
             let data = []
-            let districts
+            let districts = {}
             let allClients=[]
             let allOrders=0
             let allProfit = 0
@@ -2561,7 +2559,7 @@ const resolvers = {
         }
     },
     statisticClient: async(parent, { client, dateStart, dateType, online }, {user}) => {
-        if('admin'===user.role){
+        if(['admin', 'суперорганизация'].includes(user.role)){
             let dateEnd
             if(dateStart){
                 dateStart= new Date(dateStart)

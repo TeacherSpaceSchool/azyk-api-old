@@ -17,7 +17,7 @@ const query = `
 `;
 
 const mutation = `
-    addFaq(file: Upload, title: String!, typex: String!, video: String): Data
+    addFaq(file: Upload, title: String!, typex: String!, video: String): Faq
     setFaq(_id: ID!, file: Upload, title: String, typex: String, video: String): Data
     deleteFaq(_id: [ID]!): Data
 `;
@@ -29,11 +29,10 @@ const resolvers = {
             typex='клиенты'
         else if(['суперорганизация', 'организация', 'менеджер', 'экспедитор', 'агент'].includes(user.role))
             typex='сотрудники'
-        let res =  await FaqAzyk.find({
+        return await FaqAzyk.find({
             title: {'$regex': search, '$options': 'i'},
-        }).sort('title')
-        res = res.filter(res=>res.typex.includes(typex))
-        return res
+            typex: {'$regex': typex, '$options': 'i'},
+        }).sort('title').lean()
     }
 };
 
@@ -50,9 +49,9 @@ const resolversMutation = {
                 _object.url = urlMain+filename
             }
             if(video)_object.video = video
-            await FaqAzyk.create(_object)
+            _object = await FaqAzyk.create(_object)
+            return _object
         }
-        return {data: 'OK'};
     },
     setFaq: async(parent, {_id, file, title, video, typex}, {user}) => {
         if(user.role==='admin') {
@@ -72,7 +71,7 @@ const resolversMutation = {
     },
     deleteFaq: async(parent, { _id }, {user}) => {
         if(user.role==='admin'){
-            let objects = await FaqAzyk.find({_id: {$in: _id}})
+            let objects = await FaqAzyk.find({_id: {$in: _id}}).select('file').lean()
             for(let i=0; i<objects.length; i++){
                 if(objects[i].file)
                     await deleteFile(objects[i].file)

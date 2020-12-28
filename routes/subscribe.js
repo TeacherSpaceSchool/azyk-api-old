@@ -19,7 +19,7 @@ router.post('/register', async (req, res) => {
             }
             else {
                 number = randomstring.generate({length: 20, charset: 'numeric'});
-                while (await SubscriberAzyk.findOne({number: number}))
+                while (await SubscriberAzyk.findOne({number: number}).select('_id').lean())
                     number = randomstring.generate({length: 20, charset: 'numeric'});
                 subscriptionModel = new SubscriberAzyk({
                     endpoint: req.body.endpoint,

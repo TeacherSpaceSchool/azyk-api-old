@@ -45,8 +45,8 @@ const resolvers = {
                     ]
                 } : {},
             })
-                //.populate('agent')
                 .sort('-createdAt')
+                .lean()
         }
     },
     filterReceivedData: async(parent, ctx, {user}) => {
@@ -85,11 +85,11 @@ const resolversMutation = {
     },
     addReceivedDataClient: async(parent, { _id }, {user}) => {
         if('admin'===user.role){
-            let receivedData = await ReceivedDataAzyk.findOne({_id: _id})
+            let receivedData = await ReceivedDataAzyk.findOne({_id: _id}).lean()
             let integrate1CAzyk = await Integrate1CAzyk.findOne({
                 organization: receivedData.organization,
                 guid: receivedData.guid
-            })
+            }).select('_id').lean()
             if(!integrate1CAzyk){
                 let _client = new UserAzyk({
                     login: randomstring.generate(20),

@@ -12,6 +12,7 @@ const { withFilter } = require('graphql-subscriptions');
 const RELOAD_RETURNED = 'RELOAD_RETURNED';
 const HistoryReturnedAzyk = require('../models/historyReturnedAzyk');
 const mongoose = require('mongoose');
+const maxDates = 5
 
 const type = `
   type ReturnedItems {
@@ -109,10 +110,10 @@ const resolvers = {
         if(search.length>0){
             _organizations = await OrganizationAzyk.find({
                 name: {'$regex': search, '$options': 'i'}
-            }).distinct('_id')
+            }).distinct('_id').lean()
             _clients = await ClientAzyk.find({
                 name: {'$regex': search, '$options': 'i'}
-            }).distinct('_id')
+            }).distinct('_id').lean()
         }
         if(user.role==='admin') {
             returneds =  await ReturnedAzyk.find(
@@ -142,10 +143,10 @@ const resolvers = {
         if(search.length>0){
             _organizations = await OrganizationAzyk.find({
                 name: {'$regex': search, '$options': 'i'}
-            }).distinct('_id')
+            }).distinct('_id').lean()
             _clients = await ClientAzyk.find({
                 name: {'$regex': search, '$options': 'i'}
-            }).distinct('_id')
+            }).distinct('_id').lean()
         }
         if(user.role==='admin') {
             let returneds =  await ReturnedAzyk.aggregate(
@@ -271,124 +272,59 @@ const resolvers = {
         }
     },
     returnedsSimpleStatistic: async(parent, {search, date, city}, {user}) => {
-        let dateStart;
-        let dateEnd;
-        if(date!==''){
-            dateStart = new Date(date)
-            dateStart.setHours(3, 0, 0, 0)
-            dateEnd = new Date(dateStart)
-            dateEnd.setDate(dateEnd.getDate() + 1)
-        }
-        else {
-            dateStart = new Date()
-            dateStart.setHours(3, 0, 0, 0)
-            dateEnd = new Date(dateStart)
-            dateEnd.setDate(dateEnd.getDate() + 1)
-        }
-        let _organizations;
-        let _clients;
-        let returneds = [];
-        if(search.length>0){
-            _organizations = await OrganizationAzyk.find({
-                name: {'$regex': search, '$options': 'i'}
-            }).distinct('_id')
-            _clients = await ClientAzyk.find({
-                name: {'$regex': search, '$options': 'i'}
-            }).distinct('_id')
-        }
-        if(user.role==='агент'){
-            if(date!=='') {
-                let now = new Date()
-                now.setDate(now.getDate() + 1)
-                now.setHours(3, 0, 0, 0)
-                let differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
-                if(differenceDates>3) {
+        if(['суперорганизация', 'организация', 'агент', 'менеджер', 'admin', 'суперагент'].includes(user.role)) {
+            let clients
+            if (['агент', 'менеджер', 'суперагент'].includes(user.role)) {
+                clients = await DistrictAzyk
+                    .find({$or: [{manager: user.employment}, {agent: user.employment}]})
+                    .distinct('client').lean()
+            }
+            let dateStart;
+            let dateEnd;
+            if (date !== '') {
+                let differenceDates = maxDates
+                dateStart = new Date(date)
+                dateStart.setHours(3, 0, 0, 0)
+                dateEnd = new Date(dateStart)
+                dateEnd.setDate(dateEnd.getDate() + 1)
+                if (['агент', 'суперагент'].includes(user.role)) {
+                    let now = new Date()
+                    now.setDate(now.getDate() + 1)
+                    now.setHours(3, 0, 0, 0)
+                    differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
+                }
+                if(differenceDates>maxDates) {
                     dateStart = new Date()
                     dateEnd = new Date(dateStart)
-                    dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 3))
+                    dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - maxDates))
                 }
             }
             else {
-                dateEnd = new Date()
-                dateEnd.setDate(dateEnd.getDate() + 1)
+                dateStart = new Date()
+                dateEnd = new Date(dateStart)
+                if(dateStart.getHours()>=3)
+                    dateEnd.setDate(dateEnd.getDate() + 1)
+                else
+                    dateStart.setDate(dateEnd.getDate() - 1)
+                dateStart.setHours(3, 0, 0, 0)
                 dateEnd.setHours(3, 0, 0, 0)
-                dateStart = new Date(dateEnd)
-                dateStart.setDate(dateStart.getDate() - 3)
             }
-            let clients = await DistrictAzyk
-                .find({agent: user.employment})
-                .distinct('client')
-            returneds =  await ReturnedAzyk.find(
-                {
-                    del: {$ne: 'deleted'},
-                    client: {$in: clients},
-                    confirmationForwarder: true,
-                    $and: [
-                        {createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}},
-                        {
-                            $or: [
-                                {organization: user.organization},
-                                {sale: user.organization},
-                                {provider: user.organization},
-                            ],
-                        },
-                        ...(search.length>0? [{
-                            $or: [
-                                {number: {'$regex': search, '$options': 'i'}},
-                                {info: {'$regex': search, '$options': 'i'}},
-                                {address: {'$regex': search, '$options': 'i'}},
-                                {client: {$in: _clients}},
-                                {organization: {$in: _organizations}},
-                                {sale: {$in: _organizations}},
-                                {provider: {$in: _organizations}},
-                            ]
-                        }]:[])
-                    ],
-                }
-            )
-                .lean()
-        }
-        else if(user.role==='менеджер'){
-            let clients = await DistrictAzyk
-                .find({manager: user.employment})
-                .distinct('client')
-            returneds =  await ReturnedAzyk.find(
-                {
-                    del: {$ne: 'deleted'},
-                    client: {$in: clients},
-                    confirmationForwarder: true,
-                    $and: [
-                        ...(date === '' ?[]:[{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]),
-                        {
-                            $or: [
-                                {organization: user.organization},
-                                {sale: user.organization},
-                                {provider: user.organization},
-                            ]
-                        },
-                        ...(search.length>0? [{
-                            $or: [
-                                {number: {'$regex': search, '$options': 'i'}},
-                                {info: {'$regex': search, '$options': 'i'}},
-                                {address: {'$regex': search, '$options': 'i'}},
-                                {client: {$in: _clients}},
-                                {organization: {$in: _organizations}},
-                                {sale: {$in: _organizations}},
-                                {provider: {$in: _organizations}},
-                            ]
-                        }]:[])
-                    ],
-                }
-            )
-                .lean()
-        }
-        else if(user.role==='admin') {
-            returneds =  await ReturnedAzyk.find({
+            let _organizations;
+            let _clients;
+            if (search.length > 0) {
+                _organizations = await OrganizationAzyk.find({
+                    name: {'$regex': search, '$options': 'i'}
+                }).distinct('_id').lean()
+                _clients = await ClientAzyk.find({
+                    name: {'$regex': search, '$options': 'i'}
+                }).distinct('_id').lean()
+            }
+            let returneds = await ReturnedAzyk.find({
                 del: {$ne: 'deleted'},
-                ...(date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}),
+                $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
                 confirmationForwarder: true,
                 ...city?{city: city}:{},
-                ...(search.length>0?{
+                ...search.length > 0 ? {
                         $or: [
                             {number: {'$regex': search, '$options': 'i'}},
                             {info: {'$regex': search, '$options': 'i'}},
@@ -396,727 +332,258 @@ const resolvers = {
                             {client: {$in: _clients}},
                             {organization: {$in: _organizations}},
                             {sale: {$in: _organizations}},
-                            {provider: {$in: _organizations}},
+                            {provider: {$in: _organizations}}
                         ]
-                    }
-                    :{})
-                }).lean()
-        }
-        else if(['суперорганизация', 'организация'].includes(user.role)) {
-            returneds =  await ReturnedAzyk.find(
-                {
-                    del: {$ne: 'deleted'},
-                    confirmationForwarder: true,
-                    $and: [
-                        ...(date === '' ?[]:[{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]),
-                        {
-                            $or: [
-                                {organization: user.organization},
-                                {sale: user.organization},
-                                {provider: user.organization},
-                            ],
-                        },
-                        ...(search.length>0? [{
-                            $or: [
-                                {number: {'$regex': search, '$options': 'i'}},
-                                {info: {'$regex': search, '$options': 'i'}},
-                                {address: {'$regex': search, '$options': 'i'}},
-                                {client: {$in: _clients}},
-                                {organization: {$in: _organizations}},
-                                {sale: {$in: _organizations}},
-                                {provider: {$in: _organizations}},
-                            ]
-                        }]:[])
-                    ],
-                })
-                .lean()
-        }
-        let tonnage = 0;
-        let size = 0;
-        let price = 0;
-        let lengthList = 0;
-        for(let i=0; i<returneds.length; i++){
-            if(!returneds[i].cancelForwarder) {
-                price += returneds[i].allPrice
-                if (returneds[i].allSize)
-                    size += returneds[i].allSize
-                lengthList += 1
-                if (returneds[i].allTonnage)
-                    tonnage += returneds[i].allTonnage
+                    }:{},
+                ...user.organization ? {
+                    $or: [
+                        {organization: user.organization},
+                        {sale: user.organization},
+                        {provider: user.organization},
+                    ]
+                }:{},
+                ...['суперагент', 'агент'].includes(user.role)&&clients.length||'менеджер'===user.role?{client: {$in: clients}}:['суперагент', 'агент'].includes(user.role) ? {agent: user.employment} : {},
+            }).lean()
+            let tonnage = 0;
+            let size = 0;
+            let price = 0;
+            let lengthList = 0;
+            for (let i = 0; i < returneds.length; i++) {
+                if (!returneds[i].cancelForwarder) {
+                    price += returneds[i].allPrice
+                    if (returneds[i].allSize)
+                        size += returneds[i].allSize
+                    lengthList += 1
+                    if (returneds[i].allTonnage)
+                        tonnage += returneds[i].allTonnage
+                }
             }
+            return [lengthList.toString(), checkFloat(price).toString(), checkFloat(tonnage).toString(), checkFloat(size).toString()]
         }
-        return [lengthList.toString(), checkFloat(price).toString(), checkFloat(tonnage).toString(), checkFloat(size).toString()]
     },
     returnedsFromDistrict: async(parent, {organization, district, date}, {user}) =>  {
-        let dateStart;
-        let dateEnd;
-        dateStart = new Date(date)
-        dateStart.setHours(3, 0, 0, 0)
-        dateEnd = new Date(dateStart)
-        dateEnd.setDate(dateEnd.getDate() + 1)
-        let _clients = await DistrictAzyk.findOne({
-            _id: district
-        }).distinct('client');
-        if(user.role==='admin') {
-            let returneds =  await ReturnedAzyk.aggregate(
-                [
-                    {
-                        $match:{
-                            del: {$ne: 'deleted'},
-                            $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}],
-                            confirmationForwarder: true,
-                            client: {$in: _clients},
-                            $or: [
-                                {organization: new mongoose.Types.ObjectId(organization)},
-                                {sale: new mongoose.Types.ObjectId(organization)},
-                                {provider: new mongoose.Types.ObjectId(organization)},
-                            ]
-                        }
-                    },
-                    { $sort : {createdAt: -1} },
-                    { $lookup:
-                        {
-                            from: ClientAzyk.collection.collectionName,
-                            let: { client: '$client' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$client', '$_id']}} },
-                            ],
-                            as: 'client'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : false,
-                            path : '$client'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { agent: '$agent' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$agent', '$_id']}} },
-                            ],
-                            as: 'agent'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$agent'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { forwarder: '$forwarder' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$forwarder', '$_id']}} },
-                            ],
-                            as: 'forwarder'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$forwarder'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { sale: '$sale' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$sale', '$_id']}} },
-                            ],
-                            as: 'sale'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$sale'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { provider: '$provider' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$provider', '$_id']}} },
-                            ],
-                            as: 'provider'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$provider'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { organization: '$organization' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$organization', '$_id']}} },
-                            ],
-                            as: 'organization'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$organization'
-                        }
-                    },
-                ]);
-            return returneds
-        }
-        else if(user.role==='агент'){
-            let now = new Date()
-            now.setDate(now.getDate() + 1)
-            now.setHours(3, 0, 0, 0)
-            let differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
-            if(differenceDates>3) {
-                dateStart = new Date()
-                dateEnd = new Date(dateStart)
-                dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 3))
-            }
-            _clients = await DistrictAzyk
-                .find({agent: user.employment})
-                .distinct('client')
-            let returneds =  await ReturnedAzyk.aggregate(
-                [
-                    {
-                        $match:{
-                            $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}],
-                            confirmationForwarder: true,
-                            del: {$ne: 'deleted'},
-                            client: {$in: _clients},
-                            $or: [
-                                {organization: user.organization},
-                                {sale: user.organization},
-                                {provider: user.organization},
-                            ]
-                        }
-                    },
-                    { $sort : {createdAt: -1} },
-                    { $lookup:
-                        {
-                            from: ClientAzyk.collection.collectionName,
-                            let: { client: '$client' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$client', '$_id']}} },
-                            ],
-                            as: 'client'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : false, // this remove the object which is null
-                            path : '$client'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { agent: '$agent' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$agent', '$_id']}} },
-                            ],
-                            as: 'agent'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$agent'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { forwarder: '$forwarder' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$forwarder', '$_id']}} },
-                            ],
-                            as: 'forwarder'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$forwarder'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { sale: '$sale' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$sale', '$_id']}} },
-                            ],
-                            as: 'sale'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$sale'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { provider: '$provider' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$provider', '$_id']}} },
-                            ],
-                            as: 'provider'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$provider'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { organization: '$organization' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$organization', '$_id']}} },
-                            ],
-                            as: 'organization'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$organization'
-                        }
-                    },
-                ])
-            return returneds
-        }
-        else if(user.role==='менеджер'){
-            _clients = await DistrictAzyk
-                .find({manager: user.employment})
-                .distinct('client')
-            let returneds =  await ReturnedAzyk.aggregate(
-                [
-                    {
-                        $match:{
-                            $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}],
-                            confirmationForwarder: true,
-                            del: {$ne: 'deleted'},
-                            client: {$in: _clients},
-                            $or: [
-                                {organization: user.organization},
-                                {sale: user.organization},
-                                {provider: user.organization},
-                            ]
-                        }
-                    },
-                    { $sort : {createdAt: -1} },
-                    { $lookup:
-                        {
-                            from: ClientAzyk.collection.collectionName,
-                            let: { client: '$client' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$client', '$_id']}} },
-                            ],
-                            as: 'client'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : false, // this remove the object which is null
-                            path : '$client'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { agent: '$agent' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$agent', '$_id']}} },
-                            ],
-                            as: 'agent'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$agent'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { forwarder: '$forwarder' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$forwarder', '$_id']}} },
-                            ],
-                            as: 'forwarder'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$forwarder'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { organization: '$organization' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$organization', '$_id']}} },
-                            ],
-                            as: 'organization'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$organization'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { sale: '$sale' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$sale', '$_id']}} },
-                            ],
-                            as: 'sale'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$sale'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { provider: '$provider' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$provider', '$_id']}} },
-                            ],
-                            as: 'provider'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$provider'
-                        }
-                    },
-                ])
-            return returneds
-        }
-        else if(['суперорганизация', 'организация'].includes(user.role)) {
-            let returneds =  await ReturnedAzyk.aggregate(
-                [
-                    {
-                        $match:{
-                            $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt:dateEnd}}],
-                            confirmationForwarder: true,
-                            del: {$ne: 'deleted'},
-                            client: {$in: _clients},
-                            $or: [
-                                {organization: user.organization},
-                                {sale: user.organization},
-                                {provider: user.organization},
-                            ]
-                        }
-                    },
-                    { $sort : {createdAt: -1} },
-                    { $lookup:
-                        {
-                            from: ClientAzyk.collection.collectionName,
-                            let: { client: '$client' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$client', '$_id']}} },
-                            ],
-                            as: 'client'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : false, // this remove the object which is null
-                            path : '$client'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { agent: '$agent' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$agent', '$_id']}} },
-                            ],
-                            as: 'agent'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$agent'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { forwarder: '$forwarder' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$forwarder', '$_id']}} },
-                            ],
-                            as: 'forwarder'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$forwarder'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { organization: '$organization' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$organization', '$_id']}} },
-                            ],
-                            as: 'organization'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$organization'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { sale: '$sale' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$sale', '$_id']}} },
-                            ],
-                            as: 'sale'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$sale'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { provider: '$provider' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$provider', '$_id']}} },
-                            ],
-                            as: 'provider'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$provider'
-                        }
-                    },
-                ])
-            return returneds
-        }
-    },
-    returnedHistorys: async(parent, {returned}, {user}) => {
-        if(['admin', 'менеджер', 'суперорганизация', 'организация'].includes(user.role)){
-            let historyReturneds =  await HistoryReturnedAzyk.find({returned: returned})
-            return historyReturneds
-        }
-    },
-    returneds: async(parent, {search, sort, date, skip, city}, {user}) => {
-        let dateStart;
-        let dateEnd;
-        if(date!==''){
+        if(['суперорганизация', 'организация', 'агент', 'менеджер', 'admin'].includes(user.role)) {
+            let dateStart;
+            let dateEnd;
             dateStart = new Date(date)
             dateStart.setHours(3, 0, 0, 0)
             dateEnd = new Date(dateStart)
             dateEnd.setDate(dateEnd.getDate() + 1)
-        }
-        let _sort = {}
-        _sort[sort[0]==='-'?sort.substring(1):sort]=sort[0]==='-'?-1:1
-        let _organizations;
-        let _clients;
-        if(search.length>0){
-            _organizations = await OrganizationAzyk.find({
-                name: {'$regex': search, '$options': 'i'}
-            }).distinct('_id')
-            _clients = await ClientAzyk.find({
-                name: {'$regex': search, '$options': 'i'}
-            }).distinct('_id')
-        }
-        if(user.role==='admin') {
-            let returneds =  await ReturnedAzyk.aggregate(
-                [
-                    {
-                        $match:{
-                            del: {$ne: 'deleted'},
-                            ...city?{city: city}:{},
-                            ...(date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}),
-                            ...(search.length>0?{
-                                    $or: [
-                                        {number: {'$regex': search, '$options': 'i'}},
-                                        {info: {'$regex': search, '$options': 'i'}},
-                                        {address: {'$regex': search, '$options': 'i'}},
-                                        {client: {$in: _clients}},
-                                        {organization: {$in: _organizations}},
-                                        {sale: {$in: _organizations}},
-                                        {provider: {$in: _organizations}},
-                                    ]
-                                }
-                                :{})
-                        }
-                    },
-                    { $sort : _sort },
-                    { $skip : skip!=undefined?skip:0 },
-                    { $limit : skip!=undefined?15:10000000000 },
-                    { $lookup:
-                        {
-                            from: ClientAzyk.collection.collectionName,
-                            let: { client: '$client' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$client', '$_id']}} },
-                            ],
-                            as: 'client'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : false,
-                            path : '$client'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { agent: '$agent' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$agent', '$_id']}} },
-                            ],
-                            as: 'agent'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$agent'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { forwarder: '$forwarder' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$forwarder', '$_id']}} },
-                            ],
-                            as: 'forwarder'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$forwarder'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { sale: '$sale' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$sale', '$_id']}} },
-                            ],
-                            as: 'sale'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$sale'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { provider: '$provider' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$provider', '$_id']}} },
-                            ],
-                            as: 'provider'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$provider'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { organization: '$organization' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$organization', '$_id']}} },
-                            ],
-                            as: 'organization'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$organization'
-                        }
-                    },
-                ])
-            return returneds
-        }
-        else if(user.role==='суперагент'){
-            if(date!=='') {
+            if (user.role === 'агент') {
                 let now = new Date()
-                now.setHours(3, 0, 0, 0)
                 now.setDate(now.getDate() + 1)
+                now.setHours(3, 0, 0, 0)
                 let differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
-                if(differenceDates>3) {
+                if (differenceDates > 3) {
                     dateStart = new Date()
                     dateEnd = new Date(dateStart)
                     dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 3))
                 }
             }
-            else {
-                dateEnd = new Date()
-                dateEnd.setHours(3, 0, 0, 0)
-                dateEnd.setDate(dateEnd.getDate() + 1)
-                dateStart = new Date(dateEnd)
-                dateStart = new Date(dateStart.setDate(dateStart.getDate() - 3))
+            let clients
+            if (['агент', 'менеджер'].includes(user.role)) {
+                clients = await DistrictAzyk
+                    .find({$or: [{manager: user.employment}, {agent: user.employment}]})
+                    .distinct('client').lean()
             }
-            let clients = await DistrictAzyk
-                .find({agent: user.employment})
-                .distinct('client')
-            let returneds =  await ReturnedAzyk.aggregate(
+            else {
+                clients = await DistrictAzyk.findOne({
+                    _id: district,
+                }).distinct('client').lean();
+            }
+            return await ReturnedAzyk.aggregate(
                 [
                     {
                         $match: {
                             del: {$ne: 'deleted'},
                             $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
-                            ...(search.length>0?{
+                            confirmationForwarder: true,
+                            client: {$in: clients},
+                            $or: [
+                                {organization: user.organization ? user.organization : new mongoose.Types.ObjectId(organization)},
+                                {sale: user.organization ? user.organization : new mongoose.Types.ObjectId(organization)},
+                                {provider: user.organization ? user.organization : new mongoose.Types.ObjectId(organization)},
+                            ]
+                        }
+                    },
+                    {$sort: {createdAt: -1}},
+                    {
+                        $lookup:
+                            {
+                                from: ClientAzyk.collection.collectionName,
+                                let: {client: '$client'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$client', '$_id']}}},
+                                ],
+                                as: 'client'
+                            }
+                    },
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: false,
+                            path: '$client'
+                        }
+                    },
+                    {
+                        $lookup:
+                            {
+                                from: EmploymentAzyk.collection.collectionName,
+                                let: {agent: '$agent'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$agent', '$_id']}}},
+                                ],
+                                as: 'agent'
+                            }
+                    },
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: true,
+                            path: '$agent'
+                        }
+                    },
+                    {
+                        $lookup:
+                            {
+                                from: EmploymentAzyk.collection.collectionName,
+                                let: {forwarder: '$forwarder'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$forwarder', '$_id']}}},
+                                ],
+                                as: 'forwarder'
+                            }
+                    },
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: true,
+                            path: '$forwarder'
+                        }
+                    },
+                    {
+                        $lookup:
+                            {
+                                from: OrganizationAzyk.collection.collectionName,
+                                let: {sale: '$sale'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$sale', '$_id']}}},
+                                ],
+                                as: 'sale'
+                            }
+                    },
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: true,
+                            path: '$sale'
+                        }
+                    },
+                    {
+                        $lookup:
+                            {
+                                from: OrganizationAzyk.collection.collectionName,
+                                let: {provider: '$provider'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$provider', '$_id']}}},
+                                ],
+                                as: 'provider'
+                            }
+                    },
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: true,
+                            path: '$provider'
+                        }
+                    },
+                    {
+                        $lookup:
+                            {
+                                from: OrganizationAzyk.collection.collectionName,
+                                let: {organization: '$organization'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$organization', '$_id']}}},
+                                ],
+                                as: 'organization'
+                            }
+                    },
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: true,
+                            path: '$organization'
+                        }
+                    },
+                ])
+        }
+    },
+    returnedHistorys: async(parent, {returned}, {user}) => {
+        if(['admin', 'менеджер', 'суперорганизация', 'организация'].includes(user.role)){
+            let historyReturneds =  await HistoryReturnedAzyk.find({returned: returned}).lean()
+            return historyReturneds
+        }
+    },
+    returneds: async(parent, {search, sort, date, skip, city}, {user}) => {
+        if(['admin', 'суперорганизация', 'организация', 'менеджер', 'суперагент', 'агент'].includes(user.role)) {
+            let dateStart;
+            let dateEnd;
+            let clients
+            if(date!==''){
+                let differenceDates = maxDates
+                dateStart = new Date(date)
+                dateStart.setHours(3, 0, 0, 0)
+                dateEnd = new Date(dateStart)
+                dateEnd.setDate(dateEnd.getDate() + 1)
+                if(['суперагент', 'агент'].includes(user.role)){
+                    let now = new Date()
+                    now.setHours(3, 0, 0, 0)
+                    now.setDate(now.getDate() + 1)
+                    differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
+                    if(differenceDates>maxDates) {
+                        dateStart = new Date()
+                        dateEnd = new Date(dateStart)
+                        dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - maxDates))
+                    }
+                }
+            }
+            else if(['суперагент', 'агент'].includes(user.role)){
+                dateEnd = new Date()
+                dateEnd.setHours(3, 0, 0, 0)
+                dateEnd.setDate(dateEnd.getDate() + 1)
+                dateStart = new Date(dateEnd)
+                dateStart = new Date(dateStart.setDate(dateStart.getDate() - maxDates))
+            }
+            if(['суперагент', 'агент', 'менеджер'].includes(user.role)){
+                clients = await DistrictAzyk
+                    .find({$or: [{manager: user.employment}, {agent: user.employment}]})
+                    .distinct('client')
+                    .lean()
+            }
+            let _sort = {}
+            _sort[sort[0]==='-'?sort.substring(1):sort]=sort[0]==='-'?-1:1
+            let _organizations;
+            let _clients;
+            if(search.length>0){
+                _organizations = await OrganizationAzyk.find({
+                    name: {'$regex': search, '$options': 'i'}
+                }).distinct('_id').lean()
+                _clients = await ClientAzyk.find({
+                    name: {'$regex': search, '$options': 'i'}
+                }).distinct('_id').lean()
+            }
+            let organizations
+            if (user.role==='суперагент'){
+                organizations = await OrganizationAzyk.find({
+                    superagent: true
+                })
+                    .distinct('_id')
+                    .lean()
+            }
+            return await ReturnedAzyk.aggregate(
+                [
+                    {
+                        $match: {
+                            del: {$ne: 'deleted'},
+                            ...city ? {city: city} : {},
+                            ...(dateStart?{$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}:{}),
+                            ...['суперагент', 'агент'].includes(user.role)&&clients.length||'менеджер'===user.role?{client: {$in: clients}}:['суперагент', 'агент'].includes(user.role) ? {agent: user.employment} : {},
+                            ...user.role==='суперагент'?{organization: {$in: organizations}}:{},
+                            ...(search.length > 0 ? {
                                     $or: [
                                         {number: {'$regex': search, '$options': 'i'}},
                                         {info: {'$regex': search, '$options': 'i'}},
@@ -1127,536 +594,124 @@ const resolvers = {
                                         {provider: {$in: _organizations}},
                                     ]
                                 }
-                                :{}),
-                            client: {$in: clients},
-                        }
-                    },
-                    { $sort : _sort },
-                    { $skip : skip!=undefined?skip:0 },
-                    { $limit : skip!=undefined?15:10000000000 },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { sale: '$sale' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$sale', '$_id']}} },
-                            ],
-                            as: 'sale'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$sale'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { provider: '$provider' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$provider', '$_id']}} },
-                            ],
-                            as: 'provider'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$provider'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: ClientAzyk.collection.collectionName,
-                            let: { client: '$client' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$client', '$_id']}} },
-                            ],
-                            as: 'client'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : false, // this remove the object which is null
-                            path : '$client'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { agent: '$agent' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$agent', '$_id']}} },
-                            ],
-                            as: 'agent'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$agent'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { forwarder: '$forwarder' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$forwarder', '$_id']}} },
-                            ],
-                            as: 'forwarder'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$forwarder'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { organization: '$organization' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$organization', '$_id']}} },
-                            ],
-                            as: 'organization'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$organization'
-                        }
-                    },
-                ])
-            return returneds
-        }
-        else if(user.role==='агент'){
-            if(date!=='') {
-                let now = new Date()
-                now.setDate(now.getDate() + 1)
-                now.setHours(3, 0, 0, 0)
-                let differenceDates = (now - dateStart) / (1000 * 60 * 60 * 24)
-                if(differenceDates>3) {
-                    dateStart = new Date()
-                    dateEnd = new Date(dateStart)
-                    dateEnd = new Date(dateEnd.setDate(dateEnd.getDate() - 3))
-                }
-            }
-            else {
-                dateEnd = new Date()
-                dateEnd.setDate(dateEnd.getDate() + 1)
-                dateEnd.setHours(3, 0, 0, 0)
-                dateStart = new Date(dateEnd)
-                dateStart.setDate(dateStart.getDate() - 3)
-            }
-            let clients = await DistrictAzyk
-                .find({agent: user.employment})
-                .distinct('client')
-            let returneds =  await ReturnedAzyk.aggregate(
-                [
-                    {
-                        $match: {
-                            del: {$ne: 'deleted'},
-                            client: {$in: clients},
-                            $and: [
-                                {createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}},
+                                : {}),
+                            ...user.organization?
                                 {
                                     $or: [
                                         {organization: user.organization},
                                         {sale: user.organization},
                                         {provider: user.organization},
                                     ],
-                                },
-                                ...(search.length>0?[
-                                    {
-                                        $or: [
-                                            {number: {'$regex': search, '$options': 'i'}},
-                                            {info: {'$regex': search, '$options': 'i'}},
-                                            {address: {'$regex': search, '$options': 'i'}},
-                                            {client: {$in: _clients}},
-                                            {organization: {$in: _organizations}},
-                                            {sale: {$in: _organizations}},
-                                            {provider: {$in: _organizations}},
-                                        ]
-                                    }
-                                    ]:[])
-                            ],
+                                }:{},
                         }
                     },
-                    { $sort : _sort },
-                    { $skip : skip!=undefined?skip:0 },
-                    { $limit : skip!=undefined?15:10000000000 },
-                    { $lookup:
-                        {
-                            from: ClientAzyk.collection.collectionName,
-                            let: { client: '$client' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$client', '$_id']}} },
-                            ],
-                            as: 'client'
+                    {$sort: _sort},
+                    {$skip: skip != undefined ? skip : 0},
+                    {$limit: skip != undefined ? 15 : 10000000000},
+                    {
+                        $lookup:
+                            {
+                                from: ClientAzyk.collection.collectionName,
+                                let: {client: '$client'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$client', '$_id']}}},
+                                ],
+                                as: 'client'
+                            }
+                    },
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: false,
+                            path: '$client'
                         }
                     },
                     {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : false, // this remove the object which is null
-                            path : '$client'
-                        }
+                        $lookup:
+                            {
+                                from: EmploymentAzyk.collection.collectionName,
+                                let: {agent: '$agent'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$agent', '$_id']}}},
+                                ],
+                                as: 'agent'
+                            }
                     },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { agent: '$agent' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$agent', '$_id']}} },
-                            ],
-                            as: 'agent'
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: true,
+                            path: '$agent'
                         }
                     },
                     {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$agent'
-                        }
+                        $lookup:
+                            {
+                                from: EmploymentAzyk.collection.collectionName,
+                                let: {forwarder: '$forwarder'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$forwarder', '$_id']}}},
+                                ],
+                                as: 'forwarder'
+                            }
                     },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { forwarder: '$forwarder' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$forwarder', '$_id']}} },
-                            ],
-                            as: 'forwarder'
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: true,
+                            path: '$forwarder'
                         }
                     },
                     {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$forwarder'
-                        }
+                        $lookup:
+                            {
+                                from: OrganizationAzyk.collection.collectionName,
+                                let: {sale: '$sale'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$sale', '$_id']}}},
+                                ],
+                                as: 'sale'
+                            }
                     },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { sale: '$sale' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$sale', '$_id']}} },
-                            ],
-                            as: 'sale'
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: true,
+                            path: '$sale'
                         }
                     },
                     {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$sale'
-                        }
+                        $lookup:
+                            {
+                                from: OrganizationAzyk.collection.collectionName,
+                                let: {provider: '$provider'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$provider', '$_id']}}},
+                                ],
+                                as: 'provider'
+                            }
                     },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { provider: '$provider' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$provider', '$_id']}} },
-                            ],
-                            as: 'provider'
+                    {
+                        $unwind: {
+                            preserveNullAndEmptyArrays: true,
+                            path: '$provider'
                         }
                     },
                     {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$provider'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { organization: '$organization' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$organization', '$_id']}} },
-                            ],
-                            as: 'organization'
-                        }
+                        $lookup:
+                            {
+                                from: OrganizationAzyk.collection.collectionName,
+                                let: {organization: '$organization'},
+                                pipeline: [
+                                    {$match: {$expr: {$eq: ['$$organization', '$_id']}}},
+                                ],
+                                as: 'organization'
+                            }
                     },
                     {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$organization'
+                        $unwind: {
+                            preserveNullAndEmptyArrays: true,
+                            path: '$organization'
                         }
                     },
                 ])
-            return returneds
-        }
-        else if(user.role==='менеджер'){
-            let clients = await DistrictAzyk
-                .find({manager: user.employment})
-                .distinct('client')
-            let returneds =  await ReturnedAzyk.aggregate(
-                [
-                    {
-                        $match:{
-                            del: {$ne: 'deleted'},
-                            client: {$in: clients},
-                            $and: [
-                                ...(date===''?[]:[{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]),
-                                {
-                                    $or: [
-                                        {organization: user.organization},
-                                        {sale: user.organization},
-                                        {provider: user.organization},
-                                    ]
-                                },
-                                ...(search.length>0?[{
-                                        $or: [
-                                            {number: {'$regex': search, '$options': 'i'}},
-                                            {info: {'$regex': search, '$options': 'i'}},
-                                            {address: {'$regex': search, '$options': 'i'}},
-                                            {client: {$in: _clients}},
-                                            {organization: {$in: _organizations}},
-                                            {sale: {$in: _organizations}},
-                                            {provider: {$in: _organizations}},
-                                        ]
-                                    }]
-                                    :[{
-                                    }]),
-                            ]
-                        }
-                    },
-                    { $sort : _sort },
-                    { $skip : skip!=undefined?skip:0 },
-                    { $limit : skip!=undefined?15:10000000000 },
-                    { $lookup:
-                        {
-                            from: ClientAzyk.collection.collectionName,
-                            let: { client: '$client' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$client', '$_id']}} },
-                            ],
-                            as: 'client'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : false, // this remove the object which is null
-                            path : '$client'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { agent: '$agent' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$agent', '$_id']}} },
-                            ],
-                            as: 'agent'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$agent'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { forwarder: '$forwarder' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$forwarder', '$_id']}} },
-                            ],
-                            as: 'forwarder'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$forwarder'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { organization: '$organization' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$organization', '$_id']}} },
-                            ],
-                            as: 'organization'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$organization'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { sale: '$sale' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$sale', '$_id']}} },
-                            ],
-                            as: 'sale'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$sale'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { provider: '$provider' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$provider', '$_id']}} },
-                            ],
-                            as: 'provider'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$provider'
-                        }
-                    },
-                ])
-            return returneds
-        }
-        else if(['суперорганизация', 'организация'].includes(user.role)) {
-            let returneds =  await ReturnedAzyk.aggregate(
-                [
-                    {
-                        $match:{
-                            del: {$ne: 'deleted'},
-                            $and: [
-                                ...(date===''?[]:[{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]),
-                                {
-                                    $or: [
-                                        {organization: user.organization},
-                                        {sale: user.organization},
-                                        {provider: user.organization},
-                                    ]
-                                },
-                                ...(search.length>0?[{
-                                        $or: [
-                                            {number: {'$regex': search, '$options': 'i'}},
-                                            {info: {'$regex': search, '$options': 'i'}},
-                                            {address: {'$regex': search, '$options': 'i'}},
-                                            {client: {$in: _clients}},
-                                            {organization: {$in: _organizations}},
-                                            {sale: {$in: _organizations}},
-                                            {provider: {$in: _organizations}},
-                                        ]
-                                    }]
-                                    :[{
-                                    }]),
-                            ]
-                        }
-                    },
-                    { $sort : _sort },
-                    { $skip : skip!=undefined?skip:0 },
-                    { $limit : skip!=undefined?15:10000000000 },
-                    { $lookup:
-                        {
-                            from: ClientAzyk.collection.collectionName,
-                            let: { client: '$client' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$client', '$_id']}} },
-                            ],
-                            as: 'client'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : false, // this remove the object which is null
-                            path : '$client'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { agent: '$agent' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$agent', '$_id']}} },
-                            ],
-                            as: 'agent'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$agent'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: EmploymentAzyk.collection.collectionName,
-                            let: { forwarder: '$forwarder' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$forwarder', '$_id']}} },
-                            ],
-                            as: 'forwarder'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$forwarder'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { organization: '$organization' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$organization', '$_id']}} },
-                            ],
-                            as: 'organization'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$organization'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { sale: '$sale' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$sale', '$_id']}} },
-                            ],
-                            as: 'sale'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$sale'
-                        }
-                    },
-                    { $lookup:
-                        {
-                            from: OrganizationAzyk.collection.collectionName,
-                            let: { provider: '$provider' },
-                            pipeline: [
-                                { $match: {$expr:{$eq:['$$provider', '$_id']}} },
-                            ],
-                            as: 'provider'
-                        }
-                    },
-                    {
-                        $unwind:{
-                            preserveNullAndEmptyArrays : true,
-                            path : '$provider'
-                        }
-                    },
-                ])
-            return returneds
+
         }
     },
     sortReturned: async() => {
@@ -1695,7 +750,7 @@ const resolversMutation = {
                 {sales: organization},
                 {provider: organization}
             ]
-        }).lean()
+        }).select('distributer sales provider').lean()
         let districtSales = null;
         let districtProvider = null;
         let city = (await ClientAzyk.findById(client).select('city').lean()).city
@@ -1704,7 +759,7 @@ const resolversMutation = {
                 let findDistrict = await DistrictAzyk.findOne({
                     organization: distributers[i].distributer,
                     client: client
-                })
+                }).select('agent manager organization').lean()
                 if(findDistrict&&distributers[i].sales.toString().includes(organization))
                     districtSales = findDistrict
                 if(findDistrict&&distributers[i].provider.toString().includes(organization))
@@ -1716,7 +771,7 @@ const resolversMutation = {
                 organization: organization,
                 client: client
             })
-                .lean()
+                .select('agent manager organization').lean()
             if(!districtSales)
                 districtSales = findDistrict
             if(!districtProvider)
@@ -1734,7 +789,7 @@ const resolversMutation = {
         let allSize = 0
         if(!objectReturned){
             let number = randomstring.generate({length: 12, charset: 'numeric'});
-            while (await ReturnedAzyk.findOne({number: number}))
+            while (await ReturnedAzyk.findOne({number: number}).select('_id').lean())
                 number = randomstring.generate({length: 12, charset: 'numeric'});
             for(let i = 0; i< items.length; i++){
                 allPrice+=items[i].allPrice
@@ -1800,7 +855,7 @@ const resolversMutation = {
                 let findDistrict = await DistrictAzyk.findOne({
                     organization: objects[i].organization,
                     client: objects[i].client
-                })
+                }).select('agent manager').lean()
                 objects[i].del = 'deleted'
                 await objects[i].save()
                 pubsub.publish(RELOAD_RETURNED, { reloadReturned: {
@@ -1837,13 +892,13 @@ const resolversMutation = {
         let district = null;
         let distributers = await DistributerAzyk.find({
             sales: object.organization._id
-        })
+        }).select('distributer').lean()
         if(distributers.length>0){
             for(let i=0; i<distributers.length; i++){
                 let findDistrict = await DistrictAzyk.findOne({
                     organization: distributers[i].distributer,
                     client: object.client._id
-                })
+                }).select('agent manager').lean()
                 if(findDistrict)
                     district = findDistrict
             }
@@ -1852,7 +907,7 @@ const resolversMutation = {
             let findDistrict = await DistrictAzyk.findOne({
                 organization: object.organization._id,
                 client: object.client._id
-            })
+            }).select('agent manager').lean()
             if(findDistrict)
                 district = findDistrict
         }
@@ -1879,7 +934,7 @@ const resolversMutation = {
             editor = `клиент ${object.client.name}`
         }
         else{
-            let employment = await EmploymentAzyk.findOne({user: user._id})
+            let employment = await EmploymentAzyk.findOne({user: user._id}).select('name').lean()
             editor = `${user.role} ${employment.name}`
         }
         object.editor = editor

@@ -1,9 +1,7 @@
 const mongoose = require('mongoose');
 const OrganizationAzyk = require('../models/organizationAzyk');
-const BonusAzyk = require('../models/bonusAzyk');
 const AutoAzyk = require('../models/autoAzyk');
 const EquipmentAzyk = require('../models/equipmentAzyk');
-const BonusClientAzyk = require('../models/bonusClientAzyk');
 const EmploymentAzyk = require('../models/employmentAzyk');
 const DeliveryDateAzyk = require('../models/deliveryDateAzyk');
 const DistributerAzyk = require('../models/distributerAzyk');
@@ -48,7 +46,7 @@ const type = `
 `;
 
 const query = `
-    brandOrganizations(search: String!, sort: String!, filter: String!, city: String): [Organization]
+    brandOrganizations(search: String!, filter: String!, city: String): [Organization]
     organizations(search: String!, sort: String!, filter: String!, city: String): [Organization]
     organizationsTrash(search: String!): [Organization]
     organization(_id: ID!): Organization
@@ -65,102 +63,71 @@ const mutation = `
 `;
 
 const resolvers = {
-    brandOrganizations: async(parent, {search, sort, filter, city}, {user}) => {
-        let brandOrganizations = await ItemAzyk.find({
-            ...user.role==='admin'?{}:{status: 'active'},
-            del: {$ne: 'deleted'}
-        }).distinct('organization')
-        if('admin'===user.role){
-            return await OrganizationAzyk.find({
-                _id: {$in: brandOrganizations},
-                name: {'$regex': search, '$options': 'i'},
-                status: filter.length===0?{'$regex': filter, '$options': 'i'}:filter,
-                ...city?{cities: city}:{},
-                del: {$ne: 'deleted'}
-            })
-                .sort('-priotiry')
-                .sort(sort)
-        }
-        else if('суперагент'===user.role){
-            return await OrganizationAzyk.find({
-                _id: {$in: brandOrganizations},
-                name: {'$regex': search, '$options': 'i'},
-                status: filter.length === 0 ? {'$regex': filter, '$options': 'i'} : filter,
-                del: {$ne: 'deleted'},
-                superagent: true
-            })
-                .sort('-priotiry')
-                .sort(sort)
-        }
-        else if(['суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
-            brandOrganizations = await DistributerAzyk.findOne({
-                distributer: user.organization
-            }).distinct('sales')
-            brandOrganizations = [...brandOrganizations, user.organization]
-            return await OrganizationAzyk.find({
-                _id: {$in: brandOrganizations},
-                name: {'$regex': search, '$options': 'i'},
-                status: 'active',
-                del: {$ne: 'deleted'}
-            })
-                .sort('-priotiry')
-                .sort(sort)
-        }
-        else if(user.role==='client') {
+    brandOrganizations: async(parent, {search, filter, city}, {user}) => {
+        if(['admin', 'экспедитор', 'суперорганизация', 'организация', 'менеджер', 'агент', 'суперагент', 'суперэкспедитор', 'client'].includes(user.role)){
             let organizationsRes = []
+            let brandOrganizations = await ItemAzyk.find({
+                ...user.role==='admin'?{}:{status: 'active'},
+                del: {$ne: 'deleted'}
+            }).distinct('organization').lean()
+            if(user.organization){
+                brandOrganizations = await DistributerAzyk.findOne({
+                    distributer: user.organization
+                }).distinct('sales').lean()
+                brandOrganizations = [...brandOrganizations, user.organization]
+            }
             const organizations = await OrganizationAzyk.find({
                 _id: {$in: brandOrganizations},
                 name: {'$regex': search, '$options': 'i'},
-                status: 'active',
+                status: 'admin'===user.role?filter.length===0?{'$regex': filter, '$options': 'i'}:filter:'active',
+                ...city?{cities: city}:{},
                 del: {$ne: 'deleted'},
-                cities: user.city
+                ...['суперагент', 'суперэкспедитор'].includes(user.role)?{superagent: true}:{},
+                ...user.city?{cities: user.city}:{}
             })
+                .select('name _id image miniInfo onlyIntegrate onlyDistrict')
                 .sort('-priotiry')
-                .sort(sort)
-            for(let i=0; i<organizations.length; i++) {
-                if(organizations[i].onlyIntegrate&&organizations[i].onlyDistrict){
-                    let district = await DistrictAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
-                    let integrate = await Integrate1CAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
-                    if(integrate&&district){
-                        organizationsRes.push(organizations[i])
+                .lean()
+            if(user.role==='client') {
+                for(let i=0; i<organizations.length; i++) {
+                    if(organizations[i].onlyIntegrate&&organizations[i].onlyDistrict){
+                        let district = await DistrictAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
+                        let integrate = await Integrate1CAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
+                        if(integrate&&district){
+                            organizationsRes.push(organizations[i])
+                        }
                     }
-                }
-                else if(organizations[i].onlyDistrict){
-                    let district = await DistrictAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
-                    if(district){
-                        organizationsRes.push(organizations[i])
+                    else if(organizations[i].onlyDistrict){
+                        let district = await DistrictAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
+                        if(district){
+                            organizationsRes.push(organizations[i])
+                        }
                     }
-                }
-                else if(organizations[i].onlyIntegrate){
-                    let integrate = await Integrate1CAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
-                    if(integrate){
-                        organizationsRes.push(organizations[i])
+                    else if(organizations[i].onlyIntegrate){
+                        let integrate = await Integrate1CAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
+                        if(integrate){
+                            organizationsRes.push(organizations[i])
+                        }
                     }
-                }
-                else organizationsRes.push(organizations[i])
+                    else organizationsRes.push(organizations[i])
 
+                }
+                return organizationsRes
             }
-            return organizationsRes
+            else return organizations
         }
     },
     organizations: async(parent, {search, sort, filter, city}, {user}) => {
-        if(user.role==='admin'){
-            return await OrganizationAzyk.find({
-                name: {'$regex': search, '$options': 'i'},
-                status: filter.length===0?{'$regex': filter, '$options': 'i'}:filter,
-                ...city?{cities: city}:{},
-                del: {$ne: 'deleted'}
-            })
-                .sort('-priotiry')
-                .sort(sort)
-        } else
-            return await OrganizationAzyk.find({
-                name: {'$regex': search, '$options': 'i'},
-                status: 'active',
-                del: {$ne: 'deleted'}
-            })
-                .sort('-priotiry')
-                .sort(sort)
+        return await OrganizationAzyk.find({
+            name: {'$regex': search, '$options': 'i'},
+            status: user.role==='admin'?filter.length===0?{'$regex': filter, '$options': 'i'}:filter:'active',
+            ...city?{cities: city}:{},
+            del: {$ne: 'deleted'}
+        })
+            .select('name _id image miniInfo')
+            .sort('-priotiry')
+            .sort(sort)
+            .lean()
     },
     organizationsTrash: async(parent, {search}, {user}) => {
         if(user.role==='admin'){
@@ -168,7 +135,9 @@ const resolvers = {
                 name: {'$regex': search, '$options': 'i'},
                 del: 'deleted'
             })
+                .select('name _id image miniInfo')
                 .sort('-createdAt')
+                .lean()
         }
     },
     organization: async(parent, {_id}) => {
@@ -176,6 +145,7 @@ const resolvers = {
             return await OrganizationAzyk.findOne({
                     _id: _id
                 })
+                .lean()
     },
     sortOrganization: async(parent, ctx, {user}) => {
         let sort = [
@@ -247,12 +217,6 @@ const resolversMutation = {
             if(pass)
                 objectOrganization.pass = pass
             objectOrganization = await OrganizationAzyk.create(objectOrganization)
-            let objectBonus = new BonusAzyk({
-                target: 0,
-                bonus: 0,
-                organization: objectOrganization._id
-            });
-            await BonusAzyk.create(objectBonus)
         }
         return {data: 'OK'};
     },
@@ -297,10 +261,10 @@ const resolversMutation = {
     deleteOrganization: async(parent, { _id }, {user}) => {
         if(user.role==='admin'){
             for(let i=0; i<_id.length; i++) {
-                let items = await ItemAzyk.find({organization: _id[i]}).distinct('_id')
+                let items = await ItemAzyk.find({organization: _id[i]}).distinct('_id').lean()
                 await BasketAzyk.deleteMany({item: {$in: items}})
                 await ItemAzyk.updateMany({organization: _id[i]}, {del: 'deleted', status: 'deactive'})
-                let users = await EmploymentAzyk.find({organization: _id[i]}).distinct('user')
+                let users = await EmploymentAzyk.find({organization: _id[i]}).distinct('user').lean()
                 await UserAzyk.updateMany({_id: {$in: users}}, {status: 'deactive'})
                 await EmploymentAzyk.updateMany({organization: _id[i]}, {del: 'deleted'})
                 await Integrate1CAzyk.deleteMany({organization: _id[i]})
@@ -318,10 +282,6 @@ const resolversMutation = {
                         distributers[i].provider.splice(_id[i], 1)
                     await distributers[i].save()
                 }
-                let bonus = await BonusAzyk.find({organization: _id[i]});
-                bonus = bonus.map(element=>element._id)
-                await BonusClientAzyk.deleteMany({bonus: {$in: bonus}})
-                await BonusAzyk.deleteMany({organization: _id[i]})
                 await AutoAzyk.deleteMany({organization: _id[i]})
                 await EquipmentAzyk.deleteMany({organization: _id[i]})
                 await OrganizationAzyk.updateMany({_id: _id[i]}, {del: 'deleted', status: 'deactive'})
@@ -338,8 +298,7 @@ const resolversMutation = {
             for(let i=0; i<objects.length; i++){
                 objects[i].status = objects[i].status==='active'?'deactive':'active'
                 await EmploymentAzyk.updateMany({organization: objects[i]._id}, {status: objects[i].status})
-                let items = await ItemAzyk.find({organization: objects[i]._id})
-                items = items.map(element=>element._id)
+                let items = await ItemAzyk.find({organization: objects[i]._id}).distinct('_id').lean()
                 await BasketAzyk.deleteMany({item: {$in: items}})
                 await ItemAzyk.updateMany({organization: objects[i]._id}, {status: objects[i].status})
                 await objects[i].save()

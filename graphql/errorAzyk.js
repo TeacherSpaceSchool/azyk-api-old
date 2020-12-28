@@ -20,7 +20,7 @@ const mutation = `
 const resolvers = {
     errors: async(parent, ctx, {user}) => {
         if('admin'===user.role){
-            return await ErrorAzyk.find().sort('-createdAt')
+            return await ErrorAzyk.find().sort('-createdAt').lean()
         }
     }
 };

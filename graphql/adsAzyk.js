@@ -36,14 +36,13 @@ const type = `
 const query = `
     checkAdss(invoice: ID!): [ID]
     adss(search: String!, organization: ID!): [Ads]
-    allAdss: [Ads]
     adssTrash(search: String!): [Ads]
     adsOrganizations: [Organization]
     ads: Ads
 `;
 
 const mutation = `
-    addAds(xid: String, image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
+    addAds(xid: String, image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Ads
     setAds(xid: String, _id: ID!, image: Upload, url: String, title: String, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
     restoreAds(_id: [ID]!): Data
     deleteAds(_id: [ID]!): Data
@@ -51,7 +50,7 @@ const mutation = `
 
 const checkAdss = async(invoice) => {
     invoice = await InvoiceAzyk.findOne({_id: invoice})
-        .select('returnedPrice organization allPrice')
+        .select('returnedPrice organization allPrice orders')
         .populate({
             path: 'orders',
             select: 'count returned item'
@@ -62,7 +61,9 @@ const checkAdss = async(invoice) => {
     let adss = await AdsAzyk.find({
         del: {$ne: 'deleted'},
         organization: invoice.organization
-    }).sort('-createdAt')
+    })
+        .sort('-createdAt')
+        .lean()
     for(let i=0; i<adss.length; i++) {
         if(adss[i].targetType==='Цена'&&adss[i].targetPrice&&adss[i].targetPrice>0){
             if((invoice.allPrice-invoice.returnedPrice)>=adss[i].targetPrice) {
@@ -119,56 +120,80 @@ const checkAdss = async(invoice) => {
 
 const resolvers = {
     checkAdss: async(parent, {invoice}) => await checkAdss(invoice),
-    adssTrash: async(parent, {search}) => {
-        return await AdsAzyk.find({
-            del: 'deleted',
-            title: {'$regex': search, '$options': 'i'}
-        }).populate('item').sort('-createdAt')
+    adssTrash: async(parent, {search}, {user}) => {
+        if(user.role) {
+            return await AdsAzyk.find({
+                del: 'deleted',
+                title: {'$regex': search, '$options': 'i'}
+            })
+                .populate({
+                    path: 'item',
+                    select: 'name _id'
+                })
+                .sort('-createdAt')
+                .lean()
+        }
     },
-    adss: async(parent, {search, organization}) => {
-        let res = await AdsAzyk.find({
-            del: {$ne: 'deleted'},
-            title: {'$regex': search, '$options': 'i'},
-            organization: organization
-        }).populate('item').sort('-createdAt')
-        return res
-    },
-    allAdss: async() => {
-        let adss = await AdsAzyk.find({
-            del: {$ne: 'deleted'}
-        }).sort('-createdAt')
-        adss = adss.sort( () => {
-            return Math.random() - 0.5;
-        });
-        return adss
+    adss: async(parent, {search, organization}, {user}) => {
+        if(user.role) {
+            let res = await AdsAzyk.find({
+                del: {$ne: 'deleted'},
+                title: {'$regex': search, '$options': 'i'},
+                organization: organization
+            })
+                .populate({
+                    path: 'item',
+                    select: 'name _id'
+                })
+                .sort('-createdAt').lean()
+            return res
+        }
     },
     adsOrganizations: async(parent, ctx, {user}) => {
-        if(user.organization){
-            let distributer =  await DistributerAzyk.findOne({distributer: user.organization})
-                .populate('sales')
-                .populate('distributer')
-            if(distributer){
-                return [distributer.distributer, ...distributer.sales]
+        if(user.role) {
+            if (user.organization) {
+                let distributer = await DistributerAzyk.findOne({distributer: user.organization})
+                    .select('distributer sales')
+                    .populate({
+                        path: 'sales',
+                        select: 'image name miniInfo _id'
+                    })
+                    .populate({
+                        path: 'distributer',
+                        select: 'image name miniInfo _id'
+                    })
+                    .lean()
+                if (distributer) {
+                    return [distributer.distributer, ...distributer.sales]
+                }
+                else {
+                    distributer = await OrganizationAzyk
+                        .find({_id: user.organization})
+                        .select('image name miniInfo _id')
+                        .lean()
+                    return distributer
+                }
             }
-            else{
-                distributer = await OrganizationAzyk.find({
-                    _id: user.organization})
-                return distributer
+            else {
+                let organizations = await AdsAzyk.find({del: {$ne: 'deleted'}}).distinct('organization').lean()
+                organizations = await OrganizationAzyk.find({
+                    _id: {$in: organizations},
+                    status: 'active',
+                    ...user.city ? {cities: user.city} : {},
+                    del: {$ne: 'deleted'}
+                })
+                    .select('image name miniInfo _id')
+                    .sort('name')
+                    .lean()
+                return organizations
             }
-        }
-        else {
-            let organizations = await AdsAzyk.find({del: {$ne: 'deleted'}}).distinct('organization')
-            organizations = await OrganizationAzyk.find({
-                _id: {$in: organizations},
-                status: 'active',
-                ...user.city?{city: user.city}:{},
-                del: {$ne: 'deleted'}}).sort('name')
-            return organizations
         }
     },
-    ads: async() => {
-        let ads = await AdsAzyk.findRandom().limit(1)
-        return ads[0]
+    ads: async(parent, ctx, {user}) => {
+        if(user.role) {
+            let ads = await AdsAzyk.findRandom().limit(1).lean()
+            return ads[0]
+        }
     }
 };
 
@@ -181,20 +206,19 @@ const resolversMutation = {
                 image: urlMain+filename,
                 url: url,
                 title: title,
-                organization: organization,
+                organization: user.organization?user.organization:organization,
                 item: item,
                 targetItems: targetItems,
                 targetPrice: targetPrice,
                 multiplier: multiplier,
                 xid: xid,
-                targetType: targetType
+                targetType: targetType,
             });
-            if(count)
+            if(count!=undefined)
                 _object.count = count
-            if(['суперорганизация', 'организация'].includes(user.role)) _object.organization = user.organization
-            await AdsAzyk.create(_object)
+            _object = await AdsAzyk.create(_object)
+            return _object
         }
-        return {data: 'OK'};
     },
     setAds: async(parent, {xid, _id, image, url, title, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
@@ -226,7 +250,7 @@ const resolversMutation = {
     },
     deleteAds: async(parent, { _id }, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
-            let objects = await AdsAzyk.find({_id: {$in: _id}})
+            let objects = await AdsAzyk.find({_id: {$in: _id}}).select('image').lean()
             for(let i=0; i<objects.length; i++){
                 await deleteFile(objects[i].image)
             }

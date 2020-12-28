@@ -78,50 +78,17 @@ const mutation = `
 
 const resolvers = {
     templateForms: async(parent, {search, organization, skip}, {user}) => {
-        if(user.role==='admin'){
-            let templateForms = await TemplateFormAzyk.find({...organization?{organization: organization}:{}, title: {'$regex': search, '$options': 'i'}})
-                .populate({
-                    path: 'organization',
-                    select: 'name _id'
-                })
-                .sort('-createdAt')
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .lean()
-            return templateForms
-        }
-        else if(['суперорганизация', 'организация', 'менеджер'].includes(user.role)){
-            let templateForms = await TemplateFormAzyk.find({title: {'$regex': search, '$options': 'i'}, organization: user.organization})
-                .populate({
-                    path: 'organization',
-                    select: 'name _id'
-                })
-                .sort('-createdAt')
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .lean()
-            return templateForms
-        }
-        else if(user.role==='агент'){
-            let templateForms = await TemplateFormAzyk.find({title: {'$regex': search, '$options': 'i'}, organization: user.organization, editorEmployment: true})
-                .populate({
-                    path: 'organization',
-                    select: 'name _id'
-                })
-                .sort('-createdAt')
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .lean()
-            return templateForms
-        }
-        else if(user.role==='client'){
-            let templateForms = await FormAzyk.find({client: user.client}).distinct('templateForm').lean()
-            templateForms = await TemplateFormAzyk.find({
-                ...organization?{organization: organization}:{},
+        if(['client', 'агент', 'admin', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
+            let templateForms
+            if(user.role==='client')
+                templateForms = await FormAzyk.find({client: user.client}).distinct('templateForm').lean()
+            return await TemplateFormAzyk.find({
+                ...organization||user.organization?{organization: user.organization?user.organization:organization}:{},
                 title: {'$regex': search, '$options': 'i'},
-                _id: {$nin: templateForms},
-                editorClient: true
+                ...user.role==='агент'?{editorEmployment: true}:{},
+                ...user.role==='client'?{editorClient: true, _id: {$nin: templateForms}}:{},
             })
+                .select('_id createdAt title organization')
                 .populate({
                     path: 'organization',
                     select: 'name _id'
@@ -130,7 +97,6 @@ const resolvers = {
                 .skip(skip != undefined ? skip : 0)
                 .limit(skip != undefined ? 15 : 10000000000)
                 .lean()
-            return templateForms
         }
     },
     analysisForms: async(parent, {templateForm}, {user}) => {
@@ -193,7 +159,7 @@ const resolvers = {
                 })
             }
             data.editor = data.editor.sort(function (a, b) {
-                return a.count - b.count
+                return b.count - a.count
             });
             keys = Object.keys(answers)
             let question
@@ -210,7 +176,7 @@ const resolvers = {
                     })
                 }
                 question.answers = question.answers.sort(function (a, b) {
-                    return a.count - b.count
+                    return b.count - a.count
                 });
                 data.questions.push(question)
             }
@@ -218,35 +184,13 @@ const resolvers = {
         }
     },
     templateForm: async(parent, {_id}, {user}) => {
-        if(user.role==='admin'){
-            return await TemplateFormAzyk.findOne({_id: _id})
-                .populate({
-                    path: 'organization',
-                    select: 'name _id'
-                })
-                .sort('-createdAt')
-                .lean()
-        }
-        else if(['суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
-            return await TemplateFormAzyk.findOne({_id: _id, organization: user.organization})
-                .populate({
-                    path: 'organization',
-                    select: 'name _id'
-                })
-                .sort('-createdAt')
-                .lean()
-        }
-        else if(user.role==='агент'){
-            return await TemplateFormAzyk.findOne({_id: _id, organization: user.organization, editorEmployment: true})
-                .populate({
-                    path: 'organization',
-                    select: 'name _id'
-                })
-                .sort('-createdAt')
-                .lean()
-        }
-        else if(user.role==='client'){
-            return await TemplateFormAzyk.findOne({_id: _id, editorClient: true})
+        if(['суперорганизация', 'организация', 'менеджер', 'агент', 'admin', 'client'].includes(user.role)){
+            return await TemplateFormAzyk.findOne({
+                _id: _id,
+                ...user.organization?{organization: user.organization}:{},
+                ...user.role==='агент'?{editorEmployment: true}:{},
+                ...user.role==='client'?{editorClient: true}:{}
+            })
                 .populate({
                     path: 'organization',
                     select: 'name _id'
@@ -256,69 +200,41 @@ const resolvers = {
         }
     },
     forms: async(parent, {templateForm, search, skip}, {user}) => {
-        let _clients;
-        if(search.length>0){
-            _clients = await ClientAzyk.find({
-                name: {'$regex': search, '$options': 'i'}
-            }).distinct('_id').lean()
-        }
-        if(user.role==='admin'){
-            let forms = await FormAzyk.find({templateForm: templateForm, ...search.length>0?{client: {$in: _clients}}:{}})
-                .populate({
-                    path: 'client',
-                    select: 'name _id address'
-                })
-                .populate({
-                    path: 'agent',
-                    select: 'name _id'
-                })
-                .sort('-createdAt')
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .lean()
-            return forms
-        }
-        else if(['суперорганизация', 'организация', 'менеджер'].includes(user.role)){
-            let forms = await FormAzyk.find({templateForm: templateForm, organization: user.organization, ...search.length>0?{client: {$in: _clients}}:{}})
-                .populate({
-                    path: 'client',
-                    select: 'name _id address'
-                })
-                .populate({
-                    path: 'agent',
-                    select: 'name _id'
-                })
-                .sort('-createdAt')
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .lean()
-            return forms
-        }
-        else if('агент'===user.role){
-            let forms = []
-            let clients = await DistrictAzyk
-                .find({agent: user.employment})
-                .distinct('client')
-            if(user.onlyIntegrate){
-                clients = await Integrate1CAzyk
-                    .find({client: {$in: clients}, organization: user.organization})
+        if(['агент', 'суперорганизация', 'организация', 'менеджер', 'admin'].includes(user.role)){
+            let districtClients
+            if(['агент', 'менеджер'].includes(user.role)){
+                districtClients = await DistrictAzyk
+                    .find({$or: [{manager: user.employment}, {agent: user.employment}]})
                     .distinct('client')
+                if(user.onlyIntegrate){
+                    districtClients = await Integrate1CAzyk
+                        .find({client: {$in: districtClients}, organization: user.organization})
+                        .distinct('client')
+                        .lean()
+                }
+                templateForm = (await TemplateFormAzyk.findOne({_id: templateForm, organization: user.organization, editorEmployment: true}).select('_id').lean())._id
+            }
+            let _clients;
+            if(search.length>0) {
+                _clients = await ClientAzyk.find({
+                    del: {$ne: 'deleted'},
+                    $or: [
+                            {name: {'$regex': search, '$options': 'i'}},
+                            {info: {'$regex': search, '$options': 'i'}},
+                            {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                        ]
+                })
+                    .distinct('_id')
                     .lean()
             }
-            if(search.length>0) {
-                clients = await ClientAzyk.find({
-                    $and: [{_id: {$in: clients}}, {_id: {$in: _clients}}]
-                }).distinct('_id').lean()
-            }
-            templateForm = await TemplateFormAzyk.findOne({_id: templateForm, organization: user.organization, editorEmployment: true})
-                .select('_id')
-                .lean()
             if(templateForm) {
-                forms = await FormAzyk.find({
-                    client: {$in: clients},
-                    templateForm: templateForm._id,
-                    organization: user.organization
+                return await FormAzyk.find({
+                    templateForm: templateForm,
+                    ...search.length > 0 ? {client: {$in: _clients}} : {},
+                    ...user.organization ? {organization: user.organization} : {},
+                    ...['агент', 'менеджер'].includes(user.role) ? {client: {$in: districtClients}} : {}
                 })
+                    .select('_id createdAt client agent')
                     .populate({
                         path: 'client',
                         select: 'name _id address'
@@ -332,27 +248,20 @@ const resolvers = {
                     .limit(skip != undefined ? 15 : 10000000000)
                     .lean()
             }
-            return forms
         }
     },
     form: async(parent, {_id}, {user}) => {
-        if(['admin', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
-            let form = await FormAzyk.findOne({_id: _id, ...user.organization?{organization: user.organization}:{}})
+        if(['admin', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
+            return await FormAzyk.findOne({
+                _id: _id,
+                ...user.organization?{organization: user.organization}:{}
+            })
+                .select('_id createdAt client questions')
                 .populate({
                     path: 'client',
                     select: 'name _id address'
                 })
                 .lean()
-            return form
-        }
-        else if(user.role==='агент'){
-            let form = await FormAzyk.findOne({_id: _id, organization: user.organization})
-                .populate({
-                    path: 'client',
-                    select: 'name _id address'
-                })
-                .lean()
-            return form
         }
     },
 };
@@ -360,10 +269,9 @@ const resolvers = {
 const resolversMutation = {
     addTemplateForm: async(parent, {title, organization, editorEmployment, editorClient, edit, questions}, {user}) => {
         if(['admin', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)) {
-            if(user.organization) organization = user.organization
             let newTemplateForm = new TemplateFormAzyk({
                 title: title,
-                organization: organization,
+                organization: user.organization?user.organization:organization,
                 editorEmployment: editorEmployment,
                 editorClient: editorClient,
                 edit: edit,

@@ -67,16 +67,12 @@ const mutation = `
 
 const resolvers = {
     lotterys: async(parent, ctx, {user}) => {
-        let res = await LotteryAzyk.find({
-            ...user.organization?{organization: user.organization}:{}
+        return await LotteryAzyk.find({
+            ...user.organization ? {organization: user.organization} : {}
         })
-            .populate({
-                path: 'organization',
-                select: 'name _id'
-            })
+            .select('image text date _id')
             .sort('-createdAt')
             .lean()
-        return res
     },
     lottery: async(parent, {_id}, {user}) => {
         let res = await LotteryAzyk.findOne({
@@ -237,7 +233,7 @@ const resolversMutation = {
     },
     deleteLottery: async(parent, { _id }, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
-            let objects = await LotteryAzyk.find({_id: {$in: _id}})
+            let objects = await LotteryAzyk.find({_id: {$in: _id}}).select('image prizes photoReports').lean()
             for(let i=0; i<objects.length; i++){
                 await deleteFile(objects[i].image)
                 for(let i1=0; i1<objects[i].prizes.length; i1++) {

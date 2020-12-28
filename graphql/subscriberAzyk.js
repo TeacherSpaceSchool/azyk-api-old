@@ -28,6 +28,7 @@ const resolvers = {
                 .find({})
                 .populate({ path: 'user' })
                 .sort('-createdAt')
+                .lean()
             for(let i=0; i<findRes.length; i++){
                 res[i] = {
                     _id: findRes[i]._id,

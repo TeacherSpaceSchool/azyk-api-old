@@ -36,7 +36,7 @@ const query = `
 
 const mutation = `
     addIntegrate1C(organization: ID!, item: ID, client: ID, guid: String, agent: ID, ecspeditor: ID): Integrate1C
-    setIntegrate1C(_id: ID!, item: ID, client: ID, guid: String, agent: ID, ecspeditor: ID): Integrate1C
+    setIntegrate1C(_id: ID!, item: ID, client: ID, guid: String, agent: ID, ecspeditor: ID): Data
     deleteIntegrate1C(_id: [ID]!): Data
     unloadingIntegrate1C(document: Upload!, organization: ID!): Data
 `;
@@ -52,19 +52,19 @@ const resolvers = {
                     name: {'$regex': search, '$options': 'i'},
                     del: {$ne: 'deleted'},
                     ...(organization==='super'?{organization: null}:{organization: organization})
-                }).distinct('_id')
+                }).distinct('_id').lean()
                 _clients = await ClientAzyk.find({
                     $or: [
                         {name: {'$regex': search, '$options': 'i'}},
                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
                     ],
                     del: {$ne: 'deleted'}
-                }).distinct('_id')
+                }).distinct('_id').lean()
                 _employments = await EmploymentAzyk.find({
                     name: {'$regex': search, '$options': 'i'},
                     del: {$ne: 'deleted'},
                     ...(organization==='super'?{organization: null}:{organization: organization})
-                }).distinct('_id')
+                }).distinct('_id').lean()
             }
             let integrate1Cs =  await Integrate1CAzyk.aggregate(
                 [
@@ -119,19 +119,19 @@ const resolvers = {
                     ...(organization==='super'?{organization: null}:{organization: organization}),
                     name: {'$regex': search, '$options': 'i'},
                     del: {$ne: 'deleted'}
-                }).distinct('_id')
+                }).distinct('_id').lean()
                 _clients = await ClientAzyk.find({
                     $or: [
                         {name: {'$regex': search, '$options': 'i'}},
                         {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
                     ],
                     del: {$ne: 'deleted'}
-                }).distinct('_id')
+                }).distinct('_id').lean()
                 _employments = await EmploymentAzyk.find({
                     ...(organization==='super'?{organization: null}:{organization: organization}),
                     name: {'$regex': search, '$options': 'i'},
                     del: {$ne: 'deleted'}
-                }).distinct('_id')
+                }).distinct('_id').lean()
             }
             let integrate1Cs =  await Integrate1CAzyk.aggregate(
                 [
@@ -267,11 +267,27 @@ const resolvers = {
         if(mongoose.Types.ObjectId.isValid(_id)&&user.role==='admin'){
             return await Integrate1CAzyk
                 .findOne({_id: _id})
-                .populate('agent')
-                .populate('client')
-                .populate('ecspeditor')
-                .populate('organization')
-                .populate('item')
+                .populate({
+                    path: 'agent',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'client',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'ecspeditor',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'organization',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'item',
+                    select: '_id name'
+                })
+                .lean()
         }
         else return null
     },
@@ -282,7 +298,7 @@ const resolvers = {
                     ...(organization==='super'?{organization: null}:{organization: organization}),
                     ecspeditor: {$ne: null}
                 })
-                .distinct('ecspeditor')
+                .distinct('ecspeditor').lean()
             ecspeditors = await EmploymentAzyk.find({
                 ...(organization==='super'?{organization: null}:{organization: organization}),
                 _id: {$nin: ecspeditors},
@@ -291,6 +307,7 @@ const resolvers = {
                 .populate({path: 'user', match: {
                     ...(organization==='super'?{role: 'суперэкспедитор'}:{role: 'экспедитор'}),
                     status: 'active'}})
+                .lean()
             ecspeditors = ecspeditors.filter(ecspeditor => (ecspeditor.user))
             return ecspeditors
         }
@@ -303,7 +320,7 @@ const resolvers = {
                     ...(organization==='super'?{organization: null}:{organization: organization}),
                     agent: {$ne: null}
                 })
-                .distinct('agent')
+                .distinct('agent').lean()
             agents = await EmploymentAzyk.find({
                 ...(organization==='super'?{organization: null}:{organization: organization}),
                 _id: {$nin: agents},
@@ -312,6 +329,7 @@ const resolvers = {
                 .populate({path: 'user', match: {
                     ...(organization==='super'?{role: 'суперагент'}:{role: {$in: ['суперорганизация', 'организация', 'менеджер', 'агент', ]}}),
                     status: 'active'}})
+                .lean()
             agents = agents.filter(agent => (agent.user))
             return agents
         }
@@ -324,19 +342,20 @@ const resolvers = {
                     ...(organization==='super'?{organization: null}:{organization: organization}),
                     client: {$ne: null}
                 })
-                .distinct('client')
+                .distinct('client').lean()
             if(organization!=='super')
-                organization = await OrganizationAzyk.findOne({_id: organization})
+                organization = await OrganizationAzyk.findOne({_id: organization}).lean()
             if(organization.accessToClient||organization==='super') {
                 clients = await ClientAzyk.find({
                     _id: {$nin: clients},
                     del: {$ne: 'deleted'}
                 })
                     .populate({path: 'user', match: {status: 'active'}})
+                    .lean()
             }
             else {
-                let items = await ItemAzyk.find({organization: user.organization}).distinct('_id')
-                let clients1 = await OrderAzyk.find({item: {$in: items}}).distinct('client')
+                let items = await ItemAzyk.find({organization: user.organization}).distinct('_id').lean()
+                let clients1 = await OrderAzyk.find({item: {$in: items}}).distinct('client').lean()
                 clients = await ClientAzyk.find({
                     $and: [
                         {_id: {$in: clients1}},
@@ -346,7 +365,7 @@ const resolvers = {
                 }).populate({
                     path: 'user',
                     match: {status: 'active'}
-                }).populate({path: 'organization'})
+                }).populate({path: 'organization'}).lean()
             }
             clients = clients.filter(client => (
                 client.user&&
@@ -370,12 +389,12 @@ const resolvers = {
                     organization: organization,
                     item: {$ne: null}
                 })
-                .distinct('item')
+                .distinct('item').lean()
             items = await ItemAzyk.find({
                 _id: {$nin: items},
                 organization: organization,
                 del: {$ne: 'deleted'}
-            })
+            }).lean()
             return items
         }
         else return []
@@ -428,11 +447,27 @@ const resolversMutation = {
             _object = await Integrate1CAzyk.create(_object)
             return await Integrate1CAzyk
                 .findOne({_id: _object._id})
-                .populate('agent')
-                .populate('client')
-                .populate('ecspeditor')
-                .populate('organization')
-                .populate('item')
+                .populate({
+                    path: 'agent',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'client',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'ecspeditor',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'organization',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'item',
+                    select: '_id name'
+                })
+                .lean()
         }
         return null;
     },
@@ -450,20 +485,35 @@ const resolversMutation = {
             await object.save();
             let res = await Integrate1CAzyk
                 .findOne({_id: object._id})
-                .populate('agent')
-                .populate('client')
-                .populate('ecspeditor')
-                .populate('organization')
-                .populate('item')
+                .populate({
+                    path: 'agent',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'client',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'ecspeditor',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'organization',
+                    select: '_id name'
+                })
+                .populate({
+                    path: 'item',
+                    select: '_id name'
+                })
+                .lean()
             if(updateClient) {
                 let client = await ClientAzyk
                     .findOne({_id: updateClient})
                 client.sync.splice(client.sync.indexOf(res.organization.name), 1)
                 await client.save()
             }
-            return res
         }
-        return null
+        return {data: 'OK'}
     },
     deleteIntegrate1C: async(parent, { _id }, {user}) => {
         if(user.role==='admin')
@@ -478,7 +528,7 @@ const resolversMutation = {
             let rows = await readXlsxFile(xlsxpath)
             for(let i = 0;i<rows.length;i++){
                 if(mongoose.Types.ObjectId.isValid(rows[i][0])&&rows[i][1]&&rows[i][1].length>0) {
-                    let client = await ClientAzyk.findOne({_id: rows[i][0]})
+                    let client = await ClientAzyk.findOne({_id: rows[i][0]}).select('_id').lean()
                     if (client) {
                         let integrate1CAzyk = await Integrate1CAzyk.findOne({
                             ...(organization==='super'?{organization: null}:{organization: organization}),

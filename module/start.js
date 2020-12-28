@@ -1,6 +1,5 @@
 const { reductionCategoryAzyk } = require('../module/categoryAzyk');
 const { reductionSubCategoryAzyk } = require('../module/subCategoryAzyk');
-const { reductionToBonus } = require('../module/bonusAzyk');
 const { reductionToRoute } = require('../module/routeAzyk');
 const { reductionToAgentRoute } = require('../module/agentRouteAzyk');
 const { reductionSingleOutXMLAzyk } = require('../module/reductionSingleOutXMLAzyk');
@@ -21,21 +20,6 @@ const { setSingleOutXMLAzyk } = require('../module/singleOutXMLAzyk');
 const { checkAdss } = require('../graphql/adsAzyk');
 const { pubsub } = require('../graphql/index');
 const RELOAD_ORDER = 'RELOAD_ORDER';
-
-let startResetBonusesClient = async () => {
-    if(isMainThread) {
-        let w = new Worker('./thread/resetBonusesClient.js', {workerData: 0});
-        w.on('message', (msg) => {
-            console.log('ResetBonusesClient: '+msg);
-        })
-        w.on('error', console.error);
-        w.on('exit', (code) => {
-            if(code !== 0)
-                console.error(new Error(`ResetBonusesClient stopped with exit code ${code}`))
-        });
-        console.log('ResetBonusesClient '+w.threadId+ ' run')
-    }
-}
 
 let startResetUnloading = async () => {
     if(isMainThread) {
@@ -71,14 +55,14 @@ let startReminderClient = async () => {
     if(isMainThread) {
         let w = new Worker('./thread/reminderClient.js', {workerData: 0});
         w.on('message', (msg) => {
-            console.log('ReminderBonusesClient: '+msg);
+            console.log('ReminderClient: '+msg);
         })
         w.on('error', console.error);
         w.on('exit', (code) => {
             if(code !== 0)
-                console.error(new Error(`ReminderBonusesClient stopped with exit code ${code}`))
+                console.error(new Error(`ReminderClient stopped with exit code ${code}`))
         });
-        console.log('ReminderBonusesClient '+w.threadId+ ' run')
+        console.log('ReminderClient '+w.threadId+ ' run')
     }
 }
 
@@ -89,14 +73,12 @@ let start = async () => {
     //await startClientRedis()
     await startResetUnloading()
     await startReminderClient();
-    //await startResetBonusesClient()
     await startOutXMLShoroAzyk();
     await reductionInvoices()
     await reductionReturneds()
     //await reductionCategoryAzyk()
     //await reductionSubCategoryAzyk()
     //await reductionToRoute()
-    //await reductionToBonus()
     //await reductionToClient()
     //await reductionToOrganization()
     //await reductionToItem()

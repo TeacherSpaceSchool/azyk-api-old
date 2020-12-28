@@ -27,98 +27,94 @@ const mutation = `
 
 const resolvers = {
     agentRoutes: async(parent, {organization, search}, {user}) => {
-        if (user.role !== 'admin')
-            organization = user.organization
-        if(user.role==='admin'){
-            let agentRoutes = await AgentRouteAzyk
-                .find({organization: organization==='super'?null:organization})
-                .populate('district')
-                .populate('organization')
-            agentRoutes = agentRoutes.filter(
-                agentRoute =>
-                    (agentRoute.name.toLowerCase()).includes(search.toLowerCase()) ||
-                    (agentRoute.district.name.toLowerCase().includes(search.toLowerCase()))
-            )
-            return agentRoutes
-        }
-        else if(['суперорганизация', 'организация'].includes(user.role)) {
-            let agentRoutes = await AgentRouteAzyk.find({organization: organization})
-                .populate('district')
-                .populate('organization')
-            agentRoutes = agentRoutes.filter(
-                agentRoute =>
-                    (agentRoute.name.toLowerCase()).includes(search.toLowerCase()) ||
-                    (agentRoute.district.name.toLowerCase().includes(search.toLowerCase()))
-            )
-            return agentRoutes
-        }
-        else if('менеджер'===user.role) {
-            let agentRoutes = await DistrictAzyk
-                .find({manager: user.employment})
-                .distinct('_id')
-            agentRoutes = await AgentRouteAzyk.find({district: {$in: agentRoutes}, organization: organization})
-                .populate('district')
-                .populate('organization')
-            agentRoutes = agentRoutes.filter(
-                agentRoute =>
-                    (agentRoute.name.toLowerCase()).includes(search.toLowerCase()) ||
-                    (agentRoute.district.name.toLowerCase().includes(search.toLowerCase()))
-            )
-            return agentRoutes
+        if(['суперорганизация', 'организация', 'менеджер', 'admin' ].includes(user.role)) {
+            let _districts;
+            if (search.length > 0) {
+                _districts = await DistrictAzyk.find({
+                    name: {'$regex': search, '$options': 'i'}
+                }).distinct('_id').lean()
+            }
+            let districts
+            if ('менеджер' === user.role) {
+                districts = await DistrictAzyk
+                    .find({manager: user.employment})
+                    .distinct('_id')
+                    .lean()
+            }
+            return await AgentRouteAzyk
+                .find({
+                    organization: user.organization ? user.organization : organization === 'super' ? null : organization,
+                    ...'менеджер' === user.role ? {district: {$in: districts}} : {},
+                    ...(search.length > 0 ? {
+                            $or: [
+                                {name: {'$regex': search, '$options': 'i'}},
+                                {district: {$in: _districts}},
+                            ]
+                        }
+                        : {})
+                })
+                .select('_id createdAt organization name district')
+                .populate({
+                    path: 'district',
+                    select: 'name _id'
+                })
+                .populate({
+                    path: 'organization',
+                    select: 'name _id'
+                })
+                .lean()
         }
     },
     districtsWithoutAgentRoutes: async(parent, { organization }, {user}) => {
-        if(user.role!=='admin')
-            organization = user.organization
-        let districts = await AgentRouteAzyk
-            .find({organization: organization==='super'?null:organization})
-            .distinct('district')
-        if(['admin', 'суперорганизация', 'организация'].includes(user.role)){
+        if(['суперорганизация', 'организация', 'менеджер', 'admin' ].includes(user.role)) {
+            let districts = await AgentRouteAzyk
+                .find({organization: organization === 'super' ? null : organization})
+                .distinct('district')
+                .lean()
             districts = await DistrictAzyk
-                .find({_id: { $nin: districts}, organization: organization==='super'?null:organization})
-                .populate({path: 'client', populate: [{path: 'user'}]})
-                .populate({ path: 'organization' })
+                .find({
+                    ...'менеджер' === user.role ? {manager: user.employment} : {},
+                    _id: {$nin: districts},
+                    organization: user.organization ? user.organization : organization === 'super' ? null : organization
+                })
+                .select('_id createdAt organization client name ')
+                .populate({path: 'client', select: '_id image createdAt name address lastActive device notification city phone user', populate: [{path: 'user', select: 'status'}]})
+                .populate({path: 'organization', select: 'name _id'})
                 .sort('-name')
-            return districts
-        }
-        else if('менеджер'===user.role){
-            districts = await DistrictAzyk
-                .find({_id: { $nin: districts}, manager: user.employment, organization: organization})
-                .populate({path: 'client', populate: [{path: 'user'}]})
-                .populate({ path: 'organization' })
-                .sort('-name')
+                .lean()
             return districts
         }
     },
     agentRoute: async(parent, {_id}, {user}) => {
-        if(mongoose.Types.ObjectId.isValid(_id)&&user.role==='admin'){
-            let res = await AgentRouteAzyk.findOne({_id: _id})
-                .populate({path: 'district', populate: [{path: 'client', populate: [{path: 'user'}]}]})
-                .populate('organization')
-            return res
+        if(['суперорганизация', 'организация', 'агент', 'суперагент', 'менеджер', 'admin', ].includes(user.role)) {
+            let districts
+            if ('менеджер' === user.role) {
+                districts = await DistrictAzyk
+                    .find({manager: user.employment})
+                    .distinct('_id')
+                    .lean()
+            }
+            else if (['агент', 'суперагент'].includes(user.role)) {
+                districts = await DistrictAzyk
+                    .findOne({agent: user.employment})
+                    .select('_id')
+                    .lean()
+            }
+            return await AgentRouteAzyk.findOne({
+                ...mongoose.Types.ObjectId.isValid(_id)?{_id: _id}:{},
+                ...user.organization ? {organization: user.organization} : {},
+                ...'менеджер' === user.role ?
+                    {district: {$in: districts}}
+                    :
+                    ['агент', 'суперагент'].includes(user.role) ?
+                        {district: districts._id}
+                        :
+                        {}
+            })
+                .populate({path: 'district', select: 'name _id client', populate: [{path: 'client', select: '_id image createdAt name address lastActive device notification city phone user category', populate: [{path: 'user', select: 'status'}]}]})
+                .populate({path: 'organization', select: 'name _id'})
+                .lean()
         }
-        else if(['суперорганизация', 'организация'].includes(user.role)){
-            return await AgentRouteAzyk.findOne({_id: _id, organization: user.organization})
-                .populate({path: 'district', populate: [{path: 'client', populate: [{path: 'user'}]}]})
-                .populate('organization')
-        }
-        else if('менеджер'===user.role){
-            let districts = await DistrictAzyk
-                .find({manager: user.employment})
-                .distinct('_id')
-            return await AgentRouteAzyk.findOne({_id: _id, district: {$in: districts}, organization: user.organization})
-                .populate({path: 'district', populate: [{path: 'client', populate: [{path: 'user'}]}]})
-                .populate('organization')
-        }
-        else if(['агент', 'суперагент'].includes(user.role)){
-            let res = await DistrictAzyk
-                .findOne({agent: user.employment})
-            res = await AgentRouteAzyk.findOne({district: res._id, organization: user.organization})
-                .populate({path: 'district', populate: [{path: 'client', populate: [{path: 'user'}]}]})
-                .populate('organization')
-            return res
-        }
-        else return null
     }
 };
 
@@ -136,8 +132,8 @@ const resolversMutation = {
         return {data: 'OK'};
     },
     setAgentRoute: async(parent, {_id, clients, name}, {user}) => {
-        let object = await AgentRouteAzyk.findById(_id)
         if(['admin', 'суперорганизация', 'организация', 'менеджер', 'агент', 'суперагент'].includes(user.role)) {
+            let object = await AgentRouteAzyk.findById(_id)
             if(name)object.name = name
             if(clients)object.clients = clients
             await object.save();
@@ -145,12 +141,8 @@ const resolversMutation = {
         return {data: 'OK'}
     },
     deleteAgentRoute: async(parent, { _id }, {user}) => {
-        let objects = await AgentRouteAzyk.find({_id: {$in: _id}})
-        for(let i=0; i<objects.length; i++){
-            if(user.role==='admin'||(['суперорганизация', 'организация', 'менеджер'].includes(user.role)&&objects[i].organization.toString()===user.organization.toString())) {
-                await AgentRouteAzyk.deleteMany({_id: objects[i]._id})
-            }
-        }
+        if(['admin', 'суперорганизация', 'организация', 'менеджер'].includes(user.role))
+            await AgentRouteAzyk.deleteMany({_id: {$in: _id}, ...user.organization?{organization: user.organization}:{}})
         return {data: 'OK'}
     }
 };

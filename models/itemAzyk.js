@@ -5,7 +5,6 @@ const ItemAzykSchema = mongoose.Schema({
         type: String,
         default: ''
     },
-    guid: String,
     stock: Number,
     name: String,
     image: String,
@@ -19,7 +18,6 @@ const ItemAzykSchema = mongoose.Schema({
         default: 1
     },
     reiting: Number,
-    deliveryDays: [String],
     apiece: {
         type: Boolean,
         default: false
@@ -39,8 +37,6 @@ const ItemAzykSchema = mongoose.Schema({
     info: String,
     categorys: [String],
     city: String,
-    favorite: [mongoose.Schema.Types.ObjectId],
-    basket: [mongoose.Schema.Types.ObjectId],
     weight: {
         type: Number,
         default: 0

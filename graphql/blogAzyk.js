@@ -14,11 +14,10 @@ const type = `
 const query = `
     blogs(search: String!, sort: String!): [Blog]
     sortBlog: [Sort]
-    filterBlog: [Filter]
 `;
 
 const mutation = `
-    addBlog(image: Upload!, text: String!, title: String!): Data
+    addBlog(image: Upload!, text: String!, title: String!): Blog
     setBlog(_id: ID!, image: Upload, text: String, title: String): Data
     deleteBlog(_id: [ID]!): Data
 `;
@@ -29,6 +28,7 @@ const resolvers = {
             title: {'$regex': search, '$options': 'i'}
         })
             .sort(sort)
+            .lean()
     },
     sortBlog: async() => {
         return [
@@ -41,10 +41,7 @@ const resolvers = {
                 field: '-createdAt'
             },
         ]
-    },
-    filterBlog: async() => {
-        return await []
-    },
+    }
 };
 
 const resolversMutation = {
@@ -57,7 +54,8 @@ const resolversMutation = {
                 text: text,
                 title: title
             });
-            await BlogAzyk.create(_object)
+            _object = await BlogAzyk.create(_object)
+            return _object
         }
         return {data: 'OK'};
     },
@@ -78,7 +76,7 @@ const resolversMutation = {
     },
     deleteBlog: async(parent, { _id }, {user}) => {
         if(user.role==='admin'){
-            let objects = await BlogAzyk.find({_id: {$in: _id}})
+            let objects = await BlogAzyk.find({_id: {$in: _id}}).select('image').lean()
             for(let i=0; i<objects.length; i++){
                 await deleteFile(objects[i].image)
             }

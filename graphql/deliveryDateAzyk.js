@@ -23,16 +23,12 @@ const mutation = `
 const resolvers = {
     deliveryDates: async(parent, {clients, organization}, {user}) => {
         if(['суперорганизация', 'организация', 'менеджер', 'агент', 'admin'].includes(user.role)) {
-            if(user.organization)
-                organization = user.organization
-            return await DeliveryDate.find({client: {$in: clients}, organization: organization==='super'?null:organization}).lean()
+            return await DeliveryDate.find({client: {$in: clients}, organization:user.organization?user.organization: organization==='super'?null:organization}).lean()
         }
     },
     deliveryDate: async(parent, {client, organization}, {user}) => {
         if(['суперорганизация', 'организация', 'менеджер', 'агент', 'admin', 'client'].includes(user.role)) {
-            if(user.organization)
-                organization = user.organization
-            return await DeliveryDate.findOne({client: client, organization: organization==='super'?null:organization}).lean()
+            return await DeliveryDate.findOne({client: client, organization: user.organization?user.organization:organization==='super'?null:organization}).lean()
         }
     }
 };
@@ -40,10 +36,8 @@ const resolvers = {
 const resolversMutation = {
     setDeliveryDates: async(parent, {clients, organization, days, priority}, {user}) => {
         if(['суперорганизация', 'организация', 'менеджер', 'агент', 'admin'].includes(user.role)){
-            if(user.organization)
-                organization = user.organization
             for(let i=0; i<clients.length; i++){
-                let deliveryDate = await DeliveryDate.findOne({client: clients[i], organization: organization==='super'?null:organization});
+                let deliveryDate = await DeliveryDate.findOne({client: clients[i], organization: user.organization?user.organization:organization==='super'?null:organization});
                 if(!deliveryDate){
                     let _object = new DeliveryDate({
                         days: days,

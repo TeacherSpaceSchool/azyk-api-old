@@ -4,6 +4,7 @@ const { reductionOutAdsXMLAzyk, setSingleOutXMLAzyk } = require('../module/singl
 const { checkAdss } = require('../graphql/adsAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
 const InvoiceAzyk = require('../models/invoiceAzyk');
+const AdsAzyk = require('../models/adsAzyk');
 const OrderAzyk = require('../models/orderAzyk');
 const cron = require('node-cron');
 const ModelsErrorAzyk = require('../models/errorAzyk');
@@ -51,6 +52,10 @@ if(!isMainThread) {
                         //    select: '_id priotiry packaging'
                     }
                 })
+                .populate({path: 'agent'})
+                .populate({path: 'provider'})
+                .populate({path: 'sale'})
+                .populate({path: 'forwarder'})
 
             for(let i = 0; i<orders.length;i++) {
                 orders[i].taken = true
@@ -60,44 +65,19 @@ if(!isMainThread) {
                     orders[i].sync = await setSingleOutXMLAzyk(orders[i])
                 }
                 await orders[i].save()
-            }
-
-            let resInvoices = await InvoiceAzyk.find({_id: {$in: orders.map(element=>element._id)}})
-                .populate({
-                    path: 'orders',
-                    populate: {
-                        path: 'item'
-                    }
-                })
-                .populate({
-                    path: 'client',
-                    populate: [
-                        {path: 'user'}
-                    ]
-                })
-                .populate({path: 'agent'})
-                .populate({path: 'provider'})
-                .populate({path: 'sale'})
-                .populate({path: 'organization'})
-                .populate({path: 'adss'})
-                .populate({path: 'forwarder'})
-                .lean()
-
-            for(let i=0; i<resInvoices.length; i++){
+                orders[i].adss = await AdsAzyk.find({_id: {$in: orders[i].adss}})
                 pubsub.publish(RELOAD_ORDER, { reloadOrder: {
                     who: null,
-                    client: undefined,
-                    agent: undefined,
+                    client: orders[i].client._id,
+                    agent: orders[i].agent._id,
                     superagent: undefined,
-                    organization: undefined,
+                    organization: orders[i].organization._id,
                     distributer: undefined,
-                    invoice: resInvoices[i],
+                    invoice: orders[i],
                     manager: undefined,
                     type: 'SET'
                 } });
             }
-
-
             organizations = await OrganizationAzyk.find({
                 $and: [
                     {pass: {$ne: null}},
