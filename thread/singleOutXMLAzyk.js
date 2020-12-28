@@ -69,7 +69,7 @@ if(!isMainThread) {
                 pubsub.publish(RELOAD_ORDER, { reloadOrder: {
                     who: null,
                     client: orders[i].client._id,
-                    agent: orders[i].agent._id,
+                    agent: orders[i].agent?orders[i].agent._id:undefined,
                     superagent: undefined,
                     organization: orders[i].organization._id,
                     distributer: undefined,
