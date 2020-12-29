@@ -1036,11 +1036,14 @@ const resolvers = {
 const resolversMutation = {
     acceptOrders: async(parent, ctx, {user}) => {
         if(user.role==='admin'){
+            let date = new Date()
+            date.setMinutes(date.getMinutes()-10)
             let orders = await InvoiceAzyk.find({
                 del: {$ne: 'deleted'},
                 taken: {$ne: true},
                 cancelClient: null,
-                cancelForwarder: null
+                cancelForwarder: null,
+                createdAt: {$lte: date}
             })
             //.select('client organization orders dateDelivery paymentMethod number _id inv')
                 .populate({
