@@ -112,7 +112,10 @@ const resolvers = {
                 name: {'$regex': search, '$options': 'i'}
             }).distinct('_id').lean()
             _clients = await ClientAzyk.find({
-                name: {'$regex': search, '$options': 'i'}
+                $or: [
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                ]
             }).distinct('_id').lean()
         }
         if(user.role==='admin') {
@@ -145,7 +148,10 @@ const resolvers = {
                 name: {'$regex': search, '$options': 'i'}
             }).distinct('_id').lean()
             _clients = await ClientAzyk.find({
-                name: {'$regex': search, '$options': 'i'}
+                $or: [
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                ]
             }).distinct('_id').lean()
         }
         if(user.role==='admin') {
@@ -316,7 +322,10 @@ const resolvers = {
                     name: {'$regex': search, '$options': 'i'}
                 }).distinct('_id').lean()
                 _clients = await ClientAzyk.find({
-                    name: {'$regex': search, '$options': 'i'}
+                    $or: [
+                        {name: {'$regex': search, '$options': 'i'}},
+                        {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                    ]
                 }).distinct('_id').lean()
             }
             let returneds = await ReturnedAzyk.find({
@@ -562,8 +571,10 @@ const resolvers = {
                 _organizations = await OrganizationAzyk.find({
                     name: {'$regex': search, '$options': 'i'}
                 }).distinct('_id').lean()
-                _clients = await ClientAzyk.find({
-                    name: {'$regex': search, '$options': 'i'}
+                _clients = await ClientAzyk.find({$or: [
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                ]
                 }).distinct('_id').lean()
             }
             let organizations

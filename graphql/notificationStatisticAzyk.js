@@ -52,7 +52,7 @@ const resolversMutation = {
                 filename = await saveImage(stream, filename)
                 payload.icon = urlMain+filename
             }
-            sendWebPush(payload)
+            await sendWebPush(payload)
         }
         return {data: 'OK'};
     }

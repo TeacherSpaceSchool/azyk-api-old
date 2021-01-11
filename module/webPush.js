@@ -96,7 +96,7 @@ module.exports.sendWebPush = async({title, message, tag, url, icon, user}) => {
                     }
                 });
             }
-        });
+        }).lean();
     }
     else {
         SubscriberAzyk.find({user: user}, (err, subscriptions) => {
@@ -171,7 +171,7 @@ module.exports.sendWebPush = async({title, message, tag, url, icon, user}) => {
                     }
                 });
             }
-        });
+        }).lean();
     }
 
  }

@@ -36,13 +36,12 @@ const resolvers = {
                     name: {'$regex': search, '$options': 'i'}
                 }).distinct('_id').lean()
             }
+
                 let autos = await AutoAzyk.find({
                     organization: user.organization?user.organization:organization==='super'?null:organization,
                     ...(search.length>0?{
                             $or: [
                                 {number: {'$regex': search, '$options': 'i'}},
-                                {size: {'$regex': search, '$options': 'i'}},
-                                {tonnage: {'$regex': search, '$options': 'i'}},
                                 {employment: {$in: _employments}},
                             ]
                         }

@@ -13,23 +13,16 @@ const MerchandisingAzykSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ClientAzyk'
     },
+    date: Date,
     productAvailability: [String],
     productInventory: Boolean,
     productConditions: Number,
     productLocation: Number,
-    productScore: Number,
-    image: [String],
-    fhos: [{
-        type: String,
-        image: [String],
-        layout: Number,
-        state: Number,
-        foreignProducts: Boolean,
-        filling: Number,
-        score: Number
-    }],
+    images: [String],
+    fhos: mongoose.Schema.Types.Mixed,
     needFho: Boolean,
-    score: Number,
+    check: Boolean,
+    stateProduct: Number,
     comment: String,
 }, {
     timestamps: true

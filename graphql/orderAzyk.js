@@ -149,7 +149,10 @@ const resolvers = {
                 name: {'$regex': search, '$options': 'i'}
             }).distinct('_id').lean()
             _clients = await ClientAzyk.find({
-                name: {'$regex': search, '$options': 'i'}
+                $or: [
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                ]
             }).distinct('_id').lean()
             _agents = await EmploymentAzyk.find({
                 name: {'$regex': search, '$options': 'i'}
@@ -221,7 +224,10 @@ const resolvers = {
                     name: {'$regex': search, '$options': 'i'}
                 }).distinct('_id').lean()
                 _clients = await ClientAzyk.find({
-                    name: {'$regex': search, '$options': 'i'}
+                    $or: [
+                        {name: {'$regex': search, '$options': 'i'}},
+                        {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                    ]
                 }).distinct('_id').lean()
                 _agents = await EmploymentAzyk.find({
                     name: {'$regex': search, '$options': 'i'}
@@ -350,7 +356,10 @@ const resolvers = {
                     name: {'$regex': search, '$options': 'i'}
                 }).distinct('_id').lean()
                 _clients = await ClientAzyk.find({
-                    name: {'$regex': search, '$options': 'i'}
+                    $or: [
+                        {name: {'$regex': search, '$options': 'i'}},
+                        {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                    ]
                 }).distinct('_id').lean()
                 _agents = await EmploymentAzyk.find({
                     name: {'$regex': search, '$options': 'i'}
@@ -538,7 +547,10 @@ const resolvers = {
                 name: {'$regex': search, '$options': 'i'}
             }).distinct('_id').lean()
             _clients = await ClientAzyk.find({
-                name: {'$regex': search, '$options': 'i'}
+                $or: [
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                    ]
             }).distinct('_id').lean()
             _agents = await EmploymentAzyk.find({
                 name: {'$regex': search, '$options': 'i'}
@@ -1068,7 +1080,7 @@ const resolversMutation = {
                 .populate({path: 'forwarder'})
             for(let i = 0; i<orders.length;i++) {
                 orders[i].taken = true
-                await OrderAzyk.updateMany({_id: {$in: orders[i].orders}}, {status: 'принят'})
+                await OrderAzyk.updateMany({_id: {$in: orders[i].orders.map(element=>element._id)}}, {status: 'принят'})
                 orders[i].adss = await checkAdss(orders[i]._id)
                 if(orders[i].organization.pass&&orders[i].organization.pass.length){
                     orders[i].sync = await setSingleOutXMLAzyk(orders[i])

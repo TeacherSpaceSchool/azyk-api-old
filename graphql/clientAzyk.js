@@ -107,8 +107,8 @@ const resolvers = {
             else if(['суперорганизация', 'организация'].includes(user.role)) {
                 accessToClient = (await OrganizationAzyk.findOne({_id: user.organization}).select('accessToClient').lean()).accessToClient
                 if(!accessToClient){
-                    let items = await ItemAzyk.find({organization: user.organization}).distinct('_id')
-                    clients = await OrderAzyk.find({item: {$in: items}}).distinct('client')
+                    let items = await ItemAzyk.find({organization: user.organization}).distinct('_id').lean()
+                    clients = await OrderAzyk.find({item: {$in: items}}).distinct('client').lean()
                 }
             }
             clients = await ClientAzyk

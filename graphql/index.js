@@ -16,6 +16,7 @@ const OrganizationAzyk = require('./organizationAzyk');
 const AgentHistoryGeoAzyk = require('./agentHistoryGeoAzyk');
 const ContactAzyk = require('./contactAzyk');
 const FaqAzyk = require('./faqAzyk');
+const MerchandisingAzyk = require('./merchandisingAzyk');
 const ClientAzyk = require('./clientAzyk');
 const EmploymentAzyk = require('./employmentAzyk');
 const AutoAzyk = require('./autoAzyk');
@@ -75,6 +76,7 @@ const typeDefs = gql`
     ${SubscriberAzyk.type}
     ${NotificationStatisticAzyk.type}
     ${FaqAzyk.type}
+    ${MerchandisingAzyk.type}
     ${AutoAzyk.type}
     ${EquipmentAzyk.type}
     ${ClientAzyk.type}
@@ -111,6 +113,7 @@ const typeDefs = gql`
         ${SubscriberAzyk.mutation}
         ${NotificationStatisticAzyk.mutation}
         ${FaqAzyk.mutation}
+        ${MerchandisingAzyk.mutation}
         ${AutoAzyk.mutation}
         ${EquipmentAzyk.mutation}
         ${ClientAzyk.mutation}
@@ -142,6 +145,7 @@ const typeDefs = gql`
         ${DistributerAzyk.query}
         ${ClientAzyk.query}
         ${FaqAzyk.query}
+        ${MerchandisingAzyk.query}
         ${AutoAzyk.query}
         ${EquipmentAzyk.query}
         ${OrganizationAzyk.query}
@@ -201,6 +205,7 @@ const resolvers = {
         ...AgentRouteAzyk.resolvers,
         ...DistributerAzyk.resolvers,
         ...FaqAzyk.resolvers,
+        ...MerchandisingAzyk.resolvers,
         ...AutoAzyk.resolvers,
         ...EquipmentAzyk.resolvers,
         ...ClientAzyk.resolvers,
@@ -238,6 +243,7 @@ const resolvers = {
         ...ErrorAzyk.resolversMutation,
         ...DistributerAzyk.resolversMutation,
         ...FaqAzyk.resolversMutation,
+        ...MerchandisingAzyk.resolversMutation,
         ...ClientAzyk.resolversMutation,
         ...AutoAzyk.resolversMutation,
         ...EquipmentAzyk.resolversMutation,

@@ -19,7 +19,6 @@ const OrderAzyk = require('../models/orderAzyk');
 const { setSingleOutXMLAzyk } = require('../module/singleOutXMLAzyk');
 const { checkAdss } = require('../graphql/adsAzyk');
 const { pubsub } = require('../graphql/index');
-const RELOAD_ORDER = 'RELOAD_ORDER';
 
 let startResetUnloading = async () => {
     if(isMainThread) {
@@ -68,12 +67,12 @@ let startReminderClient = async () => {
 
 let start = async () => {
     await createAdmin();
-    //await reductionToDeliveryDate();
-    //await reductionSingleOutXMLAzyk()
     //await startClientRedis()
     await startResetUnloading()
     await startReminderClient();
     await startOutXMLShoroAzyk();
+    //await reductionToDeliveryDate();
+    //await reductionSingleOutXMLAzyk()
     await reductionInvoices()
     await reductionReturneds()
     //await reductionCategoryAzyk()

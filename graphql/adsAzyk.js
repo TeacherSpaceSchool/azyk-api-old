@@ -121,7 +121,7 @@ const checkAdss = async(invoice) => {
 const resolvers = {
     checkAdss: async(parent, {invoice}) => await checkAdss(invoice),
     adssTrash: async(parent, {search}, {user}) => {
-        if(user.role) {
+        if(user.role==='admin') {
             return await AdsAzyk.find({
                 del: 'deleted',
                 title: {'$regex': search, '$options': 'i'}
@@ -145,7 +145,8 @@ const resolvers = {
                     path: 'item',
                     select: 'name _id'
                 })
-                .sort('-createdAt').lean()
+                .sort('-createdAt')
+                .lean()
             return res
         }
     },

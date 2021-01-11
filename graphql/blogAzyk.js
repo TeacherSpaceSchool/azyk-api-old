@@ -12,8 +12,7 @@ const type = `
 `;
 
 const query = `
-    blogs(search: String!, sort: String!): [Blog]
-    sortBlog: [Sort]
+    blogs(search: String!): [Blog]
 `;
 
 const mutation = `
@@ -23,24 +22,12 @@ const mutation = `
 `;
 
 const resolvers = {
-    blogs: async(parent, {search, sort}) => {
+    blogs: async(parent, {search}) => {
         return await BlogAzyk.find({
             title: {'$regex': search, '$options': 'i'}
         })
-            .sort(sort)
+            .sort('-createdAt')
             .lean()
-    },
-    sortBlog: async() => {
-        return [
-            {
-                name: 'Имя',
-                field: 'title'
-            },
-            {
-                name: 'Дата',
-                field: '-createdAt'
-            },
-        ]
     }
 };
 

@@ -42,7 +42,7 @@ const resolvers = {
                         res[i].user = 'admin'
                     }
                     else if('client'===findRes[i].user.role) {
-                        let client = await ClientAzyk.findOne({user: findRes[i].user._id})
+                        let client = await ClientAzyk.findOne({user: findRes[i].user._id}).select('name address').lean()
                         res[i].user=`${client.name}${client.address&&client.address[0]?` (${client.address[0][2]?`${client.address[0][2]}, `:''}${client.address[0][0]})`:''}`
                     }
                     else if(['суперагент', 'суперменеджер'].includes(findRes[i].user.role)) {

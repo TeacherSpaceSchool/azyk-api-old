@@ -4,6 +4,7 @@ const OrderAzyk = require('../models/orderAzyk');
 const ReturnedAzyk = require('../models/returnedAzyk');
 const ClientAzyk = require('../models/clientAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
+const MerchandisingAzyk = require('../models/merchandisingAzyk');
 const ContactAzyk = require('../models/contactAzyk');
 const EmploymentAzyk = require('../models/employmentAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
@@ -73,13 +74,14 @@ const query = `
     statisticReturned(company: String, dateStart: Date, dateType: String, city: String): Statistic
     statisticAgents(company: String, dateStart: Date, dateType: String, city: String): Statistic
     statisticAgentsWorkTime(organization: String, date: Date): Statistic
+    statisticMerchandising(organization: ID): Statistic
     checkOrder(company: String, today: Date!, city: String): Statistic
     statisticOrderChart(company: String, dateStart: Date, dateType: String, type: String, online: Boolean, city: String): ChartStatisticAll
     activeItem(organization: ID!): [Item]
     activeOrganization(city: String): [Organization]
     superagentOrganization(city: String): [Organization]
     statisticClientGeo(search: String, organization: ID, item: ID, city: String): [GeoStatistic]
-    statisticDevice: Statistic
+    statisticDevice(filter: String): Statistic
     statisticStorageSize: Statistic
     checkIntegrateClient(organization: ID, type: String, document: Upload): Statistic
 `;
@@ -855,15 +857,20 @@ const resolvers = {
                 {name: 'Инвентарь', collection: '../models/equipmentAzyk'},
                 {name: 'Ошибка', collection: '../models/errorAzyk'},
                 {name: 'FAQ', collection: '../models/faqAzyk'},
+                {name: 'Формы', collection: '../models/formAzyk'},
+                {name: 'Шаблоны форм', collection: '../models/templateFormAzyk'},
                 {name: 'История заказов', collection: '../models/historyOrderAzyk'},
                 {name: 'История возратов', collection: '../models/historyReturnedAzyk'},
                 {name: 'Интеграция 1С', collection: '../models/integrate1CAzyk'},
                 {name: 'Накладные', collection: '../models/invoiceAzyk'},
                 {name: 'Товары', collection: '../models/itemAzyk'},
+                {name: 'Лотерея', collection: '../models/lotteryAzyk'},
+                {name: 'Мерчендайзинг', collection: '../models/merchandisingAzyk'},
                 {name: 'Уведомления', collection: '../models/notificationStatisticAzyk'},
                 {name: 'Заказы', collection: '../models/orderAzyk'},
                 {name: 'Организации', collection: '../models/organizationAzyk'},
                 {name: 'Принятая интеграция', collection: '../models/receivedDataAzyk'},
+                {name: 'Ремонт инвентаря', collection: '../models/repairEquipmentAzyk'},
                 {name: 'Возвраты', collection: '../models/returnedAzyk'},
                 {name: 'Отзывы', collection: '../models/reviewAzyk'},
                 {name: 'Маршруты', collection: '../models/routeAzyk'},
@@ -872,8 +879,7 @@ const resolvers = {
                 {name: 'Выгрузка вощвратов', collection: '../models/singleOutXMLReturnedAzyk'},
                 {name: 'Подкатегории', collection: '../models/subCategoryAzyk'},
                 {name: 'Подписчики', collection: '../models/subscriberAzyk'},
-                {name: 'Пользователи', collection: '../models/userAzyk'},
-                {name: 'Лотереи', collection: '../models/lotteryAzyk'}
+                {name: 'Пользователи', collection: '../models/userAzyk'}
             ]
             for(let i=0; i<collections.length; i++){
                 stats = await statsCollection(collections[i].collection)
@@ -2039,6 +2045,194 @@ const resolvers = {
             ]
             return {
                 columns: ['район', 'выручка(сом)', 'выполнен(шт)', 'отказы(сом)', 'конс(сом)', 'прибыль(сом)', 'средний чек(сом)', 'клиенты', 'процент'],
+                row: data
+            };
+        }
+    },
+    statisticMerchandising: async(parent, { organization }, {user}) => {
+        if(['admin', 'суперорганизация', 'организация'].includes(user.role)){
+            let statistic = {}
+            let districts = await DistrictAzyk.find({organization: user.organization?user.organization:organization})
+                .select('_id name client')
+                .lean()
+            let data = await MerchandisingAzyk.find({
+                organization: user.organization?user.organization:organization,
+
+            })
+                .lean()
+            for(let i=0; i<data.length; i++) {
+                for(let i1=0; i1<districts.length; i1++) {
+                    if(districts[i1].client.toString().includes(data[i].client.toString()))
+                        data[i].district = districts[i1]
+                }
+                if(!data[i].district)
+                    data[i].district = {_id: 'lol', name: 'Без района'}
+            }
+            let differenceDates, now = new Date()
+            let allScore = []
+            let allCheck = 0
+            let allProcessing = 0
+            let allActual = 0
+            let allCurrent = 0
+            let allExpired = 0
+            for(let i=0; i<data.length; i++) {
+                if (!statistic[data[i].district._id]) statistic[data[i].district._id] = {
+                    name: data[i].district.name,
+                    score: [],
+                    check: 0,
+                    processing: 0,
+                    actual: 0,
+                    current: 0,
+                    expired: 0,
+                }
+                differenceDates = (now - new Date(data[i].date))/(1000 * 60 * 60 * 24)
+                if(differenceDates<31) {
+                    statistic[data[i].district._id].score.push(data[i].stateProduct)
+                    allScore.push(data[i].stateProduct)
+                    if (differenceDates<7) {
+                        statistic[data[i].district._id].actual += 1
+                        allActual += 1
+                    }
+                    else {
+                        statistic[data[i].district._id].current += 1
+                        allCurrent += 1
+                    }
+                    if(data[i].check) {
+                        statistic[data[i].district._id].check += 1
+                        allCheck += 1
+                    }
+                    else {
+                        statistic[data[i].district._id].processing += 1
+                        allProcessing += 1
+                    }
+                }
+                else {
+                    statistic[data[i].district._id].expired += 1
+                    allExpired += 1
+                }
+            }
+            const keys = Object.keys(statistic)
+            let score
+            data = []
+            for(let i=0; i<keys.length; i++){
+                score = 0
+                for(let i1=0; i1<statistic[keys[i]].score.length; i1++) {
+                    score += statistic[keys[i]].score[i1]
+                }
+                score /= statistic[keys[i]].score.length
+                data.push({
+                    _id: keys[i],
+                    data: [
+                        statistic[keys[i]].name,
+                        checkFloat(score),
+                        statistic[keys[i]].check,
+                        statistic[keys[i]].processing,
+                        statistic[keys[i]].actual,
+                        statistic[keys[i]].current,
+                        statistic[keys[i]].expired,
+                    ]
+                })
+            }
+            data = data.sort(function(a, b) {
+                return b.data[1] - a.data[1]
+            });
+            score = 0
+            for(let i=0; i<allScore.length; i++) {
+                score += allScore[i]
+            }
+            score /= allScore.length
+            data = [
+                {
+                    _id: 'All',
+                    data: [
+                        checkFloat(score),
+                        allCheck,
+                        allProcessing,
+                        allActual,
+                        allCurrent,
+                        allExpired,
+                    ]
+                },
+                ...data
+            ]
+            return {
+                columns: ['район', 'оценка', 'проверен', 'обработка', 'актуальные', 'текущие', 'просроченные'],
+                row: data
+            };
+        }
+    },
+    statisticDevice: async(parent, { filter }, {user}) => {
+        if(['admin'].includes(user.role)){
+            let statistic = {}
+            let data = await ClientAzyk.find({device: {$ne: null}})
+                .select('device')
+                .lean()
+            let device
+            for(let i=0; i<data.length; i++) {
+                if(filter==='device')
+                    device = data[i].device.split(' | ')[0]
+                else if(filter==='os')
+                    device = data[i].device.split(' | ')[1].split('-')[0]
+                else if(filter==='os-version')
+                    device = data[i].device.split(' | ')[1]
+                else if(filter==='browser')
+                    device = data[i].device.split(' | ')[2].split('-')[0]
+                else if(filter==='browser-version')
+                    device = data[i].device.split(' | ')[2]
+                else if(filter==='company') {
+                        device = data[i].device.toLowerCase()
+                    if(device.includes('apple'))
+                        device = 'Apple'
+                    else if(device.includes('redmi')||device.includes('mi')||device.includes('xiaomi')||device.includes('m2003j15sc')||device.includes('m2004j19c')||device.includes('poco')||device.includes('pocophone'))
+                        device = 'Xiaomi'
+                    else if(device.includes('m5s')||device.includes('meizu'))
+                        device = 'Meizu'
+                    else if(device.includes('samsung'))
+                        device = 'Samsung'
+                    else if(device.includes('atu-l31')||device.includes('jmm-l22')||device.includes('mar-lx1m')||device.includes('mrd-lx1f')||device.includes('jat-lx1')||device.includes('fla-lx1')||device.includes('huawei')||device.includes('fig-lx1')||device.includes('lld-l31')||device.includes('honor')||device.includes('pra-la1')||device.includes('mya-l22')||device.includes('vtr-l29')||device.includes('jsn-l21')||device.includes('bkl-l09')||device.includes('aum-l29'))
+                        device = 'Huawei'
+                    else if(device.includes('x64')||device.includes('x86'))
+                        device = 'Windows'
+                    else if(device.includes('lg')||device.includes('lm-x210'))
+                        device = 'LG'
+                    else if(device.includes('vivo'))
+                        device = 'Vivo'
+                    else if(device.includes('htc'))
+                        device = 'HTC'
+                    else if(device.includes('m100 build/o11019'))
+                        device = 'Oppo'
+                    else if(device.includes('sony'))
+                        device = 'Sony'
+                    else if(device.includes('zte'))
+                        device = 'ZTE'
+                    else if(device.includes('oneplus')||device.includes('gm1910'))
+                        device = 'OnePlus'
+                    else if(device.includes('lenovo'))
+                        device = 'Lenovo'
+                    else
+                        device = device
+                }
+                if(device&&device.length) {
+                    if (!statistic[device]) statistic[device] = {count: 0, name: device}
+                    statistic[device].count += 1
+                }
+            }
+            const keys = Object.keys(statistic)
+            data = []
+            for(let i=0; i<keys.length; i++){
+                data.push({
+                    _id: keys[i],
+                    data: [
+                        statistic[keys[i]].name,
+                        statistic[keys[i]].count,
+                    ]
+                })
+            }
+            data = data.sort(function(a, b) {
+                return b.data[1] - a.data[1]
+            });
+            return {
+                columns: ['девайс', 'количество'],
                 row: data
             };
         }

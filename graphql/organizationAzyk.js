@@ -47,10 +47,9 @@ const type = `
 
 const query = `
     brandOrganizations(search: String!, filter: String!, city: String): [Organization]
-    organizations(search: String!, sort: String!, filter: String!, city: String): [Organization]
+    organizations(search: String!, filter: String!, city: String): [Organization]
     organizationsTrash(search: String!): [Organization]
     organization(_id: ID!): Organization
-    sortOrganization: [Sort]
     filterOrganization: [Filter]
 `;
 
@@ -117,16 +116,15 @@ const resolvers = {
             else return organizations
         }
     },
-    organizations: async(parent, {search, sort, filter, city}, {user}) => {
+    organizations: async(parent, {search, filter, city}, {user}) => {
         return await OrganizationAzyk.find({
             name: {'$regex': search, '$options': 'i'},
-            status: user.role==='admin'?filter.length===0?{'$regex': filter, '$options': 'i'}:filter:'active',
+            status: user.role==='admin'?{'$regex': filter, '$options': 'i'}:'active',
             ...city?{cities: city}:{},
             del: {$ne: 'deleted'}
         })
             .select('name _id image miniInfo')
             .sort('-priotiry')
-            .sort(sort)
             .lean()
     },
     organizationsTrash: async(parent, {search}, {user}) => {
@@ -146,24 +144,6 @@ const resolvers = {
                     _id: _id
                 })
                 .lean()
-    },
-    sortOrganization: async(parent, ctx, {user}) => {
-        let sort = [
-            {
-                name: 'Имя',
-                field: 'name'
-            }
-        ]
-        if(user.role==='admin') {
-            sort = [
-                ...sort,
-                {
-                    name: 'Статус',
-                    field: 'status'
-                }
-            ]
-        }
-        return sort
     },
     filterOrganization: async(parent, ctx, {user}) => {
         if(user.role==='admin')

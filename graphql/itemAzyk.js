@@ -63,10 +63,7 @@ const resolvers = {
         if('admin'===user.role){
             return await ItemAzyk.find({
                     del: 'deleted',
-                    $or: [
-                        {name: {'$regex': search, '$options': 'i'}},
-                        {info: {'$regex': search, '$options': 'i'}}
-                    ]
+                    name: {'$regex': search, '$options': 'i'}
                 })
                     .populate({
                         path: 'subCategory',
@@ -91,10 +88,7 @@ const resolvers = {
                     .lean())]
             return await ItemAzyk.find({
                 del: {$ne: 'deleted'},
-                $or: [
-                    {name: {'$regex': search, '$options': 'i'}},
-                    {info: {'$regex': search, '$options': 'i'}}
-                ],
+                name: {'$regex': search, '$options': 'i'},
                 ...subCategory!=='all'?{subCategory: subCategory}:{},
                 ...user.organization?{organization: {$in: organizations}}:{},
                 ...user.city ? {city: user.city} : {},
@@ -105,7 +99,6 @@ const resolvers = {
                     path: 'organization',
                     select: '_id'
                 })
-                .sort('-priotiry')
                 .sort(sort)
                 .lean()
         }
@@ -129,7 +122,6 @@ const resolvers = {
                 select: '_id onlyIntegrate onlyDistrict'
             })
             .sort('-priotiry')
-            .sort('-updatedAt')
             .lean()
         for(let i=0; i<items.length; i++){
             if (!approveOrganizations[items[i].organization._id]) {
@@ -177,10 +169,7 @@ const resolvers = {
                 ...city ? {city: city} : {},
                 ...user.city ? {city: user.city} : {},
                 ...user.role === 'client' ? {categorys: user.category, city: user.city} : {},
-                $or: [
-                    {name: {'$regex': search, '$options': 'i'}},
-                    {info: {'$regex': search, '$options': 'i'}}
-                ]
+                name: {'$regex': search, '$options': 'i'},
             })
                 .populate({
                     path: 'subCategory',
@@ -190,7 +179,6 @@ const resolvers = {
                     path: 'organization',
                     select: '_id name consignation'
                 })
-                .sort('-priotiry')
                 .sort(sort)
                 .lean()
         }
@@ -217,26 +205,17 @@ const resolvers = {
                 .lean()
         } else return null
     },
-    sortItem: async(parent, ctx, {user}) => {
+    sortItem: async() => {
         let sort = [
             {
-                name: 'Имя',
-                field: 'name'
+                name: 'Приоритет',
+                field: 'priotiry'
             },
             {
                 name: 'Цена',
                 field: 'price'
             }
         ]
-        if(user.role==='admin') {
-            sort = [
-                ...sort,
-                {
-                    name: 'Статус',
-                    field: 'status'
-                }
-            ]
-        }
         return sort
     }
 };

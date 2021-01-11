@@ -217,12 +217,10 @@ const resolvers = {
             let _clients;
             if(search.length>0) {
                 _clients = await ClientAzyk.find({
-                    del: {$ne: 'deleted'},
                     $or: [
-                            {name: {'$regex': search, '$options': 'i'}},
-                            {info: {'$regex': search, '$options': 'i'}},
-                            {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
-                        ]
+                        {name: {'$regex': search, '$options': 'i'}},
+                        {address: {$elemMatch: {$elemMatch: {'$regex': search, '$options': 'i'}}}}
+                    ]
                 })
                     .distinct('_id')
                     .lean()

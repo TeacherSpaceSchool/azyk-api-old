@@ -104,7 +104,7 @@ const verifydeuserGQL = async (req, res) => {
                 if('admin'===user.role)
                     resolve(user)
                 else if('client'===user.role) {
-                    let client = await ClientAzyk.findOne({user: user._id})
+                    let client = await ClientAzyk.findOne({user: user._id}).select('client category city')
                     user.client = client._id
                     user.category = client.category
                     user.city = client.city
