@@ -21,6 +21,7 @@ const type = `
       check: Boolean
       stateProduct: Int
       comment: String
+      geo: String
   }
   type Fho {
       type: String
@@ -48,7 +49,7 @@ const query = `
 `;
 
 const mutation = `
-    addMerchandising(organization: ID!, client: ID!, productAvailability: [String]!, productInventory: Boolean!, productConditions: Int!, productLocation: Int!, images: [Upload]!, fhos: [InputFho]!, needFho: Boolean!, stateProduct: Int!, comment: String!): Data
+    addMerchandising(organization: ID!, geo: String, client: ID!, productAvailability: [String]!, productInventory: Boolean!, productConditions: Int!, productLocation: Int!, images: [Upload]!, fhos: [InputFho]!, needFho: Boolean!, stateProduct: Int!, comment: String!): Data
     checkMerchandising(_id: ID!): Data
     deleteMerchandising(_id: [ID]!): Data
 `;
@@ -140,25 +141,9 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addMerchandising: async(parent, {organization, client, productAvailability, productInventory, productConditions, productLocation, images, fhos, needFho, stateProduct, comment}, {user}) => {
+    addMerchandising: async(parent, {organization, client, geo, productAvailability, productInventory, productConditions, productLocation, images, fhos, needFho, stateProduct, comment}, {user}) => {
         if(['admin', 'суперагент', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
-            let _object = await MerchandisingAzyk.findOne({
-                organization: user.organization?user.organization:organization==='super'?null:organization,
-                client: user.client?user.client:client,
-            })
-                .select('images fhos').lean()
-            if(_object) {
-                for (let i = 0; i < _object.images.length; i++)
-                    await deleteFile(_object.images[i])
-                for (let i = 0; i < _object.fhos.length; i++)
-                    for (let i1 = 0; i1 < _object.fhos[i].images.length; i1++)
-                        await deleteFile(_object.fhos[i].images[i1])
-                await MerchandisingAzyk.deleteMany({
-                    organization: user.organization ? user.organization : organization === 'super' ? null : organization,
-                    client: user.client ? user.client : client,
-                })
-            }
-            _object = new MerchandisingAzyk({
+            let _object = new MerchandisingAzyk({
                 organization: user.organization?user.organization:organization==='super'?null:organization,
                 employment: user.employment?user.employment:null,
                 client: user.client?user.client:client,
@@ -172,6 +157,7 @@ const resolversMutation = {
                 comment: comment,
                 images: [],
                 fhos: [],
+                geo: geo,
                 check: false
             });
             for(let i=0; i<images.length; i++) {
