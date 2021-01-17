@@ -119,7 +119,7 @@ const resolvers = {
     organizations: async(parent, {search, filter, city}, {user}) => {
         return await OrganizationAzyk.find({
             name: {'$regex': search, '$options': 'i'},
-            status: user.role==='admin'?{'$regex': filter, '$options': 'i'}:'active',
+            ...user.role!=='admin'?{status:'active'}:filter.length?{status: filter}:{},
             ...city?{cities: city}:{},
             del: {$ne: 'deleted'}
         })

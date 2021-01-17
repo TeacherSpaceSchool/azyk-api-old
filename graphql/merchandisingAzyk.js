@@ -42,7 +42,7 @@ const type = `
 `;
 
 const query = `
-    merchandisings(organization: ID!, search: String!, sort: String!, filter: String!, skip: Int): [Merchandising]
+    merchandisings(organization: ID!, client: ID, date: String, search: String!, sort: String!, filter: String!, skip: Int): [Merchandising]
     merchandising(_id: ID!): Merchandising
     sortMerchandising: [Sort]
     filterMerchandising: [Filter]
@@ -55,9 +55,17 @@ const mutation = `
 `;
 
 const resolvers = {
-    merchandisings: async(parent, {organization, search, sort, filter, skip}, {user}) => {
+    merchandisings: async(parent, {organization, search, date, client, sort, filter, skip}, {user}) => {
         if(['admin', 'суперагент', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
             let clients
+            let dateStart;
+            let dateEnd;
+            if(date&&date!==''){
+                dateStart = new Date(date)
+                dateStart.setHours(0, 0, 0, 0)
+                dateEnd = new Date(dateStart)
+                dateEnd.setDate(dateEnd.getDate() + 1)
+            }
             if (['суперагент', 'агент', 'менеджер'].includes(user.role))
                 clients = await DistrictAzyk
                     .find({$or: [{manager: user.employment}, {agent: user.employment}]})
@@ -73,11 +81,13 @@ const resolvers = {
                 }).distinct('_id').lean()
                 }
             return await MerchandisingAzyk.find({
+                ...client?{client: client}:{},
                 organization: user.organization?user.organization:organization==='super'?null:organization,
                 ...filter==='обработка'?{check: false}:{},
                 $and: [
                     {...['суперагент', 'агент'].includes(user.role) && clients.length||user.role==='менеджер'?{client: {$in: clients}}:['суперагент', 'агент'].includes(user.role)?{employment: user.employment}:{}},
-                    {...search.length>0?{client: {$in: _clients}}:{}}
+                    {...search.length>0?{client: {$in: _clients}}:{}},
+                    ...(!date||date===''?[]:[{date: {$gte: dateStart}}, {date: {$lt:dateEnd}}]),
                 ]
             })
                 .select('_id client employment date stateProduct check fhos')
