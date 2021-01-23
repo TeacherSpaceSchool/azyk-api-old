@@ -1085,6 +1085,20 @@ const resolversMutation = {
                 if(orders[i].organization.pass&&orders[i].organization.pass.length){
                     orders[i].sync = await setSingleOutXMLAzyk(orders[i])
                 }
+                orders[i].editor = 'админ'
+                let objectHistoryOrder = new HistoryOrderAzyk({
+                    invoice: orders[i]._id,
+                    orders: orders[i].orders.map(order=>{
+                        return {
+                            item: order.name,
+                            count: order.count,
+                            consignment: order.consignment,
+                            returned: order.returned
+                        }
+                    }),
+                    editor: 'админ',
+                });
+                await HistoryOrderAzyk.create(objectHistoryOrder);
                 await orders[i].save()
                 orders[i].adss = await AdsAzyk.find({_id: {$in: orders[i].adss}})
                 pubsub.publish(RELOAD_ORDER, { reloadOrder: {

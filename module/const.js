@@ -42,6 +42,20 @@ module.exports.weekDay = [
     'ПТ',
     'СБ',
 ]
+module.exports.month = [
+        'январь',
+        'февраль',
+        'март',
+        'апрель',
+        'май',
+        'июнь',
+        'июль',
+        'август',
+        'сентябрь',
+        'октябрь',
+        'ноябрь',
+        'декабрь'
+    ]
 
 module.exports.tomtom = 'waWMYtFJZce2G49GAz0nXJG5Grw3OpNm'
 

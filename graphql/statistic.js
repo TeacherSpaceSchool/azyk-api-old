@@ -19,7 +19,7 @@ const randomstring = require('randomstring');
 const app = require('../app');
 const fs = require('fs');
 const path = require('path');
-const { urlMain, saveFile, deleteFile, weekDay, pdDDMMYYHHMM, pdHHMM, checkFloat } = require('../module/const');
+const { urlMain, saveFile, deleteFile, weekDay, pdDDMMYYHHMM, pdHHMM, checkFloat, month } = require('../module/const');
 const readXlsxFile = require('read-excel-file/node');
 const AgentHistoryGeoAzyk = require('../models/agentHistoryGeoAzyk');
 const AutoAzyk = require('../models/autoAzyk');
@@ -65,6 +65,7 @@ const query = `
     statisticItem(company: String, dateStart: Date, dateType: String, online: Boolean, city: String): Statistic
     statisticAdss(company: String, dateStart: Date, dateType: String, online: Boolean, city: String): Statistic
     statisticOrder(company: String, dateStart: Date, dateType: String, online: Boolean, city: String): Statistic
+    statisticHours(organization: ID!, dateStart: Date, dateType: String, city: String, type: String!): Statistic
     statisticAzykStoreOrder(company: ID, filter: String, dateStart: Date, dateType: String, city: String): Statistic
     statisticAzykStoreAgents(company: ID, dateStart: Date, dateType: String, filter: String, city: String): Statistic
     statisticAzykStoreAgent(agent: ID!, dateStart: Date, dateType: String): Statistic
@@ -1851,6 +1852,131 @@ const resolvers = {
             ]
             return {
                 columns: [company?'район':'организация', 'выручка(сом)', 'выполнен(шт)', 'отказы(сом)', 'конс(сом)', 'средний чек(сом)', 'клиенты', 'процент'],
+                row: data
+            };
+        }
+    },
+    statisticHours: async(parent, { organization, dateStart, dateType, city, type }, {user}) => {
+        if(['admin', 'суперорганизация'].includes(user.role)){
+            if(user.organization) organization = user.organization
+
+            let dateEnd
+            dateStart = dateStart||new Date()
+            dateStart.setHours(3, 0, 0, 0)
+            dateEnd = new Date(dateStart)
+            if(dateType==='year')
+                dateEnd.setFullYear(dateEnd.getFullYear() + 1)
+            else if(dateType==='day')
+                dateEnd.setDate(dateEnd.getDate() + 1)
+            else if(dateType==='week')
+                dateEnd.setDate(dateEnd.getDate() + 7)
+            else
+                dateEnd.setMonth(dateEnd.getMonth() + 1)
+
+            let statistic = {}, data = []
+            let profitOnline = 0
+            let profitOffline = 0
+            let completOnline = 0
+            let completOffline = 0
+            let profitAll = 0
+            let completAll = 0
+            let name
+
+            data = await InvoiceAzyk.find(
+                {
+                    $and: [
+                        dateStart ? {createdAt: {$gte: dateStart}} : {},
+                        dateEnd ? {createdAt: {$lt: dateEnd}} : {}
+                    ],
+                    del: {$ne: 'deleted'},
+                    taken: true,
+                    organization: organization,
+                    ...city?{city: city}:{},
+                }
+            )
+                .select('_id returnedPrice allPrice paymentConsignation consignmentPrice agent client createdAt')
+                .lean()
+            for(let i=0; i<data.length; i++) {
+                if(dateStart.getHours()<3)
+                    data[i].createdAt.setDate(data[i].createdAt.getDate() - 1)
+                if(type==='hours') {
+                    if (data[i].createdAt.getHours() < 18 && data[i].createdAt.getHours() > 8)
+                        name = '08:00-18:00'
+                    else
+                        name = '18:00-08:00'
+                }
+                else if(type==='weekDay')
+                    name = weekDay[data[i].createdAt.getDay()]
+                else if(type==='month')
+                    name = month[data[i].createdAt.getMonth()]
+                if (!statistic[name])
+                    statistic[name] = {
+                        name,
+                        profitAll: 0,
+                        profitOnline: 0,
+                        profitOffline: 0,
+                        completAll: 0,
+                        completOnline: 0,
+                        completOffline: 0,
+                    }
+                statistic[name].profitAll += data[i].allPrice - data[i].returnedPrice
+                profitAll += data[i].allPrice - data[i].returnedPrice
+                if(data[i].allPrice-data[i].returnedPrice) {
+                    statistic[name].completAll += 1
+                    completAll += 1
+                }
+                if(data[i].agent) {
+                    statistic[name].profitOffline += data[i].allPrice - data[i].returnedPrice
+                    profitOffline += data[i].allPrice - data[i].returnedPrice
+                    if(data[i].allPrice-data[i].returnedPrice) {
+                        statistic[name].completOffline += 1
+                        completOffline += 1
+                    }
+                }
+                else {
+                    statistic[name].profitOnline += data[i].allPrice - data[i].returnedPrice
+                    profitOnline += data[i].allPrice - data[i].returnedPrice
+                    if(data[i].allPrice-data[i].returnedPrice) {
+                        statistic[name].completOnline += 1
+                        completOnline += 1
+                    }
+                }
+            }
+
+            const keys = Object.keys(statistic)
+            data = []
+
+            for(let i=0; i<keys.length; i++){
+                data.push({
+                    _id: keys[i],
+                    data: [
+                        statistic[keys[i]].name,
+                        checkFloat(statistic[keys[i]].profitAll),
+                        `${checkFloat(statistic[keys[i]].profitOnline)}(${checkFloat(statistic[keys[i]].profitOnline*100/statistic[keys[i]].profitAll)}%)`,
+                        `${checkFloat(statistic[keys[i]].profitOffline)}(${checkFloat(statistic[keys[i]].profitOffline*100/statistic[keys[i]].profitAll)}%)`,
+                        checkFloat(statistic[keys[i]].completAll),
+                        `${checkFloat(statistic[keys[i]].completOnline)}(${checkFloat(statistic[keys[i]].completOnline*100/statistic[keys[i]].completAll)}%)`,
+                        `${checkFloat(statistic[keys[i]].completOffline)}(${checkFloat(statistic[keys[i]].completOffline*100/statistic[keys[i]].completAll)}%)`,
+                    ]
+                })
+            }
+
+            data = [
+                {
+                    _id: 'All',
+                    data: [
+                        checkFloat(profitAll),
+                        `${checkFloat(profitOnline)}(${checkFloat(profitOnline*100/profitAll)}%)`,
+                        `${checkFloat(profitOffline)}(${checkFloat(profitOffline*100/profitAll)}%)`,
+                        checkFloat(completAll),
+                        `${checkFloat(completOnline)}(${checkFloat(completOnline*100/completAll)}%)`,
+                        `${checkFloat(completOffline)}(${checkFloat(completOffline*100/completAll)}%)`,
+                    ]
+                },
+                ...data
+            ]
+            return {
+                columns: ['часы', 'выручка(сом)', 'выручка online(сом)', 'выручка offline(сом)', 'выполнен(шт)', 'выполнен online(шт)', 'выполнен offline(шт)'],
                 row: data
             };
         }

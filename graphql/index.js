@@ -33,6 +33,7 @@ const SubscriberAzyk = require('./subscriberAzyk');
 const AgentRouteAzyk = require('./agentRouteAzyk');
 const ReceiveDataAzyk = require('./receiveDataAzyk');
 const ReviewAzyk = require('./reviewAzyk');
+const ConnectionApplicationAzyk = require('./connectionApplicationAzyk');
 const LotteryAzyk = require('./lotteryAzyk');
 const DistrictAzyk = require('./districtAzyk');
 const Integrate1CAzyk = require('./integrate1CAzyk');
@@ -62,6 +63,7 @@ const typeDefs = gql`
     }
     ${DistrictAzyk.type}
     ${ReviewAzyk.type}
+    ${ConnectionApplicationAzyk.type}
     ${LotteryAzyk.type}
     ${DeliveryDateAzyk.type}
     ${ErrorAzyk.type}
@@ -100,6 +102,7 @@ const typeDefs = gql`
         ${Integrate1CAzyk.mutation}
         ${DistrictAzyk.mutation}
         ${ReviewAzyk.mutation}
+        ${ConnectionApplicationAzyk.mutation}
         ${LotteryAzyk.mutation}
         ${DeliveryDateAzyk.mutation}
         ${ErrorAzyk.mutation}
@@ -138,6 +141,7 @@ const typeDefs = gql`
         ${Integrate1CAzyk.query}
         ${DistrictAzyk.query}
         ${ReviewAzyk.query}
+        ${ConnectionApplicationAzyk.query}
         ${LotteryAzyk.query}
         ${DeliveryDateAzyk.query}
         ${ErrorAzyk.query}
@@ -199,6 +203,7 @@ const resolvers = {
         ...Integrate1CAzyk.resolvers,
         ...DistrictAzyk.resolvers,
         ...ReviewAzyk.resolvers,
+        ...ConnectionApplicationAzyk.resolvers,
         ...LotteryAzyk.resolvers,
         ...DeliveryDateAzyk.resolvers,
         ...ErrorAzyk.resolvers,
@@ -237,6 +242,7 @@ const resolvers = {
         ...Integrate1CAzyk.resolversMutation,
         ...AgentRouteAzyk.resolversMutation,
         ...ReviewAzyk.resolversMutation,
+        ...ConnectionApplicationAzyk.resolversMutation,
         ...LotteryAzyk.resolversMutation,
         ...DistrictAzyk.resolversMutation,
         ...DeliveryDateAzyk.resolversMutation,
