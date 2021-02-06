@@ -71,11 +71,17 @@ router.post('/:pass/put/employment', async (req, res, next) => {
             _object = await Integrate1CAzyk.findOne({
                 organization: organization._id,
                 guid: req.body.elements[0].elements[i].attributes.guid
-            }).select('_id').lean()
+            }).select('_id agent ecspeditor').lean()
             if(_object){
-                _object = await EmploymentAzyk.findOne({$or: [{_id: _object.agent}, {_id: _object.ecspeditor}]})
-                _object.name = req.body.elements[0].elements[i].attributes.name
-                await _object.save()
+                if(req.body.elements[0].elements[i].attributes.del==='1') {
+                    await Integrate1CAzyk.deleteMany({_id: _object._id})
+                    await EmploymentAzyk.deleteMany({$or: [{_id: _object.agent}, {_id: _object.ecspeditor}]})
+                }
+                else {
+                    _object = await EmploymentAzyk.findOne({$or: [{_id: _object.agent}, {_id: _object.ecspeditor}]})
+                    _object.name = req.body.elements[0].elements[i].attributes.name
+                    await _object.save()
+                }
             }
             else {
                 _object = new UserAzyk({
