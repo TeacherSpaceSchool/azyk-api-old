@@ -143,25 +143,43 @@ const resolvers = {
                             let count = data[i].adss[i1].count
                             if (data[i].adss[i1].multiplier) {
                                 if (data[i].adss[i1].targetType === 'Цена' && data[i].adss[i1].targetPrice && data[i].adss[i1].targetPrice > 0) {
-                                    count *= parseInt(data[i].allPrice / data[i].adss[i1].targetPrice)
+                                    count *= parseInt((data[i].allPrice-data[i].returnedPrice) / data[i].adss[i1].targetPrice)
                                 }
-                                else if (data[i].adss[i1].targetType === 'Товар' && data[i].adss[i1].targetItem && data[i].adss[i1].targetItems.length>0) {
+                                else if (data[i].adss[i1].targetType === 'Товар' && data[i].adss[i1].targetItems && data[i].adss[i1].targetItems.length>0) {
                                     let index = []
                                     for(let i2=0; i2<data[i].adss[i1].targetItems.length; i2++) {
                                         if(data[i].adss[i1].targetItems[i2].sum){
                                             index[i2] = 0
                                             for(let i3=0; i3<data[i].orders.length; i3++) {
                                                 if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())) {
-                                                    index[i2] += data[i].orders[i3].count
+                                                    index[i2] += data[i].adss[i1].targetItems[i2].type==='Количество'?
+                                                        data[i].orders[i3].count-data[i].orders[i3].returned
+                                                        :
+                                                        (data[i].orders[i3].allPrice/data[i].orders[i3].count*(data[i].orders[i3].count-data[i].orders[i3].returned))
+
                                                 }
                                             }
-                                            index[i2] = parseInt(index[i2]/data[i].adss[i1].targetItems[i2].count)
+                                            index[i2] = parseInt(index[i2]/(data[i].adss[i1].targetItems[i2].type==='Количество'?data[i].adss[i1].targetItems[i2].count:data[i].adss[i1].targetItems[i2].targetPrice))
                                         }
                                         else {
                                             index[i2] = []
                                             for(let i3=0; i3<data[i].orders.length; i3++) {
-                                                if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())&&(data[i].orders[i3].count)>=data[i].adss[i1].targetItems[i2].count) {
-                                                    index[i2].push(parseInt(data[i].orders[i3].count/data[i].adss[i1].targetItems[i2].count))
+                                                if(
+                                                    data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())
+                                                    &&
+                                                    (
+                                                        (data[i].orders[i3].count-data[i].orders[i3].returned)>=data[i].adss[i1].targetItems[i2].count&&data[i].adss[i1].targetItems[i2].type==='Количество'
+                                                        ||
+                                                        (data[i].orders[i3].allPrice/data[i].orders[i3].count*(data[i].orders[i3].count-data[i].orders[i3].returned))>=data[i].adss[i1].targetItems[i2].targetPrice
+
+                                                    )
+                                                ) {
+                                                    index[i2].push(parseInt(
+                                                        data[i].adss[i1].targetItems[i2].type==='Количество'?
+                                                            (data[i].orders[i3].count-data[i].orders[i3].returned)/data[i].adss[i1].targetItems[i2].count
+                                                            :
+                                                            (data[i].orders[i3].allPrice/data[i].orders[i3].count*(data[i].orders[i3].count-data[i].orders[i3].returned))/data[i].adss[i1].targetItems[i2].targetPrice
+                                                    ))
                                                 }
                                             }
                                             if(index[i2].length)
@@ -401,7 +419,7 @@ const resolvers = {
                         let count = data[i].adss[i1].count
                         if(data[i].adss[i1].multiplier){
                             if(data[i].adss[i1].targetType==='Цена'&&data[i].adss[i1].targetPrice&&data[i].adss[i1].targetPrice>0){
-                                count *= parseInt(data[i].allPrice/data[i].adss[i1].targetPrice)
+                                count *= parseInt((data[i].allPrice-data[i].returnedPrice) / data[i].adss[i1].targetPrice)
                             }
                             else if(data[i].adss[i1].targetType==='Товар'&&data[i].adss[i1].targetItems&&data[i].adss[i1].targetItems.length>0){
                                 let index = []
@@ -410,16 +428,33 @@ const resolvers = {
                                         index[i2] = 0
                                         for(let i3=0; i3<data[i].orders.length; i3++) {
                                             if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())) {
-                                                index[i2] += data[i].orders[i3].count
+                                                index[i2] += data[i].adss[i1].targetItems[i2].type==='Количество'?
+                                                    data[i].orders[i3].count-data[i].orders[i3].returned
+                                                    :
+                                                    (data[i].orders[i3].allPrice/data[i].orders[i3].count*(data[i].orders[i3].count-data[i].orders[i3].returned))
                                             }
                                         }
-                                        index[i2] = parseInt(index[i2]/data[i].adss[i1].targetItems[i2].count)
+                                        index[i2] = parseInt(index[i2]/(data[i].adss[i1].targetItems[i2].type==='Количество'?data[i].adss[i1].targetItems[i2].count:data[i].adss[i1].targetItems[i2].targetPrice))
                                     }
                                     else {
                                         index[i2] = []
                                         for(let i3=0; i3<data[i].orders.length; i3++) {
-                                            if(data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())&&(data[i].orders[i3].count)>=data[i].adss[i1].targetItems[i2].count) {
-                                                index[i2].push(parseInt((data[i].orders[i3].count)/data[i].adss[i1].targetItems[i2].count))
+                                            if(
+                                                data[i].adss[i1].targetItems[i2]._id.toString().includes(data[i].orders[i3].item._id.toString())
+                                                &&
+                                                (
+                                                    (data[i].orders[i3].count-data[i].orders[i3].returned)>=data[i].adss[i1].targetItems[i2].count&&data[i].adss[i1].targetItems[i2].type==='Количество'
+                                                    ||
+                                                    (data[i].orders[i3].allPrice/data[i].orders[i3].count*(data[i].orders[i3].count-data[i].orders[i3].returned))>=data[i].adss[i1].targetItems[i2].targetPrice
+
+                                                )
+                                            ) {
+                                                index[i2].push(parseInt(
+                                                    data[i].adss[i1].targetItems[i2].type==='Количество'?
+                                                        (data[i].orders[i3].count-data[i].orders[i3].returned)/data[i].adss[i1].targetItems[i2].count
+                                                        :
+                                                        (data[i].orders[i3].allPrice/data[i].orders[i3].count*(data[i].orders[i3].count-data[i].orders[i3].returned))/data[i].adss[i1].targetItems[i2].targetPrice
+                                                ))
                                             }
                                         }
                                         if(index[i2].length)
@@ -478,7 +513,7 @@ const resolvers = {
                 .select('orders allPrice adss')
                 .populate({
                     path: 'orders',
-                    select: 'item count returned',
+                    select: 'item count returned allPrice',
                     populate: {
                         path: 'item',
                         select: 'name _id'
@@ -511,37 +546,56 @@ const resolvers = {
                         if(orders[i].adss[i1].item){
                             let count = orders[i].adss[i1].count
                             if (orders[i].adss[i1].multiplier) {
-
                                 if (orders[i].adss[i1].targetType === 'Цена' && orders[i].adss[i1].targetPrice && orders[i].adss[i1].targetPrice > 0) {
-                                    count *= parseInt(orders[i].allPrice / orders[i].adss[i1].targetPrice)
+                                    count *= parseInt((orders[i].allPrice-orders[i].returnedPrice) / orders[i].adss[i1].targetPrice)
                                 }
-                                else if (orders[i].adss[i1].targetType === 'Товар' && orders[i].adss[i1].targetItem && orders[i].adss[i1].targetItems.length>0) {
+                                else if (orders[i].adss[i1].targetType === 'Товар' && orders[i].adss[i1].targetItems && orders[i].adss[i1].targetItems.length>0) {
                                     let index = []
                                     for(let i2=0; i2<orders[i].adss[i1].targetItems.length; i2++) {
                                         if(orders[i].adss[i1].targetItems[i2].sum){
                                             index[i2] = 0
                                             for(let i3=0; i3<orders[i].orders.length; i3++) {
                                                 if(orders[i].adss[i1].targetItems[i2]._id.toString().includes(orders[i].orders[i3].item._id.toString())) {
-                                                    index[i2] += orders[i].orders[i3].count
+                                                    index[i2] += orders[i].adss[i1].targetItems[i2].type==='Количество'?
+                                                        orders[i].orders[i3].count-orders[i].orders[i3].returned
+                                                        :
+                                                        (orders[i].orders[i3].allPrice/orders[i].orders[i3].count*(orders[i].orders[i3].count-orders[i].orders[i3].returned))
                                                 }
                                             }
-                                            index[i2] = parseInt(index[i2]/orders[i].adss[i1].targetItems[i2].count)
+                                            index[i2] = parseInt(index[i2]/(orders[i].adss[i1].targetItems[i2].type==='Количество'?orders[i].adss[i1].targetItems[i2].count:orders[i].adss[i1].targetItems[i2].targetPrice))
                                         }
                                         else {
                                             index[i2] = []
                                             for(let i3=0; i3<orders[i].orders.length; i3++) {
-                                                if(orders[i].adss[i1].targetItems[i2]._id.toString().includes(orders[i].orders[i3].item._id.toString())&&(orders[i].orders[i3].count)>=orders[i].adss[i1].targetItems[i2].count) {
-                                                    index[i2].push(parseInt(orders[i].orders[i3].count/orders[i].adss[i1].targetItems[i2].count))
+                                                if(
+                                                    orders[i].adss[i1].targetItems[i2]._id.toString().includes(orders[i].orders[i3].item._id.toString())
+                                                    &&
+                                                    (
+                                                        (orders[i].orders[i3].count-orders[i].orders[i3].returned)>=orders[i].adss[i1].targetItems[i2].count&&orders[i].adss[i1].targetItems[i2].type==='Количество'
+                                                        ||
+                                                        (orders[i].orders[i3].allPrice/orders[i].orders[i3].count*(orders[i].orders[i3].count-orders[i].orders[i3].returned))>=orders[i].adss[i1].targetItems[i2].targetPrice
+
+                                                    )
+                                                ) {
+                                                    index[i2].push(parseInt(
+                                                        orders[i].adss[i1].targetItems[i2].type==='Количество'?
+                                                            (orders[i].orders[i3].count-orders[i].orders[i3].returned)/orders[i].adss[i1].targetItems[i2].count
+                                                            :
+                                                            (orders[i].orders[i3].allPrice/orders[i].orders[i3].count*(orders[i].orders[i3].count-orders[i].orders[i3].returned))/orders[i].adss[i1].targetItems[i2].targetPrice
+                                                    ))
                                                 }
                                             }
                                             if(index[i2].length)
                                                 index[i2] = Math.max(...index[i2])
                                         }
                                     }
+                                    console.log(index)
+
                                     if(index.length)
                                         count *= Math.min(...index)
                                 }
                             }
+                            console.log(count)
                             if(!list[orders[i].adss[i1].item._id])
                                 list[orders[i].adss[i1].item._id] = [orders[i].adss[i1].item.name, 0, orders[i].organization.name]
                             list[orders[i].adss[i1].item._id][1] += count

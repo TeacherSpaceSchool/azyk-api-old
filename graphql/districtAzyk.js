@@ -116,6 +116,7 @@ const resolvers = {
                                     {name: {'$regex': '^((?!агент).)*$', '$options': 'i'}},
                                     {name: {'$regex': '^((?!agent).)*$', '$options': 'i'}}
                                 ],
+                                ...user.cities?{city: {$in: user.cities}}:{},
                                 ...city ? {city: city} : {},
                                 del: {$ne: 'deleted'},
                                 address: {$elemMatch: {$elemMatch: {$ne: ''}}},

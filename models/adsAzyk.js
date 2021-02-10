@@ -35,6 +35,14 @@ const AdsAzykSchema = mongoose.Schema({
             type: Boolean,
             default: false
         },
+        type: {
+            type: String,
+            default: 'Количество'
+        },
+        targetPrice: {
+            type: Number,
+            default: 0
+        },
     }],
     targetPrice: {
         type: Number,

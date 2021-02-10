@@ -2,7 +2,7 @@ const AdsAzyk = require('../models/adsAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
 const InvoiceAzyk = require('../models/invoiceAzyk');
 const DistributerAzyk = require('../models/distributerAzyk');
-const { saveImage, deleteFile, urlMain } = require('../module/const');
+const { saveImage, deleteFile, urlMain, checkFloat } = require('../module/const');
 
 const type = `
   type Ads {
@@ -25,11 +25,15 @@ const type = `
         _id: [ID]
         count: Int
         sum: Boolean
+        type: String
+        targetPrice: Int
   }
   input TargetItemInput {
         _id: [ID]
         count: Int
         sum: Boolean
+        type: String
+        targetPrice: Int
   }
 `;
 
@@ -53,7 +57,7 @@ const checkAdss = async(invoice) => {
         .select('returnedPrice organization allPrice orders')
         .populate({
             path: 'orders',
-            select: 'count returned item'
+            select: 'count returned item allPrice'
         })
         .lean()
     let resAdss = []
@@ -89,16 +93,26 @@ const checkAdss = async(invoice) => {
                     checkItemsCount[i1] = 0
                     for(let i2=0; i2<invoice.orders.length; i2++) {
                         if(adss[i].targetItems[i1]._id.toString().includes(invoice.orders[i2].item.toString())) {
-                            checkItemsCount[i1] += invoice.orders[i2].count-invoice.orders[i2].returned
+                            checkItemsCount[i1] += adss[i].targetItems[i1].type==='Количество'?
+                                invoice.orders[i2].count-invoice.orders[i2].returned
+                                :
+                                (invoice.orders[i2].allPrice/invoice.orders[i2].count*(invoice.orders[i2].count-invoice.orders[i2].returned))
                         }
                     }
-                    checkItemsCount[i1] = checkItemsCount[i1] >= adss[i].targetItems[i1].count;
+                    checkItemsCount[i1] = checkItemsCount[i1] >= (adss[i].targetItems[i1].type==='Количество'?adss[i].targetItems[i1].count:adss[i].targetItems[i1].targetPrice);
                 }
                 else {
                     checkItemsCount[i1] = false
                     for(let i2=0; i2<invoice.orders.length; i2++) {
-                        if((adss[i].targetItems[i1]._id.toString().includes(invoice.orders[i2].item.toString())&&(invoice.orders[i2].count-invoice.orders[i2].returned)>=adss[i].targetItems[i1].count)) {
-                            checkItemsCount[i1] = true
+                        if(adss[i].targetItems[i1].type==='Количество')
+                            checkItemsCount[i1] = (adss[i].targetItems[i1]._id.toString().includes(invoice.orders[i2].item.toString())&&(invoice.orders[i2].count-invoice.orders[i2].returned)>=adss[i].targetItems[i1].count
+                            )
+                        else {
+                            checkItemsCount[i1] = (
+                                adss[i].targetItems[i1]._id.toString().includes(invoice.orders[i2].item.toString())
+                                &&
+                                (invoice.orders[i2].allPrice/invoice.orders[i2].count*(invoice.orders[i2].count-invoice.orders[i2].returned)) >= adss[i].targetItems[i1].targetPrice
+                            )
                         }
                     }
                 }

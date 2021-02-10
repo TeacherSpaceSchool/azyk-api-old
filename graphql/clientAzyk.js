@@ -117,6 +117,7 @@ const resolvers = {
                         {
                             $match:{
                                 ...city?{city: city}:{},
+                                ...user.cities?{city: {$in: user.cities}}:{},
                                 ...(filter==='Выключенные'?{image: {$ne: null}}:{}),
                                 ...(filter==='Без геолокации'?{address: {$elemMatch: {$elemMatch: {$eq: ''}}}}:{}),
                                 ...(['A','B','C','D','Horeca'].includes(filter)?{category: filter}:{}),
@@ -301,6 +302,7 @@ const resolvers = {
                                 ...(filter === 'Без геолокации' ? {address: {$elemMatch: {$elemMatch: {$eq: ''}}}} : {}),
                                 ...(!date || date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}),
                                 ...city ? {city: city} : {},
+                                ...user.cities?{city: {$in: user.cities}}:{},
                                 ...['менеджер', 'экспедитор'].includes(user.role)||['агент', 'суперагент'].includes(user.role)&&(clients.length||search.length<3)||['суперорганизация', 'организация'].includes(user.role)&&!accessToClient ? {_id: {$in: clients}} : {},
                                 del: {$ne: 'deleted'},
                                 $or: [

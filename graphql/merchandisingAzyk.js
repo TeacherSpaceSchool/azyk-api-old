@@ -2,7 +2,6 @@ const MerchandisingAzyk = require('../models/merchandisingAzyk');
 const ClientAzyk = require('../models/clientAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
 const mongoose = require('mongoose');
-const { saveImage, deleteFile, urlMain } = require('../module/const');
 
 const type = `
   type Merchandising {
@@ -22,6 +21,8 @@ const type = `
       stateProduct: Int
       comment: String
       geo: String
+      reviewerScore: Int
+      reviewerComment: String
   }
   type Fho {
       type: String
@@ -50,7 +51,7 @@ const query = `
 
 const mutation = `
     addMerchandising(organization: ID!, geo: String, client: ID!, productAvailability: [String]!, productInventory: Boolean!, productConditions: Int!, productLocation: Int!, images: [Upload]!, fhos: [InputFho]!, needFho: Boolean!, stateProduct: Int!, comment: String!): Data
-    checkMerchandising(_id: ID!): Data
+    checkMerchandising(_id: ID!, reviewerScore: Int, reviewerComment: String): Data
     deleteMerchandising(_id: [ID]!): Data
 `;
 
@@ -101,7 +102,7 @@ const resolvers = {
                 })
                 .sort(sort)
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 200 : 10000000000)
                 .lean()
         }
     },
@@ -171,45 +172,30 @@ const resolversMutation = {
                 check: false
             });
             for(let i=0; i<images.length; i++) {
-                let {stream, filename} = await images[i];
-                _object.images.push(urlMain+await saveImage(stream, filename))
+                _object.images.push(images[i])
             }
             for(let i=0; i<fhos.length; i++) {
                 _object.fhos.push(fhos[i])
-                for(let i1=0; i1<_object.fhos[i].images.length; i1++) {
-                    let {stream, filename} = await _object.fhos[i].images[i1];
-                    _object.fhos[i].images[i1] = urlMain+await saveImage(stream, filename)
-                }
             }
             await MerchandisingAzyk.create(_object)
         }
         return {data: 'OK'};
     },
-    checkMerchandising: async(parent, {_id}, {user}) => {
+    checkMerchandising: async(parent, {_id, reviewerScore, reviewerComment}, {user}) => {
         if(['admin', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             let object = await MerchandisingAzyk.findOne({
                 _id: _id,
                 ...user.organization?{organization: user.organization}:{}
             })
             object.check = true
+            object.reviewerScore = reviewerScore
+            object.reviewerComment = reviewerComment
             await object.save();
         }
         return {data: 'OK'}
     },
     deleteMerchandising: async(parent, { _id }, {user}) => {
         if(['admin', 'суперагент', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
-            let objects = await MerchandisingAzyk.find({
-                ...user.organization?{organization: user.organization}:{},
-                _id: {$in: _id}
-            })
-                .select('images fhos').lean()
-            for(let i = 0; i<objects.length;i++) {
-                for (let i1 = 0; i1 < objects[i].images.length; i1++)
-                    await deleteFile(objects[i].images[i1])
-                for (let i1 = 0; i1 < objects[i].fhos.length; i1++)
-                    for (let i2 = 0; i2 < objects[i].fhos[i1].images.length; i2++)
-                        await deleteFile(objects[i].fhos[i1].images[i2])
-            }
              await MerchandisingAzyk.deleteMany({
                 ...user.organization?{organization: user.organization}:{},
                 _id: {$in: _id}
