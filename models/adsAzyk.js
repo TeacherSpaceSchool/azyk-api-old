@@ -8,6 +8,10 @@ const AdsAzykSchema = mongoose.Schema({
         type: String,
         default: ''
     },
+    xidNumber: {
+        type: Number,
+        default: 0
+    },
     organization: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'OrganizationAzyk'
@@ -23,9 +27,10 @@ const AdsAzykSchema = mongoose.Schema({
     },
     title: String,
     targetItems: [{
-        _id: [{
+        xids: [{
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'ItemAzyk'
+            ref: 'ItemAzyk',
+            default: []
         }],
         count: {
             type: Number,

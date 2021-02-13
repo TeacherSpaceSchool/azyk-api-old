@@ -16,6 +16,7 @@ const type = `
 
 const query = `
     agentHistoryGeos(organization: ID, agent: ID, date: String): Statistic
+    agentMapGeos(agent: ID!, date: String): [[String]]
 `;
 
 const mutation = `
@@ -120,6 +121,55 @@ const resolvers = {
                     row: data
                 };
             }
+        }
+    },
+    agentMapGeos: async(parent, {agent, date}, {user}) => {
+        if(['суперорганизация', 'организация', 'менеджер', 'admin' ].includes(user.role)) {
+            let dateStart = date?new Date(date):new Date()
+            dateStart.setHours(3, 0, 0, 0)
+            let dateEnd = new Date(dateStart)
+            dateEnd.setDate(dateEnd.getDate() + 1)
+            let data = []
+            let take
+            let agentHistoryGeoAzyks = await AgentHistoryGeoAzyk.find({
+                $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
+                agent: agent
+            })
+                .select('agent client _id createdAt geo')
+                .populate({
+                    path: 'client',
+                    select: '_id name address'
+                })
+                .populate({
+                    path: 'agent',
+                    select: '_id name'
+                })
+                .sort('-createdAt')
+                .lean()
+            for (let i = 0; i < agentHistoryGeoAzyks.length; i++) {
+                take = await InvoiceAzyk.findOne({
+                    $and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}],
+                    client: agentHistoryGeoAzyks[i].client._id,
+                    del: {$ne: 'deleted'},
+                    taken: true
+                })
+                    .select('_id')
+                    .sort('-createdAt')
+                    .lean()
+                if(take&&agentHistoryGeoAzyks[i].client.address[0][1]){
+                    data.push([
+                        `агент ${agentHistoryGeoAzyks[i].client.name}${agentHistoryGeoAzyks[i].client.address&&agentHistoryGeoAzyks[i].client.address[0]?` (${agentHistoryGeoAzyks[i].client.address[0][2] ? `${agentHistoryGeoAzyks[i].client.address[0][2]}, ` : ''}${agentHistoryGeoAzyks[i].client.address[0][0]})` : ''}`,
+                        agentHistoryGeoAzyks[i].geo,
+                        '#FFFF00'
+                    ])
+                    data.push([
+                        `${agentHistoryGeoAzyks[i].client.name}${agentHistoryGeoAzyks[i].client.address&&agentHistoryGeoAzyks[i].client.address[0]?` (${agentHistoryGeoAzyks[i].client.address[0][2] ? `${agentHistoryGeoAzyks[i].client.address[0][2]}, ` : ''}${agentHistoryGeoAzyks[i].client.address[0][0]})` : ''}`,
+                        agentHistoryGeoAzyks[i].client.address[0][1],
+                        '#4b0082'
+                    ])
+                }
+                }
+                return data
         }
     },
 };

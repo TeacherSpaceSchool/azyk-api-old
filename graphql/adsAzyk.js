@@ -2,7 +2,7 @@ const AdsAzyk = require('../models/adsAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
 const InvoiceAzyk = require('../models/invoiceAzyk');
 const DistributerAzyk = require('../models/distributerAzyk');
-const { saveImage, deleteFile, urlMain, checkFloat } = require('../module/const');
+const { saveImage, deleteFile, urlMain, checkInt } = require('../module/const');
 
 const type = `
   type Ads {
@@ -20,16 +20,17 @@ const type = `
     targetPrice: Int
     multiplier: Boolean
     targetType: String
+    xidNumber: Int
   }
   type TargetItem {
-        _id: [ID]
+        xids: [ID]
         count: Int
         sum: Boolean
         type: String
         targetPrice: Int
   }
   input TargetItemInput {
-        _id: [ID]
+        xids: [ID]
         count: Int
         sum: Boolean
         type: String
@@ -46,8 +47,8 @@ const query = `
 `;
 
 const mutation = `
-    addAds(xid: String, image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Ads
-    setAds(xid: String, _id: ID!, image: Upload, url: String, title: String, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
+    addAds(xidNumber: Int, xid: String, image: Upload!, url: String!, title: String!, organization: ID!, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Ads
+    setAds(xidNumber: Int, xid: String, _id: ID!, image: Upload, url: String, title: String, item: ID, count: Int, targetItems: [TargetItemInput], targetPrice: Int, multiplier: Boolean, targetType: String): Data
     restoreAds(_id: [ID]!): Data
     deleteAds(_id: [ID]!): Data
 `;
@@ -71,18 +72,14 @@ const checkAdss = async(invoice) => {
     for(let i=0; i<adss.length; i++) {
         if(adss[i].targetType==='Цена'&&adss[i].targetPrice&&adss[i].targetPrice>0){
             if((invoice.allPrice-invoice.returnedPrice)>=adss[i].targetPrice) {
-                if(adss[i].xid&&adss[i].xid.length>0){
-                    let added = !idAds[adss[i].xid]||idAds[adss[i].xid].target<adss[i].targetPrice
-                    if(added){
-                        if(idAds[adss[i].xid]&&idAds[adss[i].xid].target<adss[i].targetPrice){
+                if(!(adss[i].xid&&adss[i].xid.length>0)||!idAds[adss[i].xid]||idAds[adss[i].xid].xidNumber<adss[i].xidNumber){
+                    if(adss[i].xid&&adss[i].xid.length>0) {
+                        if(idAds[adss[i].xid])
                             resAdss.splice(idAds[adss[i].xid].index, 1)
-                        }
-                        idAds[adss[i].xid] = {index: resAdss.length, target: adss[i].targetPrice}
-                        resAdss.push(adss[i]._id)
+                        idAds[adss[i].xid] = {xidNumber: adss[i].xidNumber, index: resAdss.length}
                     }
-                }
-                else
                     resAdss.push(adss[i]._id)
+                }
             }
         }
         else if(adss[i].targetType==='Товар'&&adss[i].targetItems&&adss[i].targetItems.length>0){
@@ -92,7 +89,7 @@ const checkAdss = async(invoice) => {
                 if(adss[i].targetItems[i1].sum){
                     checkItemsCount[i1] = 0
                     for(let i2=0; i2<invoice.orders.length; i2++) {
-                        if(adss[i].targetItems[i1]._id.toString().includes(invoice.orders[i2].item.toString())) {
+                        if(adss[i].targetItems[i1].xids.toString().includes(invoice.orders[i2].item.toString())) {
                             checkItemsCount[i1] += adss[i].targetItems[i1].type==='Количество'?
                                 invoice.orders[i2].count-invoice.orders[i2].returned
                                 :
@@ -100,16 +97,15 @@ const checkAdss = async(invoice) => {
                         }
                     }
                     checkItemsCount[i1] = checkItemsCount[i1] >= (adss[i].targetItems[i1].type==='Количество'?adss[i].targetItems[i1].count:adss[i].targetItems[i1].targetPrice);
-                }
+                 }
                 else {
                     checkItemsCount[i1] = false
                     for(let i2=0; i2<invoice.orders.length; i2++) {
                         if(adss[i].targetItems[i1].type==='Количество')
-                            checkItemsCount[i1] = (adss[i].targetItems[i1]._id.toString().includes(invoice.orders[i2].item.toString())&&(invoice.orders[i2].count-invoice.orders[i2].returned)>=adss[i].targetItems[i1].count
-                            )
+                            checkItemsCount[i1] = (adss[i].targetItems[i1].xids.toString().includes(invoice.orders[i2].item.toString())&&(invoice.orders[i2].count-invoice.orders[i2].returned)>=adss[i].targetItems[i1].count)
                         else {
                             checkItemsCount[i1] = (
-                                adss[i].targetItems[i1]._id.toString().includes(invoice.orders[i2].item.toString())
+                                adss[i].targetItems[i1].xids.toString().includes(invoice.orders[i2].item.toString())
                                 &&
                                 (invoice.orders[i2].allPrice/invoice.orders[i2].count*(invoice.orders[i2].count-invoice.orders[i2].returned)) >= adss[i].targetItems[i1].targetPrice
                             )
@@ -125,8 +121,21 @@ const checkAdss = async(invoice) => {
             }
             else
                 check = false
-            if(check)
+            if(check&&
+                (
+                    !(adss[i].xid&&adss[i].xid.length>0)
+                    ||
+                    !idAds[adss[i].xid]
+                    ||
+                    idAds[adss[i].xid].xidNumber<adss[i].xidNumber
+                )) {
+                if(adss[i].xid&&adss[i].xid.length>0) {
+                    if(idAds[adss[i].xid])
+                        resAdss.splice(idAds[adss[i].xid].index, 1)
+                    idAds[adss[i].xid] = {xidNumber: adss[i].xidNumber, index: resAdss.length}
+                }
                 resAdss.push(adss[i]._id)
+            }
         }
     }
     return resAdss
@@ -213,7 +222,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addAds: async(parent, {xid, image, url, title, organization, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
+    addAds: async(parent, {xidNumber, xid, image, url, title, organization, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -228,6 +237,7 @@ const resolversMutation = {
                 multiplier: multiplier,
                 xid: xid,
                 targetType: targetType,
+                xidNumber: xidNumber
             });
             if(count!=undefined)
                 _object.count = count
@@ -235,7 +245,7 @@ const resolversMutation = {
             return _object
         }
     },
-    setAds: async(parent, {xid, _id, image, url, title, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
+    setAds: async(parent, {xidNumber, xid, _id, image, url, title, item, count, targetItems, targetPrice, multiplier, targetType}, {user}) => {
         if(['суперорганизация', 'организация', 'admin'].includes(user.role)){
             let object = await AdsAzyk.findById(_id)
             object.item = item
@@ -248,6 +258,7 @@ const resolversMutation = {
             if(xid) object.xid = xid
             if(url) object.url = url
             if(title) object.title = title
+            if(xidNumber!=undefined) object.xidNumber = xidNumber
             if(count!=undefined) object.count = count
             object.targetItems = targetItems
             if(targetPrice!=undefined) object.targetPrice = targetPrice

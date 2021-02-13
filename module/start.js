@@ -6,6 +6,7 @@ const { reductionSingleOutXMLAzyk } = require('../module/reductionSingleOutXMLAz
 const { reductionOutAdsXMLAzyk } = require('../module/singleOutXMLAzyk');
 const { reductionToOrganization } = require('../module/organizationAzyk');
 const { reductionToClient } = require('../module/clientAzyk');
+const { reductionToAds } = require('../module/adsAzyk');
 const { reductionToItem } = require('../module/itemAzyk');
 const { reductionInvoices } = require('../module/invoiceAzyk');
 const { reductionReturneds } = require('../module/returnedAzyk');
@@ -84,7 +85,7 @@ let start = async () => {
     //await reductionToUser()
     //await reductionToAgentRoute();
     //await reductionOutAdsXMLShoroAzyk()
-
+    await reductionToAds()
 }
 
 module.exports.start = start;
