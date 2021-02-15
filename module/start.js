@@ -85,7 +85,7 @@ let start = async () => {
     //await reductionToUser()
     //await reductionToAgentRoute();
     //await reductionOutAdsXMLShoroAzyk()
-    await reductionToAds()
+    //await reductionToAds()
 }
 
 module.exports.start = start;
