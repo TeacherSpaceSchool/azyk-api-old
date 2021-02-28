@@ -75,7 +75,7 @@ const query = `
     statisticReturned(company: String, dateStart: Date, dateType: String, city: String): Statistic
     statisticAgents(company: String, dateStart: Date, dateType: String, city: String): Statistic
     statisticAgentsWorkTime(organization: String, date: Date): Statistic
-    statisticMerchandising(organization: ID): Statistic
+    statisticMerchandising(dateStart: Date, dateType: String, organization: ID): Statistic
     checkOrder(company: String, today: Date!, city: String): Statistic
     statisticOrderChart(company: String, dateStart: Date, dateType: String, type: String, online: Boolean, city: String): ChartStatisticAll
     activeItem(organization: ID!): [Item]
@@ -2175,13 +2175,32 @@ const resolvers = {
             };
         }
     },
-    statisticMerchandising: async(parent, { organization }, {user}) => {
+    statisticMerchandising: async(parent, { dateStart, dateType, organization }, {user}) => {
         if(['admin', 'суперорганизация', 'организация'].includes(user.role)){
+            let dateEnd
+            if(dateStart){
+                dateStart= new Date(dateStart)
+                dateStart.setHours(3, 0, 0, 0)
+                dateEnd = new Date(dateStart)
+
+                if(dateType==='year')
+                    dateEnd.setFullYear(dateEnd.getFullYear() + 1)
+                else if(dateType==='day')
+                    dateEnd.setDate(dateEnd.getDate() + 1)
+                else if(dateType==='week')
+                    dateEnd.setDate(dateEnd.getDate() + 7)
+                else
+                    dateEnd.setMonth(dateEnd.getMonth() + 1)
+            }
             let statistic = {}
             let districts = await DistrictAzyk.find({organization: user.organization?user.organization:organization})
                 .select('_id name client')
                 .lean()
             let data = await MerchandisingAzyk.find({
+                $and: [
+                    dateStart ? {createdAt: {$gte: dateStart}} : {},
+                    dateEnd ? {createdAt: {$lt: dateEnd}} : {}
+                ],
                 organization: user.organization?user.organization:organization,
 
             })
