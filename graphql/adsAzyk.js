@@ -2,7 +2,8 @@ const AdsAzyk = require('../models/adsAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
 const InvoiceAzyk = require('../models/invoiceAzyk');
 const DistributerAzyk = require('../models/distributerAzyk');
-const { saveImage, deleteFile, urlMain, checkInt } = require('../module/const');
+const SubBrandAzyk = require('../models/subBrandAzyk');
+const { saveImage, deleteFile, urlMain } = require('../module/const');
 
 const type = `
   type Ads {
@@ -159,10 +160,11 @@ const resolvers = {
     },
     adss: async(parent, {search, organization}, {user}) => {
         if(user.role) {
+            let _organization = await SubBrandAzyk.findOne({_id: organization}).select('organization').lean()
             let res = await AdsAzyk.find({
                 del: {$ne: 'deleted'},
                 title: {'$regex': search, '$options': 'i'},
-                organization: organization
+                organization: _organization?_organization.organization:organization
             })
                 .populate({
                     path: 'item',

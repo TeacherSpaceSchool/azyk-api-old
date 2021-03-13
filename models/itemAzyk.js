@@ -26,6 +26,10 @@ const ItemAzykSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'SubCategoryAzyk'
     },
+    subBrand: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SubBrandAzyk'
+    },
     organization: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'OrganizationAzyk'

@@ -2,6 +2,7 @@ const ItemAzyk = require('../models/itemAzyk');
 const AdsAzyk = require('../models/adsAzyk');
 const DistributerAzyk = require('../models/distributerAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
+const SubBrandAzyk = require('../models/subBrandAzyk');
 const BasketAzyk = require('../models/basketAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
 const mongoose = require('mongoose');
@@ -20,6 +21,7 @@ const type = `
     price: Float
     reiting: Int
     subCategory: SubCategory
+    subBrand: SubBrand
     organization: Organization
     hit: Boolean
     latest: Boolean
@@ -40,7 +42,7 @@ const type = `
 `;
 
 const query = `
-    items(subCategory: ID!, search: String!, sort: String!): [Item]
+    items(organization: ID, subCategory: ID!, search: String!, sort: String!): [Item]
     popularItems: [Item]
     itemsTrash(search: String!): [Item]
     brands(organization: ID!, search: String!, sort: String!, city: String): [Item]
@@ -49,8 +51,8 @@ const query = `
 `;
 
 const mutation = `
-    addItem( categorys: [String]!, city: String!, costPrice: Float, unit: String, priotiry: Int, apiece: Boolean, packaging: Int!, stock: Float!, weight: Float!, size: Float!, name: String!, info: String!, image: Upload, price: Float!, subCategory: ID!, organization: ID!, hit: Boolean!, latest: Boolean!): Data
-    setItem(_id: ID!, unit: String, city: String, costPrice: Float, categorys: [String], priotiry: Int, apiece: Boolean, packaging: Int, stock: Float, weight: Float, size: Float, name: String, info: String, image: Upload, price: Float, subCategory: ID, organization: ID, hit: Boolean, latest: Boolean): Data
+    addItem( subBrand: ID, categorys: [String]!, city: String!, costPrice: Float, unit: String, priotiry: Int, apiece: Boolean, packaging: Int!, stock: Float!, weight: Float!, size: Float!, name: String!, info: String!, image: Upload, price: Float!, subCategory: ID!, organization: ID!, hit: Boolean!, latest: Boolean!): Data
+    setItem(_id: ID!, subBrand: ID, unit: String, city: String, costPrice: Float, categorys: [String], priotiry: Int, apiece: Boolean, packaging: Int, stock: Float, weight: Float, size: Float, name: String, info: String, image: Upload, price: Float, subCategory: ID, organization: ID, hit: Boolean, latest: Boolean): Data
     setItemsCostPrice(itemsCostPrice: [InputItemCostPrice]!): Data
     deleteItem(_id: [ID]!): Data
     restoreItem(_id: [ID]!): Data
@@ -77,7 +79,7 @@ const resolvers = {
                     .lean()
         }
     },
-    items: async(parent, {subCategory, search, sort}, {user}) => {
+    items: async(parent, {organization, subCategory, search, sort}, {user}) => {
         if(['admin', 'суперагент', 'экспедитор', 'суперорганизация', 'организация', 'менеджер', 'агент', 'client'].includes(user.role)){
             let organizations
             if(user.organization)
@@ -89,6 +91,7 @@ const resolvers = {
             return await ItemAzyk.find({
                 del: {$ne: 'deleted'},
                 name: {'$regex': search, '$options': 'i'},
+                ...organization?{organization}:{},
                 ...subCategory!=='all'?{subCategory: subCategory}:{},
                 ...user.organization?{organization: {$in: organizations}}:{},
                 ...user.city ? {city: user.city} : {},
@@ -162,7 +165,13 @@ const resolvers = {
     },
     brands: async(parent, {organization, search, sort, city}, {user}) => {
         if(mongoose.Types.ObjectId.isValid(organization)) {
+            let subBrand = await SubBrandAzyk.findOne({_id: organization}).select('organization _id').lean()
+            if(subBrand){
+                organization = subBrand.organization
+                subBrand = subBrand._id
+            }
             return await ItemAzyk.find({
+                subBrand,
                 ...user.role === 'admin' ? {} : {status: 'active'},
                 organization: organization,
                 del: {$ne: 'deleted'},
@@ -221,7 +230,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addItem: async(parent, {categorys, city, unit, apiece, costPrice, priotiry, stock, name, image, info, price, subCategory, organization, hit, latest, packaging, weight, size}, {user}) => {
+    addItem: async(parent, {subBrand, categorys, city, unit, apiece, costPrice, priotiry, stock, name, image, info, price, subCategory, organization, hit, latest, packaging, weight, size}, {user}) => {
         if(['admin', 'суперорганизация', 'организация'].includes(user.role)){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -238,6 +247,7 @@ const resolversMutation = {
                 categorys: categorys,
                 packaging: packaging,
                 latest: latest,
+                subBrand,
                 status: 'active',
                 weight: weight,
                 size: size,
@@ -251,7 +261,7 @@ const resolversMutation = {
         }
         return {data: 'OK'};
     },
-    setItem: async(parent, {city, unit, categorys, apiece, costPrice, _id, priotiry, weight, size, stock, name, image, info, price, subCategory, organization, packaging, hit, latest}, {user}) => {
+    setItem: async(parent, {subBrand, city, unit, categorys, apiece, costPrice, _id, priotiry, weight, size, stock, name, image, info, price, subCategory, organization, packaging, hit, latest}, {user}) => {
          if(['admin', 'суперорганизация', 'организация'].includes(user.role)) {
             let object = await ItemAzyk.findOne({
                 _id: _id,
@@ -267,6 +277,7 @@ const resolversMutation = {
             if(name)object.name = name
             if(weight!=undefined)object.weight = weight
             if(size!=undefined)object.size = size
+             if(subBrand)object.subBrand = subBrand
             if(info)object.info = info
             if(stock!=undefined)object.stock = stock
             if(costPrice!=undefined)object.costPrice = costPrice

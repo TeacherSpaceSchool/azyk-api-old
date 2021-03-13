@@ -3,6 +3,7 @@ const OrganizationAzyk = require('../models/organizationAzyk');
 const AutoAzyk = require('../models/autoAzyk');
 const EquipmentAzyk = require('../models/equipmentAzyk');
 const EmploymentAzyk = require('../models/employmentAzyk');
+const SubBrandAzyk = require('../models/subBrandAzyk');
 const DeliveryDateAzyk = require('../models/deliveryDateAzyk');
 const DistributerAzyk = require('../models/distributerAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
@@ -64,11 +65,13 @@ const mutation = `
 const resolvers = {
     brandOrganizations: async(parent, {search, filter, city}, {user}) => {
         if(['admin', 'экспедитор', 'суперорганизация', 'организация', 'менеджер', 'агент', 'суперагент', 'суперэкспедитор', 'client'].includes(user.role)){
-            let organizationsRes = []
+            let organizationsRes = [], subBrands = [], onlyIntegrate, onlyDistrict, organizationId
             let brandOrganizations = await ItemAzyk.find({
                 ...user.role==='admin'?{}:{status: 'active'},
                 del: {$ne: 'deleted'}
-            }).distinct('organization').lean()
+            }).select('organization subBrand').lean()
+            subBrands = brandOrganizations.map(elem=>elem.subBrand)
+            brandOrganizations = brandOrganizations.map(elem=>{if(!elem.subBrand)return elem.organization})
             if(user.organization){
                 brandOrganizations = await DistributerAzyk.findOne({
                     distributer: user.organization
@@ -87,29 +90,65 @@ const resolvers = {
                 .select('name _id image miniInfo onlyIntegrate onlyDistrict')
                 .sort('-priotiry')
                 .lean()
-            if(user.role==='client') {
-                for(let i=0; i<organizations.length; i++) {
-                    if(organizations[i].onlyIntegrate&&organizations[i].onlyDistrict){
-                        let district = await DistrictAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
-                        let integrate = await Integrate1CAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
-                        if(integrate&&district){
-                            organizationsRes.push(organizations[i])
+            if(['admin', 'client'].includes(user.role)) {
+                subBrands = await SubBrandAzyk.find({
+                    _id: {$in: subBrands},
+                    name: {'$regex': search, '$options': 'i'},
+                    status: 'admin'===user.role?filter.length===0?{'$regex': filter, '$options': 'i'}:filter:'active',
+                    ...city?{cities: city}:{},
+                    del: {$ne: 'deleted'},
+                    ...user.city?{cities: user.city}:{}
+                })
+                    .populate({
+                        path: 'organization',
+                        select: 'onlyIntegrate onlyDistrict _id'
+                    })
+                    .sort('-priotiry')
+                    .lean()
+                organizationsRes = [...subBrands, ...organizations]
+                organizationsRes = organizationsRes.sort(function (a, b) {
+                    return b.priotiry - a.priotiry
+                });
+                if(user.role==='client') {
+                    for (let i = 0; i < organizationsRes.length; i++) {
+                        onlyIntegrate =  organizationsRes[i].organization?organizationsRes[i].organization.onlyIntegrate:organizationsRes[i].onlyIntegrate
+                        onlyDistrict = organizationsRes[i].organization?organizationsRes[i].organization.onlyDistrict:organizationsRes[i].onlyDistrict
+                        organizationId = organizationsRes[i].organization?organizationsRes[i].organization._id:organizationsRes[i]._id
+                        if (onlyIntegrate && onlyDistrict) {
+                            let district = await DistrictAzyk.findOne({
+                                client: user.client,
+                                organization: organizationId
+                            }).select('_id').lean()
+                            let integrate = await Integrate1CAzyk.findOne({
+                                client: user.client,
+                                organization: organizationId
+                            }).select('_id').lean()
+                            if(!integrate||!district) {
+                                organizationsRes.splice(i, 1)
+                                i -= 1
+                            }
+                        }
+                        else if (onlyDistrict) {
+                            let district = await DistrictAzyk.findOne({
+                                client: user.client,
+                                organization: organizationId
+                            }).select('_id').lean()
+                            if (!district) {
+                                organizationsRes.splice(i, 1)
+                                i -= 1
+                            }
+                        }
+                        else if (onlyIntegrate) {
+                            let integrate = await Integrate1CAzyk.findOne({
+                                client: user.client,
+                                organization: organizationId
+                            }).select('_id').lean()
+                            if (!integrate) {
+                                organizationsRes.splice(i, 1)
+                                i -= 1
+                            }
                         }
                     }
-                    else if(organizations[i].onlyDistrict){
-                        let district = await DistrictAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
-                        if(district){
-                            organizationsRes.push(organizations[i])
-                        }
-                    }
-                    else if(organizations[i].onlyIntegrate){
-                        let integrate = await Integrate1CAzyk.findOne({client: user.client, organization: organizations[i]._id}).select('_id').lean()
-                        if(integrate){
-                            organizationsRes.push(organizations[i])
-                        }
-                    }
-                    else organizationsRes.push(organizations[i])
-
                 }
                 return organizationsRes
             }
@@ -139,11 +178,15 @@ const resolvers = {
         }
     },
     organization: async(parent, {_id}) => {
-        if(mongoose.Types.ObjectId.isValid(_id))
-            return await OrganizationAzyk.findOne({
-                    _id: _id
-                })
+        if(mongoose.Types.ObjectId.isValid(_id)) {
+            let subBrand = await SubBrandAzyk.findOne({_id: _id}).select('organization name').lean()
+            let organization = await OrganizationAzyk.findOne({
+                _id: subBrand?subBrand.organization:_id
+            })
                 .lean()
+            if(subBrand) organization.name = `${organization.name} ${subBrand.name}`
+            return organization
+        }
     },
     filterOrganization: async(parent, ctx, {user}) => {
         if(user.role==='admin')
@@ -247,6 +290,7 @@ const resolversMutation = {
                 let users = await EmploymentAzyk.find({organization: _id[i]}).distinct('user').lean()
                 await UserAzyk.updateMany({_id: {$in: users}}, {status: 'deactive'})
                 await EmploymentAzyk.updateMany({organization: _id[i]}, {del: 'deleted'})
+                await SubBrandAzyk.deleteMany({organization: _id[i]})
                 await Integrate1CAzyk.deleteMany({organization: _id[i]})
                 await AgentRouteAzyk.deleteMany({organization: _id[i]})
                 await DistrictAzyk.deleteMany({organization: _id[i]})
@@ -277,6 +321,7 @@ const resolversMutation = {
             let objects = await OrganizationAzyk.find({_id: {$in: _id}})
             for(let i=0; i<objects.length; i++){
                 objects[i].status = objects[i].status==='active'?'deactive':'active'
+                await SubBrandAzyk.updateMany({organization: objects[i]._id}, {status: objects[i].status})
                 await EmploymentAzyk.updateMany({organization: objects[i]._id}, {status: objects[i].status})
                 let items = await ItemAzyk.find({organization: objects[i]._id}).distinct('_id').lean()
                 await BasketAzyk.deleteMany({item: {$in: items}})
