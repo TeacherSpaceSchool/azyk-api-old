@@ -453,8 +453,8 @@ const resolversMutation = {
                 login: login.trim(),
                 role: 'client',
                 status: 'active',
-                password: password,
-                category: category
+                password,
+                category
             });
             newUser = await UserAzyk.create(newUser);
             let client = {status: 'active', user: newUser._id, sync: []}

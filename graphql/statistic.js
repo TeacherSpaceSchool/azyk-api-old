@@ -19,10 +19,11 @@ const randomstring = require('randomstring');
 const app = require('../app');
 const fs = require('fs');
 const path = require('path');
-const { urlMain, saveFile, deleteFile, weekDay, pdDDMMYYHHMM, pdHHMM, checkFloat, month } = require('../module/const');
+const { urlMain, saveFile, deleteFile, weekDay, pdDDMMYYHHMM, pdHHMM, checkFloat, month, checkInt } = require('../module/const');
 const readXlsxFile = require('read-excel-file/node');
 const AgentHistoryGeoAzyk = require('../models/agentHistoryGeoAzyk');
 const AutoAzyk = require('../models/autoAzyk');
+const SubCategoryAzyk = require('../models/subCategoryAzyk');
 const mongoose = require('mongoose');
 
 const type = `
@@ -84,11 +85,13 @@ const query = `
     statisticClientGeo(search: String, organization: ID, item: ID, city: String): [GeoStatistic]
     statisticDevice(filter: String): Statistic
     statisticStorageSize: Statistic
+    statisticClientCity: Statistic
     checkIntegrateClient(organization: ID, type: String, document: Upload): Statistic
 `;
 
 const mutation = `
-    uploadingClients(document: Upload!, organization: ID!): Data
+    uploadingClients(document: Upload!, organization: ID!, city: String!): Data
+    uploadingItems(document: Upload!, organization: ID!, city: String!): Data
     uploadingDistricts(document: Upload!, organization: ID!): Data
     uploadingAgentRoute(document: Upload!, agentRoute: ID!, ): Data
    `;
@@ -906,6 +909,42 @@ const resolvers = {
             ]
             return {
                 columns: ['коллекция', 'размер(MB)', 'количество(шт)'],
+                row: data
+            };
+        }
+    },
+    statisticClientCity: async(parent, ctx, {user}) => {
+        if(['admin'].includes(user.role)){
+            const cities = ['Бишкек', 'Кара-Балта', 'Токмок', 'Кочкор', 'Нарын', 'Боконбаева', 'Каракол', 'Чолпон-Ата', 'Балыкчы', 'Казарман', 'Талас', 'Жалал-Абад', 'Ош']
+            let allCount = 0
+            let count
+            let data = []
+            let clients = await UserAzyk.find({role: 'client', status: 'active'}).distinct('_id').lean()
+            for(let i=0; i<cities.length; i++){
+                count = await ClientAzyk.count({
+                    user: {$in: clients},
+                    del: {$ne: 'deleted'},
+                    city: cities[i]
+                })
+                allCount += count
+                data.push(
+                    {_id: `#${i}`, data: [cities[i], count]}
+                )
+            }
+            data = data.sort(function(a, b) {
+                return b.data[1] - a.data[1]
+            });
+            data = [
+                {
+                    _id: 'Всего',
+                    data: [
+                        allCount
+                    ]
+                },
+                ...data
+            ]
+            return {
+                columns: ['город', 'клиентов(шт)'],
                 row: data
             };
         }
@@ -4332,7 +4371,68 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    uploadingClients: async(parent, { document, organization }, {user}) => {
+    uploadingItems: async(parent, { document, organization, city }, {user}) => {
+        if (user.role === 'admin') {
+            let item, integrate1CAzyk
+            let {stream, filename} = await document;
+            filename = await saveFile(stream, filename);
+            let xlsxpath = path.join(app.dirname, 'public', filename);
+            let rows = await readXlsxFile(xlsxpath)
+            let subCategory = (await SubCategoryAzyk.findOne({name: 'Не задано'}).select('_id').lean())._id
+            for (let i = 0; i < rows.length; i++) {
+                integrate1CAzyk = await Integrate1CAzyk.findOne({
+                    organization: organization,
+                    guid: rows[i][0]
+                })
+                if(!integrate1CAzyk) {
+                    item = new ItemAzyk({
+                        stock: 0,
+                        name: rows[i][1],
+                        image: process.env.URL.trim()+'/static/add.png',
+                        info: '',
+                        price: checkFloat(rows[i][2]),
+                        reiting: 0,
+                        subCategory: subCategory,
+                        organization: organization,
+                        hit: false,
+                        categorys: ['A','B','C','D','Horeca'],
+                        packaging: checkInt(rows[i][3]),
+                        latest: false,
+                        status: 'active',
+                        weight: checkFloat(rows[i][4]),
+                        size: 0,
+                        priotiry: 0,
+                        unit: 'шт',
+                        city,
+                        apiece: rows[i][5]==='1',
+                        costPrice: 0
+                    });
+                    item = await ItemAzyk.create(item);
+                    integrate1CAzyk = new Integrate1CAzyk({
+                        item: item._id,
+                        client: null,
+                        agent: null,
+                        ecspeditor: null,
+                        organization: organization,
+                        guid: rows[i][0],
+                    });
+                    await Integrate1CAzyk.create(integrate1CAzyk)
+                }
+                else {
+                    item = await ItemAzyk.findOne({_id: integrate1CAzyk.item, organization})
+                    item.name = rows[i][1]
+                    item.price = checkFloat(rows[i][2])
+                    item.packaging = checkInt(rows[i][3])
+                    item.weight = checkFloat(rows[i][4])
+                    item.apiece = rows[i][5]==='1'
+                    await item.save()
+                }
+            }
+            await deleteFile(filename)
+            return ({data: 'OK'})
+        }
+    },
+    uploadingClients: async(parent, { document, organization, city }, {user}) => {
         if (user.role === 'admin') {
             let {stream, filename} = await document;
             filename = await saveFile(stream, filename);
@@ -4354,8 +4454,8 @@ const resolversMutation = {
                     client = new ClientAzyk({
                         name: rows[i][1],
                         phone: [''],
-                        city: rows[i][2]?rows[i][2]:'',
-                        address: [[rows[i][3], '', rows[i][1]]],
+                        city,
+                        address: [[rows[i][2], '', rows[i][1]]],
                         user: client._id,
                         notification: false
                     });
