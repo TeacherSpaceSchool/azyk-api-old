@@ -87,7 +87,7 @@ const resolvers = {
                 ...['суперагент', 'суперэкспедитор'].includes(user.role)?{superagent: true}:{},
                 ...user.city?{cities: user.city}:{}
             })
-                .select('name _id image miniInfo onlyIntegrate onlyDistrict')
+                .select('name _id image miniInfo onlyIntegrate onlyDistrict priotiry')
                 .sort('-priotiry')
                 .lean()
             if(['admin', 'client'].includes(user.role)) {
