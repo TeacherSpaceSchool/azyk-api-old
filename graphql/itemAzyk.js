@@ -171,7 +171,7 @@ const resolvers = {
                 subBrand = subBrand._id
             }
             return await ItemAzyk.find({
-                subBrand,
+                ...user.role==='client'||subBrand?{subBrand}:{},
                 ...user.role === 'admin' ? {} : {status: 'active'},
                 organization: organization,
                 del: {$ne: 'deleted'},
@@ -277,7 +277,7 @@ const resolversMutation = {
             if(name)object.name = name
             if(weight!=undefined)object.weight = weight
             if(size!=undefined)object.size = size
-             if(subBrand)object.subBrand = subBrand
+             object.subBrand = subBrand
             if(info)object.info = info
             if(stock!=undefined)object.stock = stock
             if(costPrice!=undefined)object.costPrice = costPrice

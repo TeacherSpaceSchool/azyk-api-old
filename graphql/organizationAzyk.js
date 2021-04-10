@@ -71,7 +71,9 @@ const resolvers = {
                 del: {$ne: 'deleted'}
             }).select('organization subBrand').lean()
             subBrands = brandOrganizations.map(elem=>elem.subBrand)
-            brandOrganizations = brandOrganizations.map(elem=>{if(!elem.subBrand)return elem.organization})
+            brandOrganizations = brandOrganizations.map(elem=>{
+                if(user.role!=='client'||!elem.subBrand) return elem.organization
+            })
             if(user.organization){
                 brandOrganizations = await DistributerAzyk.findOne({
                     distributer: user.organization
@@ -90,7 +92,7 @@ const resolvers = {
                 .select('name _id image miniInfo onlyIntegrate onlyDistrict priotiry')
                 .sort('-priotiry')
                 .lean()
-            if(['admin', 'client'].includes(user.role)) {
+            if(!user.organization) {
                 subBrands = await SubBrandAzyk.find({
                     _id: {$in: subBrands},
                     name: {'$regex': search, '$options': 'i'},
