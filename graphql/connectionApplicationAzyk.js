@@ -15,6 +15,7 @@ const type = `
 const query = `
     connectionApplications(skip: Int, filter: String): [ConnectionApplication]
     filterConnectionApplication: [Filter]
+    connectionApplicationsSimpleStatistic(filter: String): Int
 `;
 
 const mutation = `
@@ -38,6 +39,12 @@ const resolvers = {
                     {$limit: skip != undefined ? 15 : 10000000000}
                 ])
         }
+    },
+    connectionApplicationsSimpleStatistic: async(parent, {filter}, {user}) => {
+        if('admin'===user.role)
+            return await ConnectionApplicationAzyk.count({
+                ...(filter === 'обработка' ? {taken: false} : {})
+            }).lean()
     },
     filterConnectionApplication: async(parent, ctx, {user}) => {
         if('admin'===user.role) {
