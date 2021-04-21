@@ -14,7 +14,7 @@ const BasketAzyk = require('../models/basketAzyk');
 const UserAzyk = require('../models/userAzyk');
 const AdsAzyk = require('../models/adsAzyk');
 const PlanAzyk = require('../models/planAzyk');
-const { saveImage, deleteFile, urlMain } = require('../module/const');
+const { saveImage, saveFile, deleteFile, urlMain } = require('../module/const');
 
 const type = `
   type Organization {
@@ -26,6 +26,7 @@ const type = `
     phone: [String]
     info: String
     miniInfo: String
+    catalog: String
     reiting: Int
     status: String
     image: String
@@ -55,8 +56,8 @@ const query = `
 `;
 
 const mutation = `
-    addOrganization(cities: [String]!, pass: String, warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, addedClient: Boolean!, unite: Boolean!, superagent: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!, autoAccept: Boolean!): Data
-    setOrganization(cities: [String], pass: String, warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, addedClient: Boolean, unite: Boolean, superagent: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean, autoAccept: Boolean): Data
+    addOrganization(cities: [String]!, catalog: Upload, pass: String, warehouse: String!, miniInfo: String!, priotiry: Int, minimumOrder: Int, image: Upload!, name: String!, address: [String]!, email: [String]!, phone: [String]!, info: String!, accessToClient: Boolean!, consignation: Boolean!, addedClient: Boolean!, unite: Boolean!, superagent: Boolean!, onlyDistrict: Boolean!, onlyIntegrate: Boolean!, autoAccept: Boolean!): Data
+    setOrganization(cities: [String], pass: String, catalog: Upload, warehouse: String, miniInfo: String, _id: ID!, priotiry: Int, minimumOrder: Int, image: Upload, name: String, address: [String], email: [String], phone: [String], info: String, accessToClient: Boolean, consignation: Boolean, addedClient: Boolean, unite: Boolean, superagent: Boolean, onlyDistrict: Boolean, onlyIntegrate: Boolean, autoAccept: Boolean): Data
     restoreOrganization(_id: [ID]!): Data
     deleteOrganization(_id: [ID]!): Data
     onoffOrganization(_id: [ID]!): Data
@@ -89,7 +90,7 @@ const resolvers = {
                 ...['суперагент', 'суперэкспедитор'].includes(user.role)?{superagent: true}:{},
                 ...user.city?{cities: user.city}:{}
             })
-                .select('name _id image miniInfo onlyIntegrate onlyDistrict priotiry')
+                .select('name _id image miniInfo onlyIntegrate onlyDistrict priotiry catalog')
                 .sort('-priotiry')
                 .lean()
             if(!user.organization) {
@@ -212,7 +213,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addOrganization: async(parent, {cities, addedClient, autoAccept, pass, warehouse, superagent, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    addOrganization: async(parent, {cities, catalog, addedClient, autoAccept, pass, warehouse, superagent, unite, miniInfo, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'){
             let { stream, filename } = await image;
             filename = await saveImage(stream, filename)
@@ -239,13 +240,17 @@ const resolversMutation = {
                 autoAccept: autoAccept,
                 addedClient: addedClient
             });
+            if(catalog){
+                let { stream, filename } = await catalog;
+                objectOrganization.catalog = urlMain+(await saveFile(stream, filename))
+            }
             if(pass)
                 objectOrganization.pass = pass
             objectOrganization = await OrganizationAzyk.create(objectOrganization)
         }
         return {data: 'OK'};
     },
-    setOrganization: async(parent, {cities, addedClient, autoAccept, pass, warehouse, miniInfo, superagent, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
+    setOrganization: async(parent, {catalog, cities, addedClient, autoAccept, pass, warehouse, miniInfo, superagent, unite, _id, priotiry, info, phone, email, address, image, name, minimumOrder, accessToClient, consignation, onlyDistrict, onlyIntegrate}, {user}) => {
         if(user.role==='admin'||(['суперорганизация', 'организация'].includes(user.role)&&user.organization.toString()===_id.toString())) {
             let object = await OrganizationAzyk.findById(_id)
             if (image) {
@@ -253,6 +258,12 @@ const resolversMutation = {
                 await deleteFile(object.image)
                 filename = await saveImage(stream, filename)
                 object.image = urlMain + filename
+            }
+            if(catalog){
+                if(object.catalog)
+                    await deleteFile(object.catalog)
+                let { stream, filename } = await catalog;
+                object.catalog = urlMain+(await saveFile(stream, filename))
             }
             if(pass!==undefined) object.pass = pass
             if(cities) object.cities = cities

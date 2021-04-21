@@ -15,6 +15,7 @@ const OrganizationAzykSchema = mongoose.Schema({
     miniInfo: String,
     reiting: Number,
     status: String,
+    catalog: String,
     warehouse:  {
         type: String,
         default: ''
