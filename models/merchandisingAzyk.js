@@ -37,6 +37,12 @@ const MerchandisingAzykSchema = mongoose.Schema({
     timestamps: true
 });
 
+MerchandisingAzykSchema.index({date: 1})
+MerchandisingAzykSchema.index({stateProduct: 1})
+MerchandisingAzykSchema.index({check: 1})
+MerchandisingAzykSchema.index({organization: 1});
+MerchandisingAzykSchema.index({client: 1});
+MerchandisingAzykSchema.index({employment: 1});
 
 const MerchandisingAzyk = mongoose.model('MerchandisingAzyk', MerchandisingAzykSchema);
 

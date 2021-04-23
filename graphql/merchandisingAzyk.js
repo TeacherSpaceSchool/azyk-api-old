@@ -100,9 +100,9 @@ const resolvers = {
                     path: 'employment',
                     select: '_id name'
                 })
-                .sort(sort)
                 .skip(skip != undefined ? skip : 0)
                 .limit(skip != undefined ? 200 : 10000000000)
+                .sort(sort)
                 .lean()
         }
     },

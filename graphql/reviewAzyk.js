@@ -1,6 +1,7 @@
 const ReviewAzyk = require('../models/reviewAzyk');
 const ClientAzyk = require('../models/clientAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
+const SubBrandAzyk = require('../models/subBrandAzyk');
 const mongoose = require('mongoose');
 
 const type = `
@@ -80,6 +81,12 @@ const resolvers = {
                         }
                     }
                 ])
+            for(let i=0; i<invoices.length; i++) {
+                if(!invoices[i].organization) {
+                    invoices[i].organization = (await ReviewAzyk.findOne({_id: invoices[i]._id}).select('organization').lean()).organization
+                    invoices[i].organization = await SubBrandAzyk.findOne({_id: invoices[i].organization}).select('_id name').lean()
+                }
+            }
             return invoices
         }
     },
