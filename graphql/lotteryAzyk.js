@@ -1,6 +1,4 @@
 const LotteryAzyk = require('../models/lotteryAzyk');
-const UserAzyk = require('../models/userAzyk');
-const ClientAzyk = require('../models/clientAzyk');
 const { saveImage, deleteFile, urlMain } = require('../module/const');
 
 const type = `

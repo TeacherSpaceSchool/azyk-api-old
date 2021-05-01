@@ -1,3 +1,8 @@
+//5e3fc975934d024d86c66bd9
+//7 931 829 сом
+//5 682 шт
+//Иязов Адилет 0 702 533 146
+//Баялиев Адилет
 const InvoiceAzyk = require('../models/invoiceAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
 const OrderAzyk = require('../models/orderAzyk');
@@ -1898,9 +1903,8 @@ const resolvers = {
     statisticHours: async(parent, { organization, dateStart, dateType, city, type }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             if(user.organization) organization = user.organization
-
             let dateEnd
-            dateStart = dateStart||new Date()
+            dateStart = dateStart?new Date(dateStart):new Date()
             dateStart.setHours(3, 0, 0, 0)
             dateEnd = new Date(dateStart)
             if(dateType==='year')
@@ -1911,7 +1915,6 @@ const resolvers = {
                 dateEnd.setDate(dateEnd.getDate() + 7)
             else
                 dateEnd.setMonth(dateEnd.getMonth() + 1)
-
             let statistic = {}, data = []
             let profitOnline = 0
             let profitOffline = 0
@@ -1934,10 +1937,15 @@ const resolvers = {
                 }
             )
                 .select('_id returnedPrice allPrice paymentConsignation consignmentPrice agent client createdAt')
+                .populate({
+                    path: 'agent',
+                    select: 'user',
+                    populate: [{
+                        path: 'user',
+                        select: 'role',
+                    }]})
                 .lean()
             for(let i=0; i<data.length; i++) {
-                if(dateStart.getHours()<3)
-                    data[i].createdAt.setDate(data[i].createdAt.getDate() - 1)
                 if(type==='hours') {
                     if (data[i].createdAt.getHours() < 18 && data[i].createdAt.getHours() > 8)
                         name = '08:00-18:00'
@@ -1960,14 +1968,14 @@ const resolvers = {
                     }
                 statistic[name].profitAll += data[i].allPrice - data[i].returnedPrice
                 profitAll += data[i].allPrice - data[i].returnedPrice
-                if(data[i].allPrice-data[i].returnedPrice) {
+                if(data[i].allPrice!==data[i].returnedPrice) {
                     statistic[name].completAll += 1
                     completAll += 1
                 }
-                if(data[i].agent) {
+                if(data[i].agent&&!['суперменеджер', 'суперагент', 'суперэкспедитор'].includes(data[i].agent.user.role)) {
                     statistic[name].profitOffline += data[i].allPrice - data[i].returnedPrice
                     profitOffline += data[i].allPrice - data[i].returnedPrice
-                    if(data[i].allPrice-data[i].returnedPrice) {
+                    if(data[i].allPrice!==data[i].returnedPrice) {
                         statistic[name].completOffline += 1
                         completOffline += 1
                     }
@@ -1975,7 +1983,7 @@ const resolvers = {
                 else {
                     statistic[name].profitOnline += data[i].allPrice - data[i].returnedPrice
                     profitOnline += data[i].allPrice - data[i].returnedPrice
-                    if(data[i].allPrice-data[i].returnedPrice) {
+                    if(data[i].allPrice!==data[i].returnedPrice) {
                         statistic[name].completOnline += 1
                         completOnline += 1
                     }

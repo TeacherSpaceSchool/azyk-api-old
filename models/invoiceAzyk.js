@@ -105,10 +105,10 @@ const InvoiceAzykSchema = mongoose.Schema({
         ref: 'OrganizationAzyk',
         default: null
     },
+    who: mongoose.Schema.Types.ObjectId
 }, {
     timestamps: true
 });
-
 
 InvoiceAzykSchema.index({createdAt: 1})
 InvoiceAzykSchema.index({adss: 1})

@@ -1253,7 +1253,8 @@ const resolversMutation = {
                     forwarder: districtProvider?districtProvider.ecspeditor:null,
                     district:  districtSales?districtSales.name:null,
                     sale: districtSales&&districtSales.organization.toString()!==organization.toString()?districtSales.organization:null,
-                    provider: districtProvider?districtProvider.organization:null
+                    provider: districtProvider?districtProvider.organization:null,
+                    who: user._id
                 });
                 if(inv)
                     objectInvoice.inv = 1
