@@ -43,15 +43,18 @@ const resolvers = {
                     }
                     else if('client'===findRes[i].user.role) {
                         let client = await ClientAzyk.findOne({user: findRes[i].user._id}).select('name address').lean()
-                        res[i].user=`${client.name}${client.address&&client.address[0]?` (${client.address[0][2]?`${client.address[0][2]}, `:''}${client.address[0][0]})`:''}`
+                        if(client)
+                            res[i].user=`${client.name}${client.address&&client.address[0]?` (${client.address[0][2]?`${client.address[0][2]}, `:''}${client.address[0][0]})`:''}`
                     }
                     else if(['суперагент', 'суперменеджер'].includes(findRes[i].user.role)) {
-                        let employment = await EmploymentAzyk.findOne({user: findRes[i].user._id})
-                        res[i].user = `${findRes[i].user.role} ${employment.name}`
+                        let employment = await EmploymentAzyk.findOne({user: findRes[i].user._id}).lean()
+                        if(employment)
+                            res[i].user = `${findRes[i].user.role} ${employment.name}`
                     }
                     else {
-                        let employment = await EmploymentAzyk.findOne({user: findRes[i].user._id}).populate({ path: 'organization' })
-                        res[i].user = `${employment.organization.name} ${findRes[i].user.role} ${employment.name}`
+                        let employment = await EmploymentAzyk.findOne({user: findRes[i].user._id}).populate({ path: 'organization' }).lean()
+                        if(employment)
+                            res[i].user = `${employment.organization.name} ${findRes[i].user.role} ${employment.name}`
                     }
                 }
                 else {
