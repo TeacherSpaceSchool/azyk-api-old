@@ -1,0 +1,131 @@
+{
+  "formatVersion": "0.0.12",
+  "routes": [
+    {
+      "summary": {
+        "lengthInMeters": 1018,
+        "travelTimeInSeconds": 143,
+        "trafficDelayInSeconds": 0,
+        "departureTime": "2020-05-27T00:29:30+06:00",
+        "arrivalTime": "2020-05-27T00:31:52+06:00"
+      },
+      "legs": [
+        {
+          "summary": {
+            "lengthInMeters": 148,
+            "travelTimeInSeconds": 13,
+            "trafficDelayInSeconds": 0,
+            "departureTime": "2020-05-27T00:29:30+06:00",
+            "arrivalTime": "2020-05-27T00:29:43+06:00"
+          },
+          "points": [
+            {
+              "latitude": 42.87719,
+              "longitude": 74.57609
+            },
+            {
+              "latitude": 42.87713,
+              "longitude": 74.57777
+            },
+            {
+              "latitude": 42.87712,
+              "longitude": 74.57789
+            }
+          ]
+        },
+        {
+          "summary": {
+            "lengthInMeters": 301,
+            "travelTimeInSeconds": 42,
+            "trafficDelayInSeconds": 0,
+            "departureTime": "2020-05-27T00:29:43+06:00",
+            "arrivalTime": "2020-05-27T00:30:25+06:00"
+          },
+          "points": [
+            {
+              "latitude": 42.87712,
+              "longitude": 74.57789
+            },
+            {
+              "latitude": 42.87706,
+              "longitude": 74.57874
+            },
+            {
+              "latitude": 42.87696,
+              "longitude": 74.57885
+            },
+            {
+              "latitude": 42.87690,
+              "longitude": 74.57924
+            },
+            {
+              "latitude": 42.87689,
+              "longitude": 74.57987
+            },
+            {
+              "latitude": 42.87692,
+              "longitude": 74.58020
+            },
+            {
+              "latitude": 42.87700,
+              "longitude": 74.58033
+            },
+            {
+              "latitude": 42.87696,
+              "longitude": 74.58139
+            },
+            {
+              "latitude": 42.87692,
+              "longitude": 74.58139
+            }
+          ]
+        },
+        {
+          "summary": {
+            "lengthInMeters": 569,
+            "travelTimeInSeconds": 87,
+            "trafficDelayInSeconds": 0,
+            "departureTime": "2020-05-27T00:30:25+06:00",
+            "arrivalTime": "2020-05-27T00:31:52+06:00"
+          },
+          "points": [
+            {
+              "latitude": 42.87692,
+              "longitude": 74.58139
+            },
+            {
+              "latitude": 42.87568,
+              "longitude": 74.58125
+            },
+            {
+              "latitude": 42.87559,
+              "longitude": 74.58304
+            },
+            {
+              "latitude": 42.87549,
+              "longitude": 74.58470
+            },
+            {
+              "latitude": 42.87676,
+              "longitude": 74.58488
+            },
+            {
+              "latitude": 42.87677,
+              "longitude": 74.58479
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "optimizedWaypoints": [
+    {
+      "providedIndex": 0,
+      "optimizedIndex": 1
+    },
+    {
+      "providedIndex": 1,
+      "optimizedIndex": 0
+    }
+  ]
+}
