@@ -73,7 +73,7 @@ let start = async () => {
     await startResetUnloading()
     await startReminderClient();
     await startOutXMLShoroAzyk();
-    //await reductionSubBrands();
+    await reductionSubBrands();
     //await reductionToDeliveryDate();
     //await reductionSingleOutXMLAzyk()
     //await reductionInvoices()
