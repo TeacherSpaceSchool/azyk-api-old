@@ -10,7 +10,6 @@ const UserAzyk = require('../models/userAzyk');
 const randomstring = require('randomstring');
 
 router.post('/:pass/put/client', async (req, res, next) => {
-    let startDate = new Date()
     let organization = await OrganizationAzyk
         .findOne({pass: req.params.pass}).select('_id').lean()
     res.set('Content+Type', 'application/xml');
@@ -18,27 +17,29 @@ router.post('/:pass/put/client', async (req, res, next) => {
         let agent
         let _object
         let integrate1CAzyk
-        for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            integrate1CAzyk = await Integrate1CAzyk.findOne({
-                organization: organization._id,
-                guid: req.body.elements[0].elements[i].attributes.guid
-            }).select('_id').lean()
-            agent = await Integrate1CAzyk.findOne({
-                organization: organization,
-                guid: req.body.elements[0].elements[i].attributes.agent
-            }).select('agent').lean()
-            if(agent&&!integrate1CAzyk) {
-                _object = new ReceivedDataAzyk({
-                    status: integrate1CAzyk ? 'изменить' : 'добавить',
+        if(req.body.elements[0].elements) {
+            for (let i = 0; i < req.body.elements[0].elements.length; i++) {
+                integrate1CAzyk = await Integrate1CAzyk.findOne({
                     organization: organization._id,
-                    name: req.body.elements[0].elements[i].attributes.name,
-                    guid: req.body.elements[0].elements[i].attributes.guid,
-                    addres: req.body.elements[0].elements[i].attributes.address,
-                    agent: agent.agent,
-                    phone: req.body.elements[0].elements[i].attributes.tel,
-                    type: 'клиент'
-                });
-                await ReceivedDataAzyk.create(_object)
+                    guid: req.body.elements[0].elements[i].attributes.guid
+                }).select('_id').lean()
+                agent = await Integrate1CAzyk.findOne({
+                    organization: organization,
+                    guid: req.body.elements[0].elements[i].attributes.agent
+                }).select('agent').lean()
+                if (agent && !integrate1CAzyk) {
+                    _object = new ReceivedDataAzyk({
+                        status: integrate1CAzyk ? 'изменить' : 'добавить',
+                        organization: organization._id,
+                        name: req.body.elements[0].elements[i].attributes.name,
+                        guid: req.body.elements[0].elements[i].attributes.guid,
+                        addres: req.body.elements[0].elements[i].attributes.address,
+                        agent: agent.agent,
+                        phone: req.body.elements[0].elements[i].attributes.tel,
+                        type: 'клиент'
+                    });
+                    await ReceivedDataAzyk.create(_object)
+                }
             }
         }
         await res.status(200);
@@ -59,50 +60,52 @@ router.post('/:pass/put/employment', async (req, res, next) => {
     let organization = await OrganizationAzyk.findOne({pass: req.params.pass}).select('_id').lean()
     res.set('Content+Type', 'application/xml');
     try{
-        let position = ''
-        let _object
-        if(req.body.elements[0].attributes.mode==='forwarder')
-            position = 'экспедитор'
-        else
-            position = 'агент'
-        for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            _object = await Integrate1CAzyk.findOne({
-                organization: organization._id,
-                guid: req.body.elements[0].elements[i].attributes.guid
-            }).select('_id agent ecspeditor').lean()
-            if(_object){
-                if(req.body.elements[0].elements[i].attributes.del==='1') {
-                    await Integrate1CAzyk.deleteMany({_id: _object._id})
-                    await EmploymentAzyk.deleteMany({$or: [{_id: _object.agent}, {_id: _object.ecspeditor}]})
+        if(req.body.elements[0].elements) {
+            let position = ''
+            let _object
+            if (req.body.elements[0].attributes.mode === 'forwarder')
+                position = 'экспедитор'
+            else
+                position = 'агент'
+            for (let i = 0; i < req.body.elements[0].elements.length; i++) {
+                _object = await Integrate1CAzyk.findOne({
+                    organization: organization._id,
+                    guid: req.body.elements[0].elements[i].attributes.guid
+                }).select('_id agent ecspeditor').lean()
+                if (_object) {
+                    if (req.body.elements[0].elements[i].attributes.del === '1') {
+                        await Integrate1CAzyk.deleteMany({_id: _object._id})
+                        await EmploymentAzyk.deleteMany({$or: [{_id: _object.agent}, {_id: _object.ecspeditor}]})
+                    }
+                    else {
+                        _object = await EmploymentAzyk.findOne({$or: [{_id: _object.agent}, {_id: _object.ecspeditor}]})
+                        _object.name = req.body.elements[0].elements[i].attributes.name
+                        await _object.save()
+                    }
                 }
                 else {
-                    _object = await EmploymentAzyk.findOne({$or: [{_id: _object.agent}, {_id: _object.ecspeditor}]})
-                    _object.name = req.body.elements[0].elements[i].attributes.name
-                    await _object.save()
+                    _object = new UserAzyk({
+                        login: randomstring.generate(20),
+                        role: position,
+                        status: 'active',
+                        password: '12345678',
+                    });
+                    _object = await UserAzyk.create(_object);
+                    _object = new EmploymentAzyk({
+                        name: req.body.elements[0].elements[i].attributes.name,
+                        email: '',
+                        phone: '',
+                        organization: organization._id,
+                        user: _object._id,
+                    });
+                    await EmploymentAzyk.create(_object);
+                    _object = new Integrate1CAzyk({
+                        organization: organization._id,
+                        guid: req.body.elements[0].elements[i].attributes.guid,
+                        ...req.body.elements[0].attributes.mode === 'forwarder' ? {ecspeditor: _object._id} : {agent: _object._id}
+                    });
+                    _object = await Integrate1CAzyk.create(_object)
                 }
-            }
-            else {
-                _object = new UserAzyk({
-                    login: randomstring.generate(20),
-                    role: position,
-                    status: 'active',
-                    password: '12345678',
-                });
-                _object = await UserAzyk.create(_object);
-                _object = new EmploymentAzyk({
-                    name: req.body.elements[0].elements[i].attributes.name,
-                    email: '',
-                    phone: '',
-                    organization: organization._id,
-                    user: _object._id,
-                });
-                await EmploymentAzyk.create(_object);
-                _object = new Integrate1CAzyk({
-                    organization: organization._id,
-                    guid: req.body.elements[0].elements[i].attributes.guid,
-                    ...req.body.elements[0].attributes.mode==='forwarder'?{ecspeditor: _object._id}:{agent: _object._id}
-                });
-                _object = await Integrate1CAzyk.create(_object)
             }
         }
         await res.status(200);
@@ -173,8 +176,10 @@ router.get('/:pass/out/sales', async (req, res, next) => {
 router.post('/:pass/put/returned/confirm', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
-        for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            await checkSingleOutXMLReturnedAzyk(req.params.pass, req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
+        if(req.body.elements[0].elements) {
+            for (let i = 0; i < req.body.elements[0].elements.length; i++) {
+                await checkSingleOutXMLReturnedAzyk(req.params.pass, req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
+            }
         }
          await res.status(200);
         await res.end('success')
@@ -193,8 +198,10 @@ router.post('/:pass/put/returned/confirm', async (req, res, next) => {
 router.post('/:pass/put/sales/confirm', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
-        for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            await checkSingleOutXMLAzyk(req.params.pass, req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
+        if(req.body.elements[0].elements) {
+            for (let i = 0; i < req.body.elements[0].elements.length; i++) {
+                await checkSingleOutXMLAzyk(req.params.pass, req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
+            }
         }
         await res.status(200);
         await res.end('success')
@@ -213,8 +220,10 @@ router.post('/:pass/put/sales/confirm', async (req, res, next) => {
 router.post('/:pass/put/client/confirm', async (req, res, next) => {
     res.set('Content+Type', 'application/xml');
     try{
-        for(let i=0;i<req.body.elements[0].elements.length;i++) {
-            await checkSingleOutXMLClientAzyk(req.params.pass, req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
+        if(req.body.elements[0].elements) {
+            for (let i = 0; i < req.body.elements[0].elements.length; i++) {
+                await checkSingleOutXMLClientAzyk(req.params.pass, req.body.elements[0].elements[i].attributes.guid, req.body.elements[0].elements[i].attributes.exc)
+            }
         }
         await res.status(200);
         await res.end('success')
