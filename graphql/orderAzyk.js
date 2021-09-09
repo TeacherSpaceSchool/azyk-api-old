@@ -1496,7 +1496,7 @@ const resolversMutation = {
         });
         await HistoryOrderAzyk.create(objectHistoryOrder);
 
-        if(resInvoice.organization.pass&&resInvoice.organization.pass.length){
+        if((!resInvoice.dateDelivery||resInvoice.dateDelivery>new Date())&&resInvoice.organization.pass&&resInvoice.organization.pass.length){
             if(resInvoice.orders[0].status==='принят') {
                 resInvoice.sync = await setSingleOutXMLAzyk(resInvoice)
             }

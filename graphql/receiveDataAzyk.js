@@ -64,8 +64,6 @@ const resolvers = {
                 value: 'клиент'
             }
         ]
-        if(user.role)
-            filter.push()
         return filter
     },
 };

@@ -71,22 +71,10 @@ module.exports.sendWebPush = async({title, message, tag, url, icon, user}) => {
                         let delivered = 0;
                         let failed = 0;
                         for(let i=0; i<pushResults.length; i++){
-                            let endpoint = pushResults[i].reason?pushResults[i].reason.endpoint:pushResults[i].value?pushResults[i].value.endpoint:undefined
-                            let subscriberAzyk = await SubscriberAzyk.findOne({endpoint: endpoint})
-                            if(pushResults[i].state === 'rejected'||pushResults[i].reason){
+                            if(pushResults[i].state === 'rejected'||pushResults[i].reason)
                                 failed+=1
-                                if(subscriberAzyk){
-                                    subscriberAzyk.status = 'провалено'
-                                    await subscriberAzyk.save()
-                                }
-                            }
-                            else {
+                            else
                                 delivered += 1
-                                if(subscriberAzyk){
-                                    subscriberAzyk.status = 'доставлено'
-                                    await subscriberAzyk.save()
-                                }
-                            }
                         }
                         _object.delivered = delivered
                         _object.failed = failed
@@ -146,22 +134,10 @@ module.exports.sendWebPush = async({title, message, tag, url, icon, user}) => {
                         let delivered = 0;
                         let failed = 0;
                         for(let i=0; i<pushResults.length; i++){
-                            let endpoint = pushResults[i].reason?pushResults[i].reason.endpoint:pushResults[i].value?pushResults[i].value.endpoint:undefined
-                            let subscriberAzyk = await SubscriberAzyk.findOne({endpoint: endpoint})
-                            if(pushResults[i].state === 'rejected'||pushResults[i].reason){
+                            if(pushResults[i].state === 'rejected'||pushResults[i].reason)
                                 failed+=1
-                                if(subscriberAzyk){
-                                    subscriberAzyk.status = 'провалено'
-                                    await subscriberAzyk.save()
-                                }
-                            }
-                            else {
+                            else
                                 delivered += 1
-                                if(subscriberAzyk){
-                                    subscriberAzyk.status = 'доставлено'
-                                    await subscriberAzyk.save()
-                                }
-                            }
                         }
                         _object.delivered = delivered
                         _object.failed = failed

@@ -66,9 +66,9 @@ router.post('/unregister', async (req, res) => {
                 client.notification = false
                 await client.save()
             }
+            subscriptionModel.user = null
+            await subscriptionModel.save()
         }
-        subscriptionModel.user = null
-        await subscriptionModel.save()
     } catch (err) {
         let _object = new ModelsErrorAzyk({
             err: err.message,
@@ -86,8 +86,10 @@ router.post('/delete', async (req, res) => {
         let subscriptionModel = await SubscriberAzyk.findOne({number: req.body.number}).populate({ path: 'user'}).lean()
         if(subscriptionModel&&subscriptionModel.user&&subscriptionModel.user.role==='client'&&(await SubscriberAzyk.find({user: subscriptionModel.user._id}).select('_id').lean()).length===1){
             let client = await ClientAzyk.findOne({user: subscriptionModel.user._id})
-            client.notification = false
-            await client.save()
+            if(client) {
+                client.notification = false
+                await client.save()
+            }
         }
         await SubscriberAzyk.deleteMany({number: req.body.number})
     } catch (err) {

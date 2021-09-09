@@ -4766,8 +4766,8 @@ const resolversMutation = {
     }
 }
 
-module.exports.type = type;
-module.exports.query = query;
 module.exports.mutation = mutation;
 module.exports.resolversMutation = resolversMutation;
+module.exports.type = type;
+module.exports.query = query;
 module.exports.resolvers = resolvers;
