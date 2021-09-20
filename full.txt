@@ -1,0 +1,51 @@
+const createdEmployment = [
+    {
+        phone: [],
+        name: 'Бектеналиев Дастан 0702881118',
+        email: '5e3ea2008c4ac54d873e8a89',
+        organization: '5e00a5c0f2cd0f4f82eac3db',
+        user: '5e3ea2008c4ac54d873e8a88'
+    },
+    {
+        phone: [],
+        name: 'Хусанбай уулу Алишер 0 700 08 78 04',
+        email: '5e3ea2e4934d024d86c66b2a',
+        organization: '5e00a5c0f2cd0f4f82eac3db',
+        user: '5e3ea2e4934d024d86c66b29'
+    },
+    {
+        phone: [],
+        name: 'Кудайбергенова Чолпонай',
+        email: '5f507f6fd011e72460fc7590',
+        organization: '5e00a5c0f2cd0f4f82eac3db',
+        user: '5f507f6fd011e72460fc758f'
+    },
+    {
+        phone: [],
+        name: 'Шарыпов Акжол 0700694986',
+        email: '5fa3d8d8f293a935ec29f9ef',
+        organization: '5e00a5c0f2cd0f4f82eac3db',
+        user: '5fa3d8d8f293a935ec29f9ee'
+    },
+    {
+        phone: [],
+        name: 'Артыков Алмаз 0700686815',
+        email: '60c08c716f9f58018307d60d',
+        organization: '5e00a5c0f2cd0f4f82eac3db',
+        user: '60c08c716f9f58018307d60c'
+    },
+    {
+        phone: [],
+        name: 'Токтошукур уулу Эсегельди №4 сектор',
+        email: '5e3fc975934d024d86c66bd9',
+        organization: '5e00a5c0f2cd0f4f82eac3db',
+        user: '5e3fc975934d024d86c66bd8'
+    },
+    {
+        phone: [],
+        name: 'Туратбеков Улан',
+        email: '5f8426c99c93da0feda4abc7',
+        organization: '5e00a5c0f2cd0f4f82eac3db',
+        user: '5f8426c99c93da0feda4abc6'
+    }
+]

@@ -6,6 +6,7 @@ const { reductionToAgentRoute } = require('../module/agentRouteAzyk');
 const { reductionSingleOutXMLAzyk } = require('../module/reductionSingleOutXMLAzyk');
 const { reductionOutAdsXMLAzyk } = require('../module/singleOutXMLAzyk');
 const { reductionToOrganization } = require('../module/organizationAzyk');
+const { reductionToEmployment } = require('../module/employmentAzyk');
 const { reductionToClient } = require('../module/clientAzyk');
 const { reductionToAds } = require('../module/adsAzyk');
 const { reductionToItem } = require('../module/itemAzyk');
@@ -73,6 +74,7 @@ let start = async () => {
     await startResetUnloading()
     await startReminderClient();
     await startOutXMLShoroAzyk();
+    await reductionToEmployment()
     //await reductionSubBrands();
     //await reductionToDeliveryDate();
     //await reductionSingleOutXMLAzyk()
