@@ -37,8 +37,8 @@ const type = `
 const query = `
     clientsSimpleStatistic(search: String!, filter: String!, date: String, city: String): [String]
     clients(search: String!, sort: String!, filter: String!, date: String, skip: Int, city: String): [Client]
-    clientsSync(search: String!, organization: ID!, skip: Int!): [Client]
-    clientsSyncStatistic(search: String!, organization: ID!): String
+    clientsSync(search: String!, organization: ID!, skip: Int!, city: String): [Client]
+    clientsSyncStatistic(search: String!, organization: ID!, city: String): String
     clientsTrashSimpleStatistic(search: String!): [String]
     clientsTrash(search: String!, skip: Int): [Client]
     client(_id: ID!): Client
@@ -205,10 +205,11 @@ const resolvers = {
             return clients
         }
     },
-    clientsSyncStatistic: async(parent, {search, organization}, {user}) => {
+    clientsSyncStatistic: async(parent, {search, organization, city}, {user}) => {
         if(user.role==='admin'){
             let clients = await ClientAzyk.find({
                 sync: organization.toString(),
+                ...city?{city}:{},
                 $or: [
                     {name: {'$regex': search, '$options': 'i'}},
                     {email: {'$regex': search, '$options': 'i'}},
@@ -221,13 +222,14 @@ const resolvers = {
             return clients.length.toString()
         }
     },
-    clientsSync: async(parent, {search, organization, skip}, {user}) => {
+    clientsSync: async(parent, {search, organization, skip, city}, {user}) => {
         if(user.role==='admin'){
             let clients = await ClientAzyk
                 .aggregate(
                     [
                         {
                             $match:{
+                                ...city?{city}:{},
                                 sync: organization.toString(),
                                 $or: [
                                     {name: {'$regex': search, '$options': 'i'}},

@@ -58,7 +58,7 @@ const type = `
 const query = `
     unloadingInvoices(organization: ID!, forwarder: ID, dateStart: Date!, all: Boolean): Data
     unloadingOrders(filter: String!, organization: ID!, dateStart: Date!): Data
-    unloadingClients(organization: ID!): Data
+    unloadingClients(organization: ID!, city: String): Data
     unloadingEmployments(organization: ID!): Data
     unloadingDistricts(organization: ID!): Data
     unloadingAgentRoutes(organization: ID!): Data
@@ -921,7 +921,7 @@ const resolvers = {
     },
     statisticClientCity: async(parent, ctx, {user}) => {
         if(['admin'].includes(user.role)){
-            const cities = ['Бишкек', 'Кара-Балта', 'Токмок', 'Кочкор', 'Нарын', 'Боконбаева', 'Каракол', 'Чолпон-Ата', 'Балыкчы', 'Казарман', 'Талас', 'Жалал-Абад', 'Ош']
+            const cities = ['Бишкек', 'Кара-Балта', 'Токмок', 'Кочкор', 'Нарын', 'Боконбаева', 'Каракол', 'Чолпон-Ата', 'Балыкчы', 'Казарман', 'Талас', 'Жалал-Абад', 'Ош', 'Москва']
             let allCount = 0
             let count
             let data = []
@@ -4183,16 +4183,16 @@ const resolvers = {
             return({data: urlMain + '/xlsx/' + xlsxname})
         }
     },
-    unloadingClients: async(parent, { organization }, {user}) => {
+    unloadingClients: async(parent, { organization, city }, {user}) => {
         if(['admin', 'суперорганизация'].includes(user.role)){
             organization = user.organization?user.organization:organization
-            let cities = []
+            let cities
             if(organization!=='super')
                 cities = (await OrganizationAzyk.findById(organization).select('cities').lean()).cities
             let workbook = new ExcelJS.Workbook();
             let data = await ClientAzyk.find(
                 {
-                    ...cities.length?{city: {$in: cities}}:{},
+                    ...city?{city}:cities?{city: {$in: cities}}:{},
                     ...{del: {$ne: 'deleted'}}
                 }
             ).lean()

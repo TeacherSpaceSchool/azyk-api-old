@@ -29,8 +29,8 @@ const query = `
     integrate1C(_id: ID!): Integrate1C
     ecspeditorsIntegrate1C(organization: ID!): [Employment]
     agentsIntegrate1C(organization: ID!): [Employment]
-    itemsIntegrate1C(organization: ID!): [Item]
-    clientsIntegrate1C(organization: ID!): [Client]
+    itemsIntegrate1C(organization: ID!, city: String): [Item]
+    clientsIntegrate1C(organization: ID!, city: String): [Client]
     filterIntegrate1C: [Filter]
 `;
 
@@ -335,7 +335,7 @@ const resolvers = {
         }
         else return []
     },
-    clientsIntegrate1C: async(parent, {organization}, {user}) => {
+    clientsIntegrate1C: async(parent, {organization, city}, {user}) => {
         if(user.role==='admin') {
             let clients =  await Integrate1CAzyk
                 .find({
@@ -348,6 +348,7 @@ const resolvers = {
             if(organization.accessToClient||organization==='super') {
                 clients = await ClientAzyk.find({
                     _id: {$nin: clients},
+                    ...city?{city: city}:{},
                     del: {$ne: 'deleted'}
                 })
                     .populate({path: 'user', match: {status: 'active'}})
@@ -361,6 +362,7 @@ const resolvers = {
                         {_id: {$in: clients1}},
                         {_id: { $nin: clients}}
                     ],
+                    ...city?{city: city}:{},
                     del: {$ne: 'deleted'}
                 }).populate({
                     path: 'user',
@@ -382,7 +384,7 @@ const resolvers = {
         }
         else return []
     },
-    itemsIntegrate1C: async(parent, {organization}, {user}) => {
+    itemsIntegrate1C: async(parent, {organization, city}, {user}) => {
         if(mongoose.Types.ObjectId.isValid(organization)&&user.role==='admin') {
             let items =  await Integrate1CAzyk
                 .find({
@@ -392,6 +394,7 @@ const resolvers = {
                 .distinct('item').lean()
             items = await ItemAzyk.find({
                 _id: {$nin: items},
+                ...city?{city: city}:{},
                 organization: organization,
                 del: {$ne: 'deleted'}
             }).lean()

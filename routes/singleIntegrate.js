@@ -6,8 +6,88 @@ const ReceivedDataAzyk = require('../models/receivedDataAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
 const EmploymentAzyk = require('../models/employmentAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
+const ItemAzyk = require('../models/itemAzyk');
+const SubCategoryAzyk = require('../models/subCategoryAzyk');
 const UserAzyk = require('../models/userAzyk');
 const randomstring = require('randomstring');
+const { checkFloat, checkInt } = require('../module/const');
+
+router.post('/:pass/put/item', async (req, res, next) => {
+    let organization = await OrganizationAzyk.findOne({pass: req.params.pass}).select('_id cities').lean()
+    res.set('Content+Type', 'application/xml');
+    let subCategory = (await SubCategoryAzyk.findOne({name: 'Не задано'}).select('_id').lean())._id
+    try{
+        if(req.body.elements[0].elements) {
+            let item, integrate1CAzyk
+            for (let i = 0; i < req.body.elements[0].elements.length; i++) {
+                integrate1CAzyk = await Integrate1CAzyk.findOne({
+                    organization: organization._id,
+                    guid: req.body.elements[0].elements[i].attributes.guid
+                })
+                if(!integrate1CAzyk) {
+                    item = new ItemAzyk({
+                        name: req.body.elements[0].elements[i].attributes.name,
+                        image: process.env.URL.trim()+'/static/add.png',
+                        info: '',
+                        price: checkFloat(req.body.elements[0].elements[i].attributes.price),
+                        reiting: 0,
+                        subCategory: subCategory,
+                        organization: organization._id,
+                        hit: false,
+                        categorys: ['A','B','C','D','Horeca'],
+                        packaging: checkInt(req.body.elements[0].elements[i].attributes.package),
+                        latest: false,
+                        status: 'active',
+                        weight: checkFloat(req.body.elements[0].elements[i].attributes.weight),
+                        size: 0,
+                        priotiry: 0,
+                        unit: 'шт',
+                        city: organization.cities[0],
+                        apiece: req.body.elements[0].elements[i].attributes.apiece=='1',
+                        costPrice: 0
+                    });
+                    item = await ItemAzyk.create(item);
+                    integrate1CAzyk = new Integrate1CAzyk({
+                        item: item._id,
+                        client: null,
+                        agent: null,
+                        ecspeditor: null,
+                        organization: organization._id,
+                        guid: req.body.elements[0].elements[i].attributes.guid,
+                    });
+                    await Integrate1CAzyk.create(integrate1CAzyk)
+                }
+                else {
+                    item = await ItemAzyk.findOne({_id: integrate1CAzyk.item, organization: organization._id})
+                    if(req.body.elements[0].elements[i].attributes.name)
+                        item.name = req.body.elements[0].elements[i].attributes.name
+                    if(req.body.elements[0].elements[i].attributes.price)
+                        item.price = checkFloat(req.body.elements[0].elements[i].attributes.price)
+                    if(req.body.elements[0].elements[i].attributes.package)
+                        item.packaging = checkInt(req.body.elements[0].elements[i].attributes.package)
+                    if(req.body.elements[0].elements[i].attributes.weight)
+                        item.weight = checkFloat(req.body.elements[0].elements[i].attributes.weight)
+                    if(req.body.elements[0].elements[i].attributes.apiece)
+                        item.apiece = req.body.elements[0].elements[i].attributes.apiece=='1'
+                    if(req.body.elements[0].elements[i].attributes.status)
+                        item.status = req.body.elements[0].elements[i].attributes.status=='1'?'active':'deactive'
+                    await item.save()
+                }
+            }
+        }
+        await res.status(200);
+        await res.end('success')
+    } catch (err) {
+        let _object = new ModelsErrorAzyk({
+            err: err.message,
+            path: 'integrate put item'
+        });
+        await ModelsErrorAzyk.create(_object)
+        console.error(err)
+        res.status(501);
+        res.end('error')
+    }
+});
 
 router.post('/:pass/put/client', async (req, res, next) => {
     let organization = await OrganizationAzyk
