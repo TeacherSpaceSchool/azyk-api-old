@@ -9,6 +9,7 @@ const type = `
     client: ID
     employment: ID
     addedClient: Boolean
+    city: String
     _id: ID
   }
 `;
@@ -27,7 +28,8 @@ const resolvers = {
             login: user.login,
             organization: user.organization,
             addedClient: user.addedClient,
-            _id: user._id
+            _id: user._id,
+            city: user.city
         }
     },
 };
