@@ -307,9 +307,9 @@ const resolversMutation = {
                         ]
                 })
                 for(let i1=0; i1<district.length; i1++) {
-                    if(district[i1].manager.toString()===objects[i]._id.toString())district[i1].manager=null
-                    else if(district[i1].ecspeditor.toString()===objects[i]._id.toString())district[i1].ecspeditor=null
-                    else if(district[i1].agent.toString()===objects[i]._id.toString())district[i1].agent=null
+                    if(district[i1].manager&&district[i1].manager.toString()===objects[i]._id.toString())district[i1].manager=null
+                    else if(district[i1].ecspeditor&&district[i1].ecspeditor.toString()===objects[i]._id.toString())district[i1].ecspeditor=null
+                    else if(district[i1].agent&&district[i1].agent.toString()===objects[i]._id.toString())district[i1].agent=null
                     await district[i1].save()
 
                 }
