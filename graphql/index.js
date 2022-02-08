@@ -318,6 +318,7 @@ const run = (app)=>{
                 return ctx.connection.context;
             }
             else if(ctx&&ctx.req) {
+                ctx.res.header('ACCEPT-CH', 'UA-Full-Version, UA-Mobile, UA-Model, UA-Arch, UA-Platform, ECT, Device-Memory, RTT');
                 let user = await verifydeuserGQL(ctx.req, ctx.res)
                 return {req: ctx.req, res: ctx.res, user: user};
             }

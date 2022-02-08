@@ -363,26 +363,26 @@ module.exports.getSingleOutXMLClientAzyk = async(pass) => {
         ])
     if(outXMLs.length) {
         for(let i=0;i<outXMLs.length;i++){
-        let guidClient = await Integrate1CAzyk
-            .findOne({$and: [{client: outXMLs[i]._id}, {client: {$ne: null}}], organization: organization._id}).select('guid').lean()
-        if(guidClient){
-            let district = await DistrictAzyk
-                .findOne({client: outXMLs[i]._id, organization: organization._id}).select('agent').lean()
-            let agent;
-            if(district&&district.agent){
-                agent= await Integrate1CAzyk
-                    .findOne({$and: [{agent: district.agent}, {agent: {$ne: null}}], organization: organization._id}).select('guid').lean()
+            let guidClient = await Integrate1CAzyk
+                .findOne({$and: [{client: outXMLs[i]._id}, {client: {$ne: null}}], organization: organization._id}).select('guid').lean()
+            if(guidClient){
+                let district = await DistrictAzyk
+                    .findOne({client: outXMLs[i]._id, organization: organization._id}).select('agent').lean()
+                let agent;
+                if(district&&district.agent){
+                    agent= await Integrate1CAzyk
+                        .findOne({$and: [{agent: district.agent}, {agent: {$ne: null}}], organization: organization._id}).select('guid').lean()
+                }
+                let item = result
+                    .ele('item')
+                item.att('guid', guidClient.guid)
+                item.att('name', outXMLs[i].address[0][2]?outXMLs[i].address[0][2]:'')
+                item.att('address', outXMLs[i].address[0][0]?outXMLs[i].address[0][0]:'')
+                item.att('tel', outXMLs[i].phone?outXMLs[i].phone:'')
+                if(agent)
+                    item.att('agent', agent.guid)
             }
-            let item = result
-                .ele('item')
-            item.att('guid', guidClient.guid)
-            item.att('name', outXMLs[i].address[0][2]?outXMLs[i].address[0][2]:'')
-            item.att('address', outXMLs[i].address[0][0]?outXMLs[i].address[0][0]:'')
-            item.att('tel', outXMLs[i].phone?outXMLs[i].phone:'')
-            if(agent)
-                item.att('agent', agent.guid)
         }
-    }
         result = result.end({ pretty: true})
         return result
     }

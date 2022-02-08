@@ -104,4 +104,16 @@ router.post('/delete', async (req, res) => {
     }
 });
 
+router.get('/check', async(req, res) => {
+    try{
+        await SubscriberAzyk.findOne()
+        res.status(200);
+        res.end('ok')
+    } catch (err) {
+        console.error(err)
+        res.status(501);
+        res.end('error')
+    }
+});
+
 module.exports = router;
