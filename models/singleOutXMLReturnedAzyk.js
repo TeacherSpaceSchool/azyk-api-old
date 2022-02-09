@@ -7,6 +7,7 @@ const singleOutXMLReturnedSchema = mongoose.Schema({
     number: String,
     client: String,
     agent: String,
+    inv: Number,
     forwarder: String,
     exc: String,
     returned: {

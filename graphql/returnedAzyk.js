@@ -93,7 +93,7 @@ const query = `
 
 const mutation = `
      setReturnedLogic(track: Int, forwarder: ID, returneds: [ID]!): Data
-    addReturned(info: String, address: [[String]], organization: ID!, items: [ReturnedItemsInput], client: ID!): Data
+    addReturned(info: String, inv: Boolean, address: [[String]], organization: ID!, items: [ReturnedItemsInput], client: ID!): Data
     setReturned(items: [ReturnedItemsInput], returned: ID, confirmationForwarder: Boolean, cancelForwarder: Boolean): Returned
     deleteReturneds(_id: [ID]!): Data
     restoreReturneds(_id: [ID]!): Data
@@ -750,7 +750,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addReturned: async(parent, {info, address, organization, client, items}, {user}) =>     {
+    addReturned: async(parent, {info, address, organization, client, items, inv}, {user}) =>     {
         let subbrand = await SubBrandAzyk.findOne({_id: organization}).select('organization').lean()
         if(subbrand)
             organization = subbrand.organization
@@ -830,6 +830,8 @@ const resolversMutation = {
             });
             if(user.employment)
                 objectReturned.agent = user.employment
+            if(inv)
+                objectReturned.inv = 1
             objectReturned = await ReturnedAzyk.create(objectReturned);
         }
         else{

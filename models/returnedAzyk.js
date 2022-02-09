@@ -11,6 +11,10 @@ const ReturnedAzykSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
+    inv: {
+        type: Number,
+        default: 0
+    },
     allSize: {
         type: Number,
         default: 0

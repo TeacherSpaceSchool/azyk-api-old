@@ -307,6 +307,13 @@ const resolvers = {
                 dateStart = new Date(dateEnd)
                 dateStart = new Date(dateStart.setDate(dateStart.getDate() - maxDates))
             }
+            //заказы только за год
+            else {
+                dateEnd = new Date()
+                dateStart = new Date()
+                dateStart.setYear(dateStart.getFullYear()-1)
+                dateStart.setHours(3, 0, 0, 0)
+            }
             if (['суперагент', 'агент', 'менеджер'].includes(user.role)) {
                 clients = await DistrictAzyk
                     .find({$or: [{manager: user.employment}, {agent: user.employment}]})

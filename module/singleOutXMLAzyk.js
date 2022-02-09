@@ -56,6 +56,7 @@ module.exports.setSingleOutXMLReturnedAzyk = async(returned) => {
                         guid: await uuidv1(),
                         date: date,
                         number: returned.number,
+                        inv: returned.inv,
                         client: guidClient.guid,
                         agent: guidAgent.guid,
                         forwarder: guidEcspeditor.guid,
@@ -402,6 +403,8 @@ module.exports.getSingleOutXMLReturnedAzyk = async(pass) => {
             .ele('item')
         if(outXMLReturneds[i].status==='del')
             item.att('del', '1')
+        if (outXMLReturneds[i].inv === 1)
+            item.att('inv', '1')
         item.att('guid', outXMLReturneds[i].guid)
         item.att('client', outXMLReturneds[i].client)
         item.att('agent', outXMLReturneds[i].agent)
