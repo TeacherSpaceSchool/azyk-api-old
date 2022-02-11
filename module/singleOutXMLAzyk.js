@@ -378,6 +378,7 @@ module.exports.getSingleOutXMLClientAzyk = async(pass) => {
                     .ele('item')
                 item.att('guid', guidClient.guid)
                 item.att('name', outXMLs[i].address[0][2]?outXMLs[i].address[0][2]:'')
+                item.att('contact', outXMLs[i].name?outXMLs[i].name:'')
                 item.att('address', outXMLs[i].address[0][0]?outXMLs[i].address[0][0]:'')
                 item.att('tel', outXMLs[i].phone?outXMLs[i].phone:'')
                 if(agent)

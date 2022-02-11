@@ -3,6 +3,7 @@ const DistrictAzyk = require('../models/districtAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
 const ClientAzyk = require('../models/clientAzyk');
 const UserAzyk = require('../models/userAzyk');
+const OrganizationAzyk = require('../models/organizationAzyk');
 const randomstring = require('randomstring');
 
 const type = `
@@ -87,8 +88,9 @@ const resolversMutation = {
             let integrate1CAzyk = await Integrate1CAzyk.findOne({
                 organization: receivedData.organization,
                 guid: receivedData.guid
-            }).select('_id').lean()
+            }).select('_id client').lean()
             if(!integrate1CAzyk){
+                let organization = await OrganizationAzyk.findOne({_id: receivedData.organization}).select('_id cities').lean()
                 let _client = new UserAzyk({
                     login: randomstring.generate(20),
                     role: 'client',
@@ -99,7 +101,7 @@ const resolversMutation = {
                 _client = new ClientAzyk({
                     name: 'Новый',
                     phone: receivedData.phone,
-                    city: 'Бишкек',
+                    city: organization.cities[0],
                     address: [[receivedData.addres?receivedData.addres:'', '', receivedData.name?receivedData.name:'']],
                     user: _client._id,
                     notification: false
@@ -121,7 +123,35 @@ const resolversMutation = {
                 await district.save()
                 await ReceivedDataAzyk.deleteMany({_id: _id})
             }
+            else {
+                let _client = await ClientAzyk.findOne({_id: integrate1CAzyk.client});
+                _client.phone = receivedData.phone
+                _client.address = [[receivedData.addres?receivedData.addres:'', '', receivedData.name?receivedData.name:'']]
+                await _client.save()
 
+                let newDistrict = await DistrictAzyk.findOne({
+                    agent: receivedData.agent
+                })
+                if(!newDistrict.client.toString().includes(_client._id.toString())){
+
+                    let oldDistrict = await DistrictAzyk.findOne({
+                        client: _client._id
+                    })
+                    if(oldDistrict){
+                        for(let i=0; i<oldDistrict.client.length; i++) {
+                            if(oldDistrict.client[i].toString()===_client._id.toString()){
+                                oldDistrict.client.splice(i, 1)
+                                break
+                            }
+                        }
+                    }
+
+                    newDistrict.client.push(_client._id)
+                    await newDistrict.save()
+                }
+
+                await ReceivedDataAzyk.deleteMany({_id: _id})
+            }
         }
         return {data: 'OK'}
     }

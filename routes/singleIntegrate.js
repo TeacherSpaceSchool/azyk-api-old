@@ -107,7 +107,7 @@ router.post('/:pass/put/client', async (req, res, next) => {
                     organization: organization,
                     guid: req.body.elements[0].elements[i].attributes.agent
                 }).select('agent').lean()
-                if (agent && !integrate1CAzyk) {
+                if (agent) {
                     _object = new ReceivedDataAzyk({
                         status: integrate1CAzyk ? 'изменить' : 'добавить',
                         organization: organization._id,
