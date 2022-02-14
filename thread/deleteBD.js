@@ -5,7 +5,7 @@ const MerchandisingAzyk = require('../models/merchandisingAzyk');
 connectDB.connect();
 
 if(!isMainThread) {
-    cron.schedule('1 5 * * *', async() => {
+    cron.schedule('1 23 * * *', async() => {
         let date = new Date()
         date.setDate(date.getDate() - 60)
         console.log(await MerchandisingAzyk.deleteMany({date: {$lte: date}}))
