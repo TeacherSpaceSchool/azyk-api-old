@@ -13,6 +13,7 @@ const { reductionToItem } = require('../module/itemAzyk');
 const { reductionInvoices } = require('../module/invoiceAzyk');
 const { reductionReturneds } = require('../module/returnedAzyk');
 const { reductionToDeliveryDate } = require('../module/deliveryDateAzyk');
+const { reductionMerchandising } = require('../module/merchandisingAzyk');
 const { startClientRedis } = require('../module/redis');
 const { reductionToUser, createAdmin } = require('../module/user');
 const { Worker, isMainThread } = require('worker_threads');
@@ -22,6 +23,22 @@ const OrderAzyk = require('../models/orderAzyk');
 const { setSingleOutXMLAzyk } = require('../module/singleOutXMLAzyk');
 const { checkAdss } = require('../graphql/adsAzyk');
 const { pubsub } = require('../graphql/index');
+const MerchandisingAzyk = require('../models/merchandisingAzyk');
+
+let startDeleteBD = async () => {
+    if(isMainThread) {
+        let w = new Worker('./thread/deleteBD.js', {workerData: 0});
+        w.on('message', (msg) => {
+            console.log('DeleteBD: '+msg);
+        })
+        w.on('error', console.error);
+        w.on('exit', (code) => {
+            if(code !== 0)
+                console.error(new Error(`DeleteBD stopped with exit code ${code}`))
+        });
+        console.log('DeleteBD '+w.threadId+ ' run')
+    }
+}
 
 let startResetUnloading = async () => {
     if(isMainThread) {
@@ -71,9 +88,11 @@ let startReminderClient = async () => {
 let start = async () => {
     await createAdmin();
     //await startClientRedis()
+    await reductionMerchandising()
     await startResetUnloading()
     await startReminderClient();
     await startOutXMLShoroAzyk();
+    await startDeleteBD();
     //await reductionToEmployment()
     //await reductionSubBrands();
     //await reductionToDeliveryDate();
