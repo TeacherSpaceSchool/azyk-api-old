@@ -88,7 +88,7 @@ let startReminderClient = async () => {
 let start = async () => {
     await createAdmin();
     //await startClientRedis()
-    await reductionMerchandising()
+    //await reductionMerchandising()
     await startResetUnloading()
     await startReminderClient();
     await startOutXMLShoroAzyk();
