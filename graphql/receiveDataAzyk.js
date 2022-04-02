@@ -90,38 +90,41 @@ const resolversMutation = {
                 guid: receivedData.guid
             }).select('_id client').lean()
             if(!integrate1CAzyk){
-                let organization = await OrganizationAzyk.findOne({_id: receivedData.organization}).select('_id cities').lean()
-                let _client = new UserAzyk({
-                    login: randomstring.generate(20),
-                    role: 'client',
-                    status: 'deactive',
-                    password: '12345678',
-                });
-                _client = await UserAzyk.create(_client);
-                _client = new ClientAzyk({
-                    name: 'Новый',
-                    phone: receivedData.phone,
-                    city: organization.cities[0],
-                    address: [[receivedData.addres?receivedData.addres:'', '', receivedData.name?receivedData.name:'']],
-                    user: _client._id,
-                    notification: false
-                });
-                _client = await ClientAzyk.create(_client);
-                let _object = new Integrate1CAzyk({
-                    item: null,
-                    client: _client._id,
-                    agent: null,
-                    ecspeditor: null,
-                    organization: receivedData.organization,
-                    guid: receivedData.guid,
-                });
-                await Integrate1CAzyk.create(_object)
                 let district = await DistrictAzyk.findOne({
                     agent: receivedData.agent
                 })
-                district.client.push(_client._id)
-                await district.save()
-                await ReceivedDataAzyk.deleteMany({_id: _id})
+                if(district) {
+                    let organization = await OrganizationAzyk.findOne({_id: receivedData.organization}).select('_id cities').lean()
+                    let _client = new UserAzyk({
+                        login: randomstring.generate(20),
+                        role: 'client',
+                        status: 'deactive',
+                        password: '12345678',
+                    });
+                    _client = await UserAzyk.create(_client);
+                    _client = new ClientAzyk({
+                        name: 'Новый',
+                        phone: receivedData.phone,
+                        city: organization.cities[0],
+                        address: [[receivedData.addres ? receivedData.addres : '', '', receivedData.name ? receivedData.name : '']],
+                        user: _client._id,
+                        notification: false
+                    });
+                    _client = await ClientAzyk.create(_client);
+                    let _object = new Integrate1CAzyk({
+                        item: null,
+                        client: _client._id,
+                        agent: null,
+                        ecspeditor: null,
+                        organization: receivedData.organization,
+                        guid: receivedData.guid,
+                    });
+                    await Integrate1CAzyk.create(_object)
+                    district.client.push(_client._id)
+                    await district.save()
+                    await ReceivedDataAzyk.deleteMany({_id: _id})
+                }
+                else return
             }
             else {
                 let _client = await ClientAzyk.findOne({_id: integrate1CAzyk.client});
@@ -132,8 +135,7 @@ const resolversMutation = {
                 let newDistrict = await DistrictAzyk.findOne({
                     agent: receivedData.agent
                 })
-                if(!newDistrict.client.toString().includes(_client._id.toString())){
-
+                if(newDistrict&&!newDistrict.client.toString().includes(_client._id.toString())){
                     let oldDistrict = await DistrictAzyk.findOne({
                         client: _client._id
                     })
