@@ -82,7 +82,7 @@ const query = `
     statisticReturned(company: String, dateStart: Date, dateType: String, city: String): Statistic
     statisticAgents(company: String, dateStart: Date, dateType: String, city: String): Statistic
     statisticAgentsWorkTime(organization: String, date: Date): Statistic
-    statisticMerchandising(dateStart: Date, dateType: String, organization: ID): Statistic
+    statisticMerchandising(agent: ID, dateStart: Date, dateType: String, organization: ID): Statistic
     checkOrder(company: String, today: Date!, city: String): Statistic
     statisticOrderChart(company: String, dateStart: Date, dateType: String, type: String, online: Boolean, city: String): ChartStatisticAll
     activeItem(organization: ID!): [Item]
@@ -864,7 +864,6 @@ const resolvers = {
                 {name: 'Дистрибьютор', collection: '../models/distributerAzyk'},
                 {name: 'Районы', collection: '../models/districtAzyk'},
                 {name: 'Сотрудники', collection: '../models/employmentAzyk'},
-                {name: 'Инвентарь', collection: '../models/equipmentAzyk'},
                 {name: 'Ошибка', collection: '../models/errorAzyk'},
                 {name: 'FAQ', collection: '../models/faqAzyk'},
                 {name: 'Формы', collection: '../models/form/formAzyk'},
@@ -927,7 +926,7 @@ const resolvers = {
             let data = []
             let clients = await UserAzyk.find({role: 'client', status: 'active'}).distinct('_id').lean()
             for(let i=0; i<cities.length; i++){
-                count = await ClientAzyk.count({
+                count = await ClientAzyk.countDocuments({
                     user: {$in: clients},
                     del: {$ne: 'deleted'},
                     city: cities[i]
@@ -2368,8 +2367,8 @@ const resolvers = {
             };
         }
     },
-    statisticMerchandising: async(parent, { dateStart, dateType, organization }, {user}) => {
-        if(['admin', 'суперорганизация', 'организация'].includes(user.role)){
+    statisticMerchandising: async(parent, { dateStart, dateType, organization, agent }, {user}) => {
+        if(['admin', 'суперорганизация', 'организация', 'менеджер'].includes(user.role)){
             let dateEnd
             if(dateStart){
                 dateStart= new Date(dateStart)
@@ -2386,117 +2385,159 @@ const resolvers = {
                     dateEnd.setMonth(dateEnd.getMonth() + 1)
             }
             let statistic = {}
-            let districts = await DistrictAzyk.find({organization: user.organization?user.organization:organization})
-                .select('_id name client')
-                .lean()
-            let data = await MerchandisingAzyk.find({
-                $and: [
-                    dateStart ? {createdAt: {$gte: dateStart}} : {},
-                    dateEnd ? {createdAt: {$lt: dateEnd}} : {}
-                ],
-                organization: user.organization?user.organization:organization,
-
-            })
-                .lean()
-            for(let i=0; i<data.length; i++) {
-                for(let i1=0; i1<districts.length; i1++) {
-                    if(districts[i1].client.toString().includes(data[i].client.toString()))
-                        data[i].district = districts[i1]
-                }
-                if(!data[i].district)
-                    data[i].district = {_id: 'lol', name: 'Без района'}
-            }
-            let differenceDates, now = new Date()
-            let allScore = []
-            let allCheck = 0
-            let allProcessing = 0
-            let allActual = 0
-            let allCurrent = 0
-            let allExpired = 0
-            for(let i=0; i<data.length; i++) {
-                if (!statistic[data[i].district._id]) statistic[data[i].district._id] = {
-                    name: data[i].district.name,
-                    score: [],
-                    check: 0,
-                    processing: 0,
-                    actual: 0,
-                    current: 0,
-                    expired: 0,
-                }
-                differenceDates = (now - new Date(data[i].date))/(1000 * 60 * 60 * 24)
-                if(differenceDates<31) {
-                    statistic[data[i].district._id].score.push(data[i].stateProduct)
-                    allScore.push(data[i].stateProduct)
-                    if (differenceDates<7) {
-                        statistic[data[i].district._id].actual += 1
-                        allActual += 1
-                    }
-                    else {
-                        statistic[data[i].district._id].current += 1
-                        allCurrent += 1
-                    }
-                    if(data[i].check) {
-                        statistic[data[i].district._id].check += 1
-                        allCheck += 1
-                    }
-                    else {
-                        statistic[data[i].district._id].processing += 1
-                        allProcessing += 1
-                    }
-                }
-                else {
-                    statistic[data[i].district._id].expired += 1
-                    allExpired += 1
-                }
-            }
-            const keys = Object.keys(statistic)
-            let score
-            data = []
-            for(let i=0; i<keys.length; i++){
-                score = 0
-                for(let i1=0; i1<statistic[keys[i]].score.length; i1++) {
-                    score += statistic[keys[i]].score[i1]
-                }
-                score /= statistic[keys[i]].score.length
-                data.push({
-                    _id: keys[i],
-                    data: [
-                        statistic[keys[i]].name,
-                        checkFloat(score),
-                        statistic[keys[i]].check,
-                        statistic[keys[i]].processing,
-                        statistic[keys[i]].actual,
-                        statistic[keys[i]].current,
-                        statistic[keys[i]].expired,
-                    ]
+            if(!agent) {
+                let districts = await DistrictAzyk.find({
+                    organization: user.organization?user.organization:organization,
+                    ...user.role==='менеджер'?{manager: user._id}:{}
                 })
+                    .select('_id name client agent')
+                    .populate({
+                        path: 'agent',
+                        select: 'name _id'
+                    })
+                    .lean()
+                let data = await MerchandisingAzyk.find({
+                    $and: [
+                        dateStart ? {createdAt: {$gte: dateStart}} : {},
+                        dateEnd ? {createdAt: {$lt: dateEnd}} : {}
+                    ],
+                    organization: user.organization?user.organization:organization,
+                })
+                    .select('client check')
+                    .lean()
+                for(let i=0; i<data.length; i++) {
+                    for(let i1=0; i1<districts.length; i1++) {
+                        if(districts[i1].client.toString().includes(data[i].client.toString()))
+                            data[i].district = districts[i1]
+                    }
+                    if(!data[i].district)
+                        data[i].district = {_id: 'lol', name: 'Без района'}
+                }
+                let allCheck = 0
+                let allProcessing = 0
+                for(let i=0; i<data.length; i++) {
+                    if(user.role!=='менеджер'||data[i].district._id!=='lol') {
+                        if (!statistic[data[i].district._id]) statistic[data[i].district._id] = {
+                            name: data[i].district.agent.name,
+                            check: 0,
+                            processing: 0
+                        }
+                        if (data[i].check) {
+                            statistic[data[i].district._id].check += 1
+                            allCheck += 1
+                        }
+                        else {
+                            statistic[data[i].district._id].processing += 1
+                            allProcessing += 1
+                        }
+                    }
+                }
+                const keys = Object.keys(statistic)
+                data = []
+                for(let i=0; i<keys.length; i++){
+                    data.push({
+                        _id: keys[i],
+                        data: [
+                            statistic[keys[i]].name,
+                            statistic[keys[i]].check + statistic[keys[i]].processing,
+                            statistic[keys[i]].check,
+                            statistic[keys[i]].processing,
+                        ]
+                    })
+                }
+                data = data.sort(function(a, b) {
+                    return b.data[1] - a.data[1]
+                });
+                data = [
+                    {
+                        _id: 'All',
+                        data: [
+                            allCheck+allProcessing,
+                            allCheck,
+                            allProcessing
+                        ]
+                    },
+                    ...data
+                ]
+                return {
+                    columns: ['агент', 'всего', 'проверено', 'обработка'],
+                    row: data
+                };
             }
-            data = data.sort(function(a, b) {
-                return b.data[1] - a.data[1]
-            });
-            score = 0
-            for(let i=0; i<allScore.length; i++) {
-                score += allScore[i]
+            else {
+                let districts = await DistrictAzyk.find({
+                    organization: user.organization?user.organization:organization,
+                    agent
+                })
+                    .select('_id client')
+                    .populate({
+                        path: 'client',
+                        select: 'name _id'
+                    })
+                    .lean()
+                for(let i=0; i<districts.length; i++) {
+                    for(let i1=0; i1<districts[i].client.length; i1++) {
+                        if(!statistic[districts[i].client[i1]._id])
+                            statistic[districts[i].client[i1]._id] = {
+                                name: districts[i].client[i1].name,
+                                date: null
+                            }
+                    }
+                }
+                let data = await MerchandisingAzyk.find({
+                    $and: [
+                        dateStart ? {createdAt: {$gte: dateStart}} : {},
+                        dateEnd ? {createdAt: {$lt: dateEnd}} : {}
+                    ],
+                    organization: user.organization?user.organization:organization,
+                    client: {$in: Object.keys(statistic)}
+                })
+                    .select('client createdAt')
+                    .sort('-createdAt')
+                    .lean()
+                for(let i=0; i<data.length; i++) {
+                    if(!statistic[data[i].client].date)
+                        statistic[data[i].client].date = data[i].createdAt
+                }
+                let allMerch = 0
+                let allMiss = 0
+                const keys = Object.keys(statistic)
+                data = []
+                for(let i=0; i<keys.length; i++){
+                    if(!statistic[keys[i]].date)
+                        allMiss += 1
+                    else
+                        allMerch += 1
+                    data.push({
+                        _id: keys[i],
+                        data: [
+                            statistic[keys[i]].name,
+                            statistic[keys[i]].date,
+                        ]
+                    })
+                }
+                data = data.sort(function(a, b) {
+                    return b.data[1] - a.data[1]
+                });
+                for(let i=0; i<data.length; i++) {
+                    console.log(data[i].data[1])
+                    data[i].data[1] = !data[i].data[1]?'-':pdDDMMYYYY(data[i].data[1])
+                }
+                data = [
+                    {
+                        _id: 'All',
+                        data: [
+                            allMerch,
+                            allMiss
+                        ]
+                    },
+                    ...data
+                ]
+                return {
+                    columns: ['клиент', 'дата'],
+                    row: data
+                };
             }
-            score /= allScore.length
-            data = [
-                {
-                    _id: 'All',
-                    data: [
-                        checkFloat(score),
-                        allCheck,
-                        allProcessing,
-                        allActual,
-                        allCurrent,
-                        allExpired,
-                    ]
-                },
-                ...data
-            ]
-            return {
-                columns: ['район', 'оценка', 'проверен', 'обработка', 'актуальные', 'текущие', 'просроченные'],
-                row: data
-            };
         }
     },
     statisticDevice: async(parent, { filter }, {user}) => {
@@ -3417,7 +3458,6 @@ const resolvers = {
             let data = await OrganizationAzyk.find(
                 {
                     ...city?{cities: city}:{},
-                    /*_id: {$in: data}*/
                 }
             )
                 .sort('name')

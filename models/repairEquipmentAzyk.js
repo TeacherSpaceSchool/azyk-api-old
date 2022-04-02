@@ -3,9 +3,10 @@ const mongoose = require('mongoose');
 const RepairEquipmentAzykSchema = mongoose.Schema({
     number: String,
     status: String,
-    equipment: {
+    equipment: String,
+    client: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'EquipmentAzyk'
+        ref: 'ClientAzyk'
     },
     repairMan: {
         type: mongoose.Schema.Types.ObjectId,

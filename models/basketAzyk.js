@@ -6,6 +6,7 @@ const BasketAzykSchema = mongoose.Schema({
         ref: 'ItemAzyk'
     },
     count: Number,
+    specialPrice: Number,
     client: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ClientAzyk'

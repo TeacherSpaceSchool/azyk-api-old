@@ -14,6 +14,7 @@ const { reductionInvoices } = require('../module/invoiceAzyk');
 const { reductionReturneds } = require('../module/returnedAzyk');
 const { reductionToDeliveryDate } = require('../module/deliveryDateAzyk');
 const { reductionMerchandising } = require('../module/merchandisingAzyk');
+const { reductionRepairEquipment } = require('../module/repairEquipmentAzyk');
 const { startClientRedis } = require('../module/redis');
 const { reductionToUser, createAdmin } = require('../module/user');
 const { Worker, isMainThread } = require('worker_threads');
@@ -88,7 +89,8 @@ let startReminderClient = async () => {
 let start = async () => {
     await createAdmin();
     //await startClientRedis()
-    //await reductionMerchandising()
+    await reductionMerchandising()
+    await reductionRepairEquipment()
     await startResetUnloading()
     await startReminderClient();
     await startOutXMLShoroAzyk();

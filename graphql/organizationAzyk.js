@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const OrganizationAzyk = require('../models/organizationAzyk');
 const AutoAzyk = require('../models/autoAzyk');
-const EquipmentAzyk = require('../models/equipmentAzyk');
+const RepairEquipmentAzyk = require('../models/repairEquipmentAzyk');
 const EmploymentAzyk = require('../models/employmentAzyk');
 const SubBrandAzyk = require('../models/subBrandAzyk');
 const DeliveryDateAzyk = require('../models/deliveryDateAzyk');
@@ -325,7 +325,7 @@ const resolversMutation = {
                     await distributers[i].save()
                 }
                 await AutoAzyk.deleteMany({organization: _id[i]})
-                await EquipmentAzyk.deleteMany({organization: _id[i]})
+                await RepairEquipmentAzyk.deleteMany({organization: _id[i]})
                 await OrganizationAzyk.updateMany({_id: _id[i]}, {del: 'deleted', status: 'deactive'})
                 await AdsAzyk.updateMany({organization: _id[i]}, {del: 'deleted'})
                 await PlanAzyk.deleteMany({organization: _id[i]})

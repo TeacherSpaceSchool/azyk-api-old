@@ -35,9 +35,9 @@ const mutation = `
 
 const resolvers = {
     receivedDatas: async(parent, {search, filter, organization}, {user}) => {
-        if('admin'===user.role){
+        if(['суперорганизация', 'организация', 'менеджер', 'admin'].includes(user.role)) {
             return await ReceivedDataAzyk.find({
-                organization: organization,
+                organization: user.organization?user.organization:organization,
                 type: {'$regex': filter, '$options': 'i'},
                 ...search.length ? {
                     $or: [
@@ -77,13 +77,13 @@ const resolversMutation = {
         return {data: 'OK'}
     },
     deleteReceivedData: async(parent, { _ids }, {user}) => {
-        if('admin'===user.role){
+        if(['суперорганизация', 'организация', 'менеджер', 'admin'].includes(user.role)) {
             await ReceivedDataAzyk.deleteMany({_id: {$in: _ids}})
         }
         return {data: 'OK'}
     },
     addReceivedDataClient: async(parent, { _id }, {user}) => {
-        if('admin'===user.role){
+        if(['суперорганизация', 'организация', 'менеджер', 'admin'].includes(user.role)) {
             let receivedData = await ReceivedDataAzyk.findOne({_id: _id}).lean()
             let integrate1CAzyk = await Integrate1CAzyk.findOne({
                 organization: receivedData.organization,

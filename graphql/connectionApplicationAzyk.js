@@ -42,7 +42,7 @@ const resolvers = {
     },
     connectionApplicationsSimpleStatistic: async(parent, {filter}, {user}) => {
         if('admin'===user.role)
-            return await ConnectionApplicationAzyk.count({
+            return await ConnectionApplicationAzyk.countDocuments({
                 ...(filter === 'обработка' ? {taken: false} : {})
             }).lean()
     },

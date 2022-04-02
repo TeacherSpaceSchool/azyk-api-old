@@ -63,6 +63,17 @@ const statsCollection = async (collection) => {
     return (await (require(collection)).collection.stats())
 }
 
+module.exports.saveBase64ToFile = (base64) => {
+    return new Promise((resolve) => {
+        let filename = `${randomstring.generate(14)}.png`;
+        base64 = base64.split(';base64,').pop();
+        let filepath = path.join(app.dirname, 'public', 'images', filename)
+        fs.writeFile(filepath, base64, {encoding: 'base64'}, function() {
+            resolve(`/images/${filename}`)
+        });
+    })
+}
+
 const checkInt = (int) => {
     return isNaN(parseInt(int))?0:parseInt(int)
 }
@@ -78,7 +89,7 @@ module.exports.saveFile = (stream, filename) => {
         let filepath = path.join(app.dirname, 'public', 'images', filename)
         let fstream = fs.createWriteStream(filepath);
         stream.pipe(fstream)
-        fstream.on('finish', async () => {
+        fstream.on('finish', () => {
             resolve(`/images/${filename}`)
         })
     })
@@ -109,7 +120,7 @@ module.exports.saveImage = (stream, filename) => {
 }
 
 module.exports.deleteFile = (oldFile) => {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
         oldFile = oldFile.replace(urlMain, '')
         oldFile = path.join(app.dirname, 'public', oldFile)
         fs.unlink(oldFile, ()=>{

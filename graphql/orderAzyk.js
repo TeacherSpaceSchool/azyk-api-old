@@ -18,8 +18,9 @@ const { withFilter } = require('graphql-subscriptions');
 const RELOAD_ORDER = 'RELOAD_ORDER';
 const HistoryOrderAzyk = require('../models/historyOrderAzyk');
 const { checkFloat } = require('../module/const');
-const maxDates =7
+const maxDates = 31
 const { checkAdss } = require('../graphql/adsAzyk');
+const SpecialPriceClientAzyk = require('../models/specialPriceClientAzyk');
 
 const type = `
   type Order {
@@ -1138,10 +1139,15 @@ const resolversMutation = {
             if(!objectInvoice){
                 let orders = [];
                 for(let ii=0; ii<baskets.length;ii++){
-                    let price = !discount?
-                        baskets[ii].item.price
+                    let price = await SpecialPriceClientAzyk.findOne({
+                        item: baskets[ii].item._id,
+                        client: client._id
+                    }).select('price').lean()
+                    price = price?price.price:baskets[ii].item.price
+                    price = !discount?
+                        price
                         :
-                        checkFloat(baskets[ii].item.price-baskets[ii].item.price/100*discount)
+                        checkFloat(price-price/100*discount)
                     let objectOrder = new OrderAzyk({
                         item: baskets[ii].item._id,
                         client: client._id,
@@ -1219,10 +1225,15 @@ const resolversMutation = {
                         await objectOrder.save()
                     }
                     else {
+                        price = await SpecialPriceClientAzyk.findOne({
+                            item: baskets[ii].item._id,
+                            client: client._id
+                        }).select('price').lean()
+                        price = price?price.price:baskets[ii].item.price
                         price = !discount?
-                            baskets[ii].item.price
+                            price
                             :
-                            checkFloat(baskets[ii].item.price-baskets[ii].item.price/100*discount)
+                            checkFloat(price-price/100*discount)
                         objectOrder = new OrderAzyk({
                             item: baskets[ii].item._id,
                             client: client._id,

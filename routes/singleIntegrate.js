@@ -11,6 +11,7 @@ const SubCategoryAzyk = require('../models/subCategoryAzyk');
 const UserAzyk = require('../models/userAzyk');
 const randomstring = require('randomstring');
 const { checkFloat, checkInt } = require('../module/const');
+const DistrictAzyk = require('../models/districtAzyk');
 
 router.post('/:pass/put/item', async (req, res, next) => {
     let organization = await OrganizationAzyk.findOne({pass: req.params.pass}).select('_id cities').lean()
@@ -108,17 +109,22 @@ router.post('/:pass/put/client', async (req, res, next) => {
                     guid: req.body.elements[0].elements[i].attributes.agent
                 }).select('agent').lean()
                 if (agent) {
-                    _object = new ReceivedDataAzyk({
-                        status: integrate1CAzyk ? 'изменить' : 'добавить',
-                        organization: organization._id,
-                        name: req.body.elements[0].elements[i].attributes.name,
-                        guid: req.body.elements[0].elements[i].attributes.guid,
-                        addres: req.body.elements[0].elements[i].attributes.address,
-                        agent: agent.agent,
-                        phone: req.body.elements[0].elements[i].attributes.tel,
-                        type: 'клиент'
-                    });
-                    await ReceivedDataAzyk.create(_object)
+                    let district = await DistrictAzyk.findOne({
+                        agent: agent.agent
+                    }).select('_id').lean()
+                    if(district) {
+                        _object = new ReceivedDataAzyk({
+                            status: integrate1CAzyk ? 'изменить' : 'добавить',
+                            organization: organization._id,
+                            name: req.body.elements[0].elements[i].attributes.name,
+                            guid: req.body.elements[0].elements[i].attributes.guid,
+                            addres: req.body.elements[0].elements[i].attributes.address,
+                            agent: agent.agent,
+                            phone: req.body.elements[0].elements[i].attributes.tel,
+                            type: 'клиент'
+                        });
+                        await ReceivedDataAzyk.create(_object)
+                    }
                 }
             }
         }

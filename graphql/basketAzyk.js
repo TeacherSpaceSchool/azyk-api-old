@@ -1,5 +1,4 @@
 const BasketAzyk = require('../models/basketAzyk');
-const ItemAzyk = require('../models/itemAzyk');
 
 const type = `
   type Basket {

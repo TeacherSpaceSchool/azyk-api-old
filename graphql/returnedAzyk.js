@@ -13,7 +13,7 @@ const RELOAD_RETURNED = 'RELOAD_RETURNED';
 const HistoryReturnedAzyk = require('../models/historyReturnedAzyk');
 const mongoose = require('mongoose');
 const SubBrandAzyk = require('../models/subBrandAzyk');
-const maxDates = 7
+const maxDates = 31
 
 const type = `
   type ReturnedItems {

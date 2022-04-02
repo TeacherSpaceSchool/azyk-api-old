@@ -286,7 +286,7 @@ const resolvers = {
                     .lean()
             }
         }
-        else if(['суперорганизация', 'организация'].includes(user.role)) {
+        else if(['суперорганизация', 'организация', 'мерчендайзер'].includes(user.role)) {
             accessToClient = (await OrganizationAzyk.findOne({_id: user.organization}).select('accessToClient').lean()).accessToClient
             if(!accessToClient){
                 let items = await ItemAzyk.find({organization: user.organization}).distinct('_id').lean()
@@ -305,7 +305,7 @@ const resolvers = {
                                 ...(!date || date === '' ? {} : {$and: [{createdAt: {$gte: dateStart}}, {createdAt: {$lt: dateEnd}}]}),
                                 ...city ? {city: city} : {},
                                 ...user.cities?{city: {$in: user.cities}}:{},
-                                ...['менеджер', 'экспедитор'].includes(user.role)||['агент', 'суперагент'].includes(user.role)&&(clients.length||search.length<3)||['суперорганизация', 'организация'].includes(user.role)&&!accessToClient ? {_id: {$in: clients}} : {},
+                                ...['менеджер', 'экспедитор'].includes(user.role)||['агент', 'суперагент'].includes(user.role)&&(clients.length||search.length<3)||['суперорганизация', 'организация', 'мерчендайзер'].includes(user.role)&&!accessToClient ? {_id: {$in: clients}} : {},
                                 del: {$ne: 'deleted'},
                                 $or: [
                                     {name: {'$regex': search, '$options': 'i'}},

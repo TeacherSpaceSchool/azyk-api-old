@@ -2,6 +2,7 @@ const MerchandisingAzyk = require('../models/merchandisingAzyk');
 const ClientAzyk = require('../models/clientAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
 const mongoose = require('mongoose');
+const {saveBase64ToFile, urlMain, deleteFile} = require('../module/const');
 
 const type = `
   type Merchandising {
@@ -57,7 +58,7 @@ const mutation = `
 
 const resolvers = {
     merchandisings: async(parent, {organization, agent, search, date, client, sort, filter, skip}, {user}) => {
-        if(['admin', 'суперагент', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
+        if(['admin', 'суперагент', 'суперорганизация', 'организация', 'менеджер', 'агент', 'мерчендайзер'].includes(user.role)){
             let clients
             let dateStart;
             let dateEnd;
@@ -87,7 +88,7 @@ const resolvers = {
                 organization: user.organization?user.organization:organization==='super'?null:organization,
                 ...filter==='обработка'?{check: false}:{},
                 $and: [
-                    {...['суперагент', 'агент'].includes(user.role) && clients.length||user.role==='менеджер'?{client: {$in: clients}}:['суперагент', 'агент'].includes(user.role)?{employment: user.employment}:{}},
+                    {...['суперагент', 'агент'].includes(user.role) && clients.length||user.role==='менеджер'?{client: {$in: clients}}:['суперагент', 'агент', 'мерчендайзер'].includes(user.role)?{employment: user.employment}:{}},
                     {...search.length>0?{client: {$in: _clients}}:{}},
                     ...(!date||date===''?[]:[{date: {$gte: dateStart}}, {date: {$lt:dateEnd}}]),
                 ]
@@ -154,7 +155,7 @@ const resolvers = {
 
 const resolversMutation = {
     addMerchandising: async(parent, {organization, client, geo, productAvailability, productInventory, productConditions, productLocation, images, fhos, needFho, stateProduct, comment}, {user}) => {
-        if(['admin', 'суперагент', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
+        if(['admin', 'суперагент', 'суперорганизация', 'организация', 'менеджер', 'агент', 'мерчендайзер'].includes(user.role)){
             let _object = new MerchandisingAzyk({
                 organization: user.organization?user.organization:organization==='super'?null:organization,
                 employment: user.employment?user.employment:null,
@@ -173,7 +174,7 @@ const resolversMutation = {
                 check: false
             });
             for(let i=0; i<images.length; i++) {
-                _object.images.push(images[i])
+                _object.images.push(urlMain + await saveBase64ToFile(images[i]))
             }
             for(let i=0; i<fhos.length; i++) {
                 _object.fhos.push(fhos[i])
@@ -196,8 +197,14 @@ const resolversMutation = {
         return {data: 'OK'}
     },
     deleteMerchandising: async(parent, { _id }, {user}) => {
-        if(['admin', 'суперагент', 'суперорганизация', 'организация', 'менеджер', 'агент'].includes(user.role)){
-             await MerchandisingAzyk.deleteMany({
+        if(['admin', 'суперагент', 'суперорганизация', 'организация', 'менеджер', 'агент', 'мерчендайзер'].includes(user.role)){
+            let merchandisings = await MerchandisingAzyk.find({...user.organization?{organization: user.organization}:{}, _id: {$in: _id}}).select('images').lean()
+            for(let i=0; i<merchandisings.length; i++) {
+                for(let i1=0; i1<merchandisings[i].images.length; i1++) {
+                    await deleteFile(merchandisings[i].images[i1])
+                }
+            }
+            await MerchandisingAzyk.deleteMany({
                 ...user.organization?{organization: user.organization}:{},
                 _id: {$in: _id}
             })
