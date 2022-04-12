@@ -2,6 +2,7 @@ const ReceivedDataAzyk = require('../models/receivedDataAzyk');
 const DistrictAzyk = require('../models/districtAzyk');
 const Integrate1CAzyk = require('../models/integrate1CAzyk');
 const ClientAzyk = require('../models/clientAzyk');
+const AgentRouteAzyk = require('../models/agentRouteAzyk');
 const UserAzyk = require('../models/userAzyk');
 const OrganizationAzyk = require('../models/organizationAzyk');
 const randomstring = require('randomstring');
@@ -140,6 +141,15 @@ const resolversMutation = {
                         client: _client._id
                     })
                     if(oldDistrict){
+                        let objectAgentRouteAzyk = await AgentRouteAzyk.findOne({district: oldDistrict._id})
+                        if(objectAgentRouteAzyk){
+                            for(let i=0; i<7; i++) {
+                                let index = objectAgentRouteAzyk.clients[i].indexOf(_client._id.toString())
+                                if(index!==-1)
+                                    objectAgentRouteAzyk.clients[i].splice(index, 1)
+                            }
+                            await objectAgentRouteAzyk.save()
+                        }
                         for(let i=0; i<oldDistrict.client.length; i++) {
                             if(oldDistrict.client[i].toString()===_client._id.toString()){
                                 oldDistrict.client.splice(i, 1)

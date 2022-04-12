@@ -168,7 +168,7 @@ const resolvers = {
                 })
                 .populate({
                     path: 'organization',
-                    select: 'name _id'
+                    select: 'name _id cities'
                 })
                 .populate({
                     path: 'manager',

@@ -2520,7 +2520,6 @@ const resolvers = {
                     return b.data[1] - a.data[1]
                 });
                 for(let i=0; i<data.length; i++) {
-                    console.log(data[i].data[1])
                     data[i].data[1] = !data[i].data[1]?'-':pdDDMMYYYY(data[i].data[1])
                 }
                 data = [

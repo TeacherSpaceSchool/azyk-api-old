@@ -335,8 +335,6 @@ const run = (app)=>{
                 err: `gql: ${err.message}`,
                 path: JSON.stringify(err.path)
             });
-            if(!_object.path)
-                _object.path = JSON.stringify(err.extensions.exception.stacktrace)
             ModelsErrorAzyk.create(_object)
 
             return err;
