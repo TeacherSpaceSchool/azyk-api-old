@@ -1,21 +1,26 @@
 const AgentRouteAzyk = require('../models/agentRouteAzyk');
 
 module.exports.reductionToAgentRoute = async() => {
-    let agentRoutes = await AgentRouteAzyk.find().populate('district').populate({path: 'client',populate: [{path: 'user'}]})
-    console.log(`reductionToAgentRoute: ${agentRoutes.length}`)
-    let deletes = []
+    let agentRoutes = await AgentRouteAzyk
+        .find()
+        .populate({path: 'district', select: '_id client'})
+        .populate({path: 'organization', select: 'name'})
+        .lean()
+    let err = false
     for(let i = 0; i<agentRoutes.length;i++){
-        for(let i1 = 0; i1<7;i1++){
-            deletes = []
-            for(let i2 = 0; i2<agentRoutes[i].clients[i1].length;i2++){
-                let index = agentRoutes[i].district.client.indexOf(agentRoutes[i].clients[i1][i2]._id.toString())
-                if(index===-1)
-                    deletes.push(i2)
-            }
-            for(let i2 = 0; i2<deletes.length;i2++){
-                agentRoutes[i].clients[i1].splice(deletes[i2], 1)
+        err = false
+        for(let i1=0; i1<7; i1++) {
+            for(let i2=0; i2<agentRoutes[i].clients[i1].length; i2++) {
+                if (!agentRoutes[i].district.client.toString().includes(agentRoutes[i].clients[i1][i2].toString())) {
+                    err = true
+                    agentRoutes[i].clients[i1].splice(i2, 1)
+                    i2 -= 1
+                }
             }
         }
-        await agentRoutes[i].save()
+        if(err){
+            await AgentRouteAzyk.updateOne({_id: agentRoutes[i]._id}, {clients: agentRoutes[i].clients})
+            console.log(`reductionToAgentRoute: ${i}`)
+        }
     }
 }

@@ -108,7 +108,7 @@ let start = async () => {
     //await reductionToOrganization()
     //await reductionToItem()
     //await reductionToUser()
-    //await reductionToAgentRoute();
+    await reductionToAgentRoute();
     //await reductionOutAdsXMLShoroAzyk()
     //await reductionToAds()
 }
