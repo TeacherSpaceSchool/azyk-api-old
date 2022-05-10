@@ -12,6 +12,7 @@ const SubBrandAzykSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'OrganizationAzyk'
     },
+    del: String,
     cities: [String]
 }, {
     timestamps: true

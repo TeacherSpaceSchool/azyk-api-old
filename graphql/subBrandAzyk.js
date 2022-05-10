@@ -32,6 +32,7 @@ const resolvers = {
         if(['admin', 'суперагент', 'экспедитор', 'суперорганизация', 'организация', 'менеджер', 'агент', 'client'].includes(user.role)){
             if(user.organization) organization = user.organization
             return await SubBrandAzyk.find({
+                del: {$ne: 'deleted'},
                 miniInfo: {'$regex': search, '$options': 'i'},
                 ...organization?{organization}:{},
                 ...(city?{cities: city}:{}),
@@ -96,7 +97,7 @@ const resolversMutation = {
     },
     deleteSubBrand: async(parent, { _id }, {user}) => {
         if('admin'===user.role){
-            await SubBrandAzyk.deleteMany({_id: {$in: _id}})
+            await SubBrandAzyk.updateMany({_id: {$in: _id}}, {del: 'deleted'})
             await ItemAzyk.updateMany({subBrand: {$in: _id}}, {subBrand: undefined})
         }
         return {data: 'OK'}
