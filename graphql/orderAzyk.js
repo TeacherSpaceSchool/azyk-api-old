@@ -1517,7 +1517,8 @@ const resolversMutation = {
         });
         await HistoryOrderAzyk.create(objectHistoryOrder);
 
-        let date = new Date('2022-05-12T03:00:00.000Z')
+        let date = new Date()
+        date.setDate(date.getDate() - 7)
         if((resInvoice.guid||resInvoice.dateDelivery>date)&&resInvoice.organization.pass&&resInvoice.organization.pass.length){
             if(resInvoice.orders[0].status==='принят') {
                 resInvoice.sync = await setSingleOutXMLAzyk(resInvoice)
