@@ -21,6 +21,7 @@ const { checkFloat } = require('../module/const');
 const maxDates = 31
 const { checkAdss } = require('../graphql/adsAzyk');
 const SpecialPriceClientAzyk = require('../models/specialPriceClientAzyk');
+const uuidv1 = require('uuid/v1.js');
 
 const type = `
   type Order {
@@ -1056,6 +1057,7 @@ const resolversMutation = {
         return {data: 'OK'};
     },
     addOrders: async(parent, {priority, dateDelivery, info, paymentMethod, organization, client, inv, unite}, {user}) => {
+        let guid = await uuidv1()
         if(user.client)
             client = user.client
         client = await ClientAzyk.findOne({_id: client}).select('address id city').lean()
@@ -1179,6 +1181,7 @@ const resolversMutation = {
                     orders[iii] = orders[iii]._id
                 }
                 objectInvoice = new InvoiceAzyk({
+                    guid,
                     city: client.city,
                     priority: priority,
                     discount: discount,
@@ -1514,10 +1517,8 @@ const resolversMutation = {
         });
         await HistoryOrderAzyk.create(objectHistoryOrder);
 
-        let date = new Date()
-        if(date.getHours()<3)
-            date.setDate(date.getDate() - 1)
-        if((!resInvoice.dateDelivery||resInvoice.dateDelivery>date)&&resInvoice.organization.pass&&resInvoice.organization.pass.length){
+        let date = new Date('2022-05-12T03:00:00.000Z')
+        if((resInvoice.guid||resInvoice.dateDelivery>date)&&resInvoice.organization.pass&&resInvoice.organization.pass.length){
             if(resInvoice.orders[0].status==='принят') {
                 resInvoice.sync = await setSingleOutXMLAzyk(resInvoice)
             }

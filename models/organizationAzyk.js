@@ -38,6 +38,10 @@ const OrganizationAzykSchema = mongoose.Schema({
         type: Boolean,
         default: false
     },
+    dateDelivery: {
+        type: Boolean,
+        default: false
+    },
     addedClient: {
         type: Boolean,
         default: false

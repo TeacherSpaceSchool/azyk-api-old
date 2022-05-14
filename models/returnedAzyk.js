@@ -55,6 +55,7 @@ const ReturnedAzykSchema = mongoose.Schema({
         ref: 'EmploymentAzyk'
     },
     district: String,
+    guid: String,
     city: String,
     track: {
         type: Number,

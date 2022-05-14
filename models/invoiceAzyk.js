@@ -43,6 +43,7 @@ const InvoiceAzykSchema = mongoose.Schema({
         default: 'Бишкек'
     },
     number: String,
+    guid: String,
     info: String,
     address: [String],
     paymentMethod: String,

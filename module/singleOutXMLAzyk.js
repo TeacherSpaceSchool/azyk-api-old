@@ -53,7 +53,7 @@ module.exports.setSingleOutXMLReturnedAzyk = async(returned) => {
                         date.setDate(date.getDate() + 1)
                     let newOutXMLReturnedAzyk = new SingleOutXMLReturnedAzyk({
                         data: [],
-                        guid: await uuidv1(),
+                        guid: returned.guid?returned.guid:await uuidv1(),
                         date: date,
                         number: returned.number,
                         inv: returned.inv,
@@ -131,7 +131,7 @@ module.exports.setSingleOutXMLAzyk = async(invoice) => {
                     let newOutXMLAzyk = new SingleOutXMLAzyk({
                         payment: paymentMethod[invoice.paymentMethod],
                         data: [],
-                        guid: await uuidv1(),
+                        guid: invoice.guid?invoice.guid:await uuidv1(),
                         date: date,
                         number: invoice.number,
                         client: guidClient.guid,
@@ -274,8 +274,16 @@ module.exports.getSingleOutXMLAzyk = async(pass) => {
     if(date.getHours()>=3)
         date.setDate(date.getDate() + 1)
     date.setHours(3, 0, 0, 0)
+    let organization = await OrganizationAzyk.findOne({pass}).select('dateDelivery').lean()
     let outXMLs = await SingleOutXMLAzyk
-        .find({pass: pass, date: {$lte: date}, $and: [{status: {$ne: 'check'}}, {status: {$ne: 'error'}}]})
+        .find({
+            pass: pass,
+            ...!organization.dateDelivery?{date: {$lte: date}}:{},
+            $and: [
+                {status: {$ne: 'check'}},
+                {status: {$ne: 'error'}}
+            ]
+        })
         .populate({path: 'invoice', select: 'info address'})
         .sort('date')
         .lean()

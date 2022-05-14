@@ -13,6 +13,7 @@ const RELOAD_RETURNED = 'RELOAD_RETURNED';
 const HistoryReturnedAzyk = require('../models/historyReturnedAzyk');
 const mongoose = require('mongoose');
 const SubBrandAzyk = require('../models/subBrandAzyk');
+const uuidv1 = require('uuid/v1.js');
 const maxDates = 31
 
 const type = `
@@ -755,6 +756,7 @@ const resolversMutation = {
         if(subbrand)
             organization = subbrand.organization
         let dateStart = new Date()
+        let guid = await uuidv1()
         if(dateStart.getHours()<3)
             dateStart.setDate(dateStart.getDate() - 1)
         dateStart.setHours(3, 0, 0, 0)
@@ -812,6 +814,7 @@ const resolversMutation = {
                 allTonnage+=items[i].allTonnage
             }
             objectReturned = new ReturnedAzyk({
+                guid,
                 items: items,
                 client: client,
                 allPrice: allPrice,
