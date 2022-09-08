@@ -40,7 +40,7 @@
     "passport-local": "^1.0.0",
     "q": "^1.5.1",
     "randomstring": "^1.1.5",
-    "read-excel-file": "^4.0.5",
+    "read-excel-file": "^4.1.0",
     "redis": "^2.8.0",
     "socketio-jwt": "^4.5.0",
     "uuid": "^7.0.1",
