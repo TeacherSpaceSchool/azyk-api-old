@@ -57,7 +57,7 @@
     "eslint": "^5.16.0",
     "eslint-loader": "^3.0.0",
     "express-reload": "^1.1.0",
-    "mocha": "^6.2.3",
+    "mocha": "^10.2.0",
     "nodemon": "^1.18.9"
   },
   "main": "app.js",
